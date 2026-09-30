@@ -1,4 +1,4 @@
-<img src="banner-maos-1584x396.png" alt="Duas mãos desenhadas em pontos alcançando uma pasta chamada dados" width="100%">
+<img src="DADOS.png" alt="Duas mãos desenhadas em pontos alcançando uma pasta chamada dados" width="100%">
 
 ## Olá! Eu sou Gabriel Trannin 👋
 
