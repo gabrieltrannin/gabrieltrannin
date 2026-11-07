@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diário Secreto</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Diário secreto de dois agentes: registros com etiquetas e uma gaveta de arquivos confidenciais.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil:wght@600;800&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+
+<!-- ============ TELA DE LOGIN: O COFRE ============ -->
+<section id="tela-login" class="login" aria-labelledby="login-titulo">
+  <div class="login-cena" id="login-cena">
+    <div class="cofre" id="cofre" aria-hidden="true">
+      <div class="cofre-luz"></div>
+      <div class="cofre-batente" id="cofre-batente"></div>
+      <div class="cofre-porta" id="cofre-porta"></div>
+    </div>
+
+    <form class="terminal" id="form-login" novalidate>
+      <p class="terminal-sobre">Diário secreto · Acesso restrito</p>
+      <h1 class="terminal-titulo" id="login-titulo">Identifique-se, agente.</h1>
+
+      <fieldset class="agentes" id="agentes">
+        <legend>Codinome</legend>
+        <!-- preenchido por cofre.js a partir de config.js -->
+      </fieldset>
+
+      <div class="campo">
+        <label for="senha">Senha do cofre</label>
+        <input id="senha" name="senha" type="password" autocomplete="current-password" spellcheck="false" required>
+      </div>
+
+      <p class="terminal-msg" id="login-msg" role="alert"></p>
+
+      <button type="submit" class="btn btn-primario btn-destrancar" id="btn-destrancar">Destrancar cofre</button>
+
+      <div class="terminal-rodape">
+        <span class="led" id="led" aria-hidden="true"></span>
+        <span id="status-terminal">Canal seguro. Aguardando credenciais.</span>
+        <button type="button" class="btn-som" id="btn-som" aria-pressed="true">Som ligado</button>
+      </div>
+    </form>
+  </div>
+
+  <button type="button" class="btn-pular" id="btn-pular" hidden>Pular animação</button>
+</section>
+
+<!-- ============ O ESCONDERIJO ============ -->
+<div id="esconderijo" class="esconderijo" hidden>
+  <header class="barra">
+    <div class="barra-inner">
+      <div class="marca">
+        <span class="marca-nome">Esconderijo</span>
+        <span class="marca-sub">Subsolo 3 · Diário secreto</span>
+      </div>
+
+      <nav class="abas" aria-label="Seções do esconderijo">
+        <a href="#diario" class="aba" data-aba="diario">Diário</a>
+        <a href="#arquivo" class="aba" data-aba="arquivo">Gaveta confidencial</a>
+      </nav>
+
+      <div class="barra-agente">
+        <span class="led led--ok" aria-hidden="true"></span>
+        <span class="agente-atual" id="agente-atual">Agente</span>
+        <time class="relogio" id="relogio"></time>
+        <button type="button" class="btn btn-fantasma" id="btn-trancar">Trancar cofre</button>
+      </div>
+    </div>
+  </header>
+
+  <p class="faixa-aviso" id="faixa-aviso" hidden></p>
+
+  <main class="conteudo">
+
+    <!-- ----- DIÁRIO ----- -->
+    <section id="vista-diario" class="vista" aria-labelledby="titulo-diario">
+      <div class="vista-cab">
+        <p class="sobretitulo">Diário de campo</p>
+        <h1 class="vista-titulo" id="titulo-diario">Relatórios do dia a dia</h1>
+      </div>
+
+      <div class="diario-grid">
+        <div class="coluna-principal">
+
+          <form class="maquina" id="form-registro" autocomplete="off" novalidate>
+            <div class="maquina-cab">
+              <h2 class="maquina-titulo" id="maquina-titulo">Novo registro</h2>
+              <span class="maquina-modo" id="maquina-modo">Datilografando</span>
+            </div>
+
+            <div class="campo">
+              <label for="reg-titulo">Título</label>
+              <input id="reg-titulo" maxlength="120" required placeholder="Ex.: Encontro no cais às 23h">
+            </div>
+
+            <div class="campo">
+              <label for="reg-texto">Relatório</label>
+              <textarea id="reg-texto" rows="4" required placeholder="O que aconteceu hoje, agente?"></textarea>
+            </div>
+
+            <div class="maquina-linha">
+              <div class="campo">
+                <label for="reg-data">Data</label>
+                <input id="reg-data" type="date" required>
+              </div>
+              <div class="campo">
+                <label for="reg-nivel">Classificação</label>
+                <select id="reg-nivel">
+                  <option value="confidencial">Confidencial</option>
+                  <option value="secreto">Secreto</option>
+                  <option value="ultrassecreto">Ultrassecreto</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="campo">
+              <label for="reg-tag">Etiquetas</label>
+              <div class="tags-entrada" id="tags-entrada">
+                <ul class="tags-escolhidas" id="tags-escolhidas" aria-label="Etiquetas escolhidas"></ul>
+                <input id="reg-tag" list="lista-tags" placeholder="Digite e aperte Enter">
+              </div>
+              <p class="dica">Separe com Enter ou vírgula. As etiquetas servem para achar o registro na gaveta.</p>
+            </div>
+
+            <p class="form-erro" id="reg-erro" role="alert"></p>
+
+            <div class="maquina-acoes">
+              <button type="button" class="btn btn-fantasma" id="btn-cancelar-edicao" hidden>Cancelar edição</button>
+              <button type="submit" class="btn btn-primario" id="btn-arquivar">Arquivar no diário</button>
+            </div>
+          </form>
+
+          <div class="aviso-exemplos" id="aviso-exemplos" hidden>
+            <p>Os registros marcados como <strong>exemplo</strong> mostram como o diário funciona.</p>
+            <button type="button" class="btn btn-fantasma" id="btn-remover-exemplos">Incinerar exemplos</button>
+          </div>
+
+          <div class="lista-registros" id="lista-registros" aria-live="polite"></div>
+        </div>
+
+        <aside class="painel" aria-label="Painel do esconderijo">
+          <section class="painel-bloco">
+            <h2 class="painel-titulo">Situação</h2>
+            <dl class="numeros">
+              <div><dt>Registros</dt><dd id="n-registros">0</dd></div>
+              <div><dt>Etiquetas</dt><dd id="n-etiquetas">0</dd></div>
+              <div><dt>Dias</dt><dd id="n-dias">0</dd></div>
+            </dl>
+            <p class="modo-armazem" id="modo-armazem"></p>
+          </section>
+
+          <section class="painel-bloco">
+            <div class="cal-cab">
+              <button type="button" class="cal-nav" id="cal-ant" aria-label="Mês anterior">‹</button>
+              <h2 class="painel-titulo cal-mes" id="cal-mes"></h2>
+              <button type="button" class="cal-nav" id="cal-prox" aria-label="Próximo mês">›</button>
+            </div>
+            <div class="calendario" id="calendario"></div>
+            <p class="dica">Dias carimbados têm registros. Toque num dia para abrir os arquivos dele.</p>
+          </section>
+
+          <section class="painel-bloco">
+            <h2 class="painel-titulo">Etiquetas em uso</h2>
+            <div class="nuvem" id="nuvem-tags"></div>
+          </section>
+
+          <section class="painel-bloco" id="bloco-transmissao">
+            <h2 class="painel-titulo">Transmissão</h2>
+            <p class="dica">Os registros ficam guardados neste aparelho. Exporte o dossiê para levar a outro aparelho ou guardar uma cópia.</p>
+            <div class="transmissao-acoes">
+              <button type="button" class="btn btn-fantasma" id="btn-exportar">Exportar dossiê</button>
+              <label class="btn btn-fantasma" for="arquivo-importar">Importar dossiê</label>
+              <input type="file" id="arquivo-importar" accept="application/json,.json" class="visualmente-oculto">
+            </div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ----- GAVETA DE ARQUIVOS CONFIDENCIAIS ----- -->
+    <section id="vista-arquivo" class="vista" aria-labelledby="titulo-arquivo" hidden>
+      <div class="vista-cab">
+        <p class="sobretitulo">Arquivo morto</p>
+        <h1 class="vista-titulo" id="titulo-arquivo">Gaveta de arquivos confidenciais</h1>
+      </div>
+
+      <div class="gaveta" id="gaveta">
+        <div class="gaveta-frente">
+          <div class="gaveta-placa">
+            <span class="gaveta-placa-num">Gaveta 01</span>
+            <span class="gaveta-placa-txt">Arquivos confidenciais · somente agentes</span>
+          </div>
+
+          <form class="gaveta-busca" id="form-busca" role="search" novalidate>
+            <div class="campo">
+              <label for="busca-tag">Procurar por etiqueta</label>
+              <input id="busca-tag" type="search" list="lista-tags" placeholder="Ex.: estacao-central" autocomplete="off">
+            </div>
+            <div class="campo">
+              <label for="busca-data">Arquivos do dia</label>
+              <input id="busca-data" type="date">
+            </div>
+            <button type="button" class="btn btn-fantasma" id="btn-limpar-busca">Limpar busca</button>
+          </form>
+
+          <div class="gaveta-puxador" aria-hidden="true"></div>
+        </div>
+
+        <div class="gaveta-interior">
+          <div class="indice">
+            <h2 class="indice-titulo">Índice de etiquetas</h2>
+            <div class="indice-abas" id="indice-tags"></div>
+          </div>
+          <div class="indice">
+            <h2 class="indice-titulo">Dias com registros</h2>
+            <div class="indice-abas" id="indice-dias"></div>
+          </div>
+
+          <p class="resultado-resumo" id="resultado-resumo" aria-live="polite"></p>
+          <div class="pastas" id="pastas"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <p>Este diário é um esconderijo, não um cofre de banco. Não guarde aqui senhas nem dados que não possam vazar.</p>
+  </footer>
+</div>
+
+<datalist id="lista-tags"></datalist>
+
+<!-- ----- DOSSIÊ ABERTO ----- -->
+<dialog class="dossie" id="dossie" aria-labelledby="dossie-titulo">
+  <div class="dossie-pasta">
+    <span class="dossie-aba" id="dossie-aba"></span>
+    <div class="dossie-corpo" id="dossie-corpo"></div>
+    <div class="dossie-acoes">
+      <button type="button" class="btn btn-fantasma btn-fantasma--papel" id="dossie-editar">Editar registro</button>
+      <button type="button" class="btn btn-primario" id="dossie-fechar">Fechar dossiê</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/sha256.js"></script>
+<script src="js/config.js"></script>
+<script src="js/armazem.js"></script>
+<script src="js/cofre.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
