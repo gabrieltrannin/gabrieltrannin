@@ -1,0 +1,11 @@
+# Instaladores são grandes: ficam no pendrive/Drive, não no Git.
+instaladores/*
+!instaladores/LEIA-ME.txt
+
+# Arquivos gerados pelo PyInstaller
+build/
+dist/
+kit/
+*.spec
+
+__pycache__/

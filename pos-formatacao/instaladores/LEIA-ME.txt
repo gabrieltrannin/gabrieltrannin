@@ -1,0 +1,5 @@
+Coloque aqui os instaladores das suas versões dos programas
+(por exemplo spotify-leve.exe, discord-leve.exe, brave-leve.exe).
+
+O nome do arquivo precisa ser igual ao que está no apps.json.
+Pode ser .exe ou .msi.

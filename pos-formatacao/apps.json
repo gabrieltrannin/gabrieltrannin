@@ -1,0 +1,34 @@
+{
+  "programas": [
+    {
+      "nome": "Spotify (meu cliente leve)",
+      "descricao": "Meu cliente do Spotify.",
+      "fontes": [
+        { "arquivo": "instaladores/spotify-leve.exe" }
+      ]
+    },
+    {
+      "nome": "Discord",
+      "descricao": "Usa meu cliente leve se ele estiver na pasta instaladores. Se não, instala o oficial.",
+      "fontes": [
+        { "arquivo": "instaladores/discord-leve.exe" },
+        { "winget": "Discord.Discord" }
+      ]
+    },
+    {
+      "nome": "Brave",
+      "descricao": "Usa minha versão leve se ela estiver na pasta instaladores. Se não, instala o oficial.",
+      "fontes": [
+        { "arquivo": "instaladores/brave-leve.exe" },
+        { "winget": "Brave.Brave" }
+      ]
+    },
+    {
+      "nome": "Steam",
+      "fontes": [
+        { "winget": "Valve.Steam" },
+        { "url": "https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe", "args": ["/S"] }
+      ]
+    }
+  ]
+}
