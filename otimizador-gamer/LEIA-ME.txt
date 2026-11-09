@@ -1,0 +1,56 @@
+﻿OTIMIZADOR GAMER v1.0
+=====================
+
+Deixa o Windows mais leve e estável para jogar (Fortnite, CS2, LoL e outros).
+Roda direto do pendrive, sem instalar nada.
+
+
+COMO USAR
+---------
+1. Dê dois cliques em INICIAR.bat
+2. Clique em "Sim" quando o Windows pedir permissão de administrador
+3. Escolha a opção 1 (MODO GUIADO) e siga as telas
+4. No final, reinicie o PC
+5. Abra o guia (opção G) para ajustar BIOS, driver NVIDIA e cada jogo
+
+Se aparecer "O Windows protegeu o computador":
+clique em "Mais informações" e depois em "Executar assim mesmo".
+
+
+O QUE TEM NO MENU
+-----------------
+ 1. Modo guiado (faz tudo passo a passo)
+ 2. Diagnóstico completo (só lê, não muda nada; gera um relatório no navegador)
+ 3. Otimizações para jogos (plano de energia, Modo de Jogo, Game Bar, mouse...)
+ 4. Limpeza de arquivos inúteis (temporários, cache do Windows Update...)
+ 5. Programas que iniciam com o Windows (liga/desliga sem desinstalar)
+ 6. Remover apps inúteis que vêm com o Windows
+ 7. Monitor de desempenho enquanto você joga (mostra o gargalo)
+ 8. Verificar vírus e reparar arquivos do Windows
+ 9. Criar ponto de restauração
+ D. Desfazer mudanças
+ G. Abrir o guia
+
+
+SEGURANÇA
+---------
+- Nenhum arquivo pessoal é apagado.
+- Toda configuração alterada é salva em backup (pasta Dados\Backups)
+  e pode ser desfeita pela opção D.
+- O programa oferece criar um ponto de restauração do Windows antes de mudar algo.
+- Não mexe em jogos nem em anti-cheat (zero risco de banimento).
+
+
+PASTAS
+------
+INICIAR.bat         -> abre o programa
+app\                -> o programa e o guia (Guia.html)
+Dados\Relatorios    -> diagnósticos e resultados do monitor (criada ao usar)
+Dados\Backups       -> backups para desfazer (criada ao usar)
+Dados\Logs          -> registro de tudo que foi feito (criada ao usar)
+
+
+REQUISITOS
+----------
+Windows 10 ou 11 (64 bits). Usa o PowerShell que já vem no Windows.
+Precisa de uma conta de administrador no PC.

@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guia do Otimizador Gamer</title>
+<style>
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --txt: #1b1e23;
+  --sub: #5b6370;
+  --borda: #e0e3e8;
+  --destaque: #0b6bcb;
+  --destaque-bg: #e8f1fc;
+  --aviso: #9a5800;
+  --aviso-bg: #fff3dc;
+  --perigo: #b42318;
+  --perigo-bg: #fdecea;
+  --ok: #1e7d3a;
+  --ok-bg: #e6f4ea;
+  --code-bg: #eef0f3;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121418;
+    --card: #1b1e24;
+    --txt: #e7e9ec;
+    --sub: #a0a7b2;
+    --borda: #2c3139;
+    --destaque: #7db8ff;
+    --destaque-bg: #172a40;
+    --aviso: #ffc266;
+    --aviso-bg: #382b14;
+    --perigo: #ff8a80;
+    --perigo-bg: #3a1d1d;
+    --ok: #7ad69a;
+    --ok-bg: #16301f;
+    --code-bg: #262a31;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--txt);
+  font: 17px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+main { max-width: 780px; margin: 0 auto; padding: 32px 16px 80px; }
+header h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
+header p { color: var(--sub); margin: 0; }
+h2 { font-size: 23px; line-height: 1.25; margin: 48px 0 12px; padding-top: 8px; scroll-margin-top: 12px; }
+h2 .n { color: var(--destaque); margin-right: 6px; }
+h3 { font-size: 18px; margin: 26px 0 8px; }
+p, li { overflow-wrap: anywhere; }
+ul, ol { padding-left: 22px; }
+li { margin: 5px 0; }
+a { color: var(--destaque); }
+code, kbd {
+  font-family: Consolas, "SF Mono", Menlo, monospace;
+  font-size: 0.92em;
+  background: var(--code-bg);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+.pc {
+  margin-top: 20px;
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.pc .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip { background: var(--destaque-bg); color: var(--destaque); border-radius: 999px; padding: 2px 11px; font-size: 14px; font-weight: 600; }
+.pc p { margin: 0; color: var(--sub); }
+nav.indice {
+  margin-top: 28px;
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+nav.indice b { display: block; margin-bottom: 6px; }
+nav.indice ol { margin: 0; padding-left: 22px; columns: 2 240px; column-gap: 28px; }
+nav.indice li { margin: 3px 0; break-inside: avoid; }
+.prioridade { counter-reset: p; list-style: none; padding: 0; }
+.prioridade li {
+  counter-increment: p;
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  padding: 10px 14px 10px 50px;
+  margin: 8px 0;
+}
+.prioridade li::before {
+  content: counter(p);
+  position: absolute;
+  left: 14px;
+  top: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--destaque);
+  color: var(--card);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.prioridade small { display: block; color: var(--sub); }
+.caixa { border-radius: 10px; padding: 12px 14px; margin: 14px 0; border-left: 4px solid; }
+.caixa p { margin: 4px 0; }
+.dica { background: var(--destaque-bg); border-color: var(--destaque); }
+.aviso { background: var(--aviso-bg); border-color: var(--aviso); }
+.perigo { background: var(--perigo-bg); border-color: var(--perigo); }
+.okbox { background: var(--ok-bg); border-color: var(--ok); }
+.ajustes {
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+.ajustes div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 16px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--borda);
+}
+.ajustes div:first-child { border-top: 0; }
+.ajustes span:first-child { color: var(--sub); }
+.ajustes span:last-child { font-weight: 600; text-align: right; }
+.ajustes .obs { display: block; width: 100%; font-weight: 400; color: var(--sub); font-size: 14px; text-align: left; }
+footer { margin-top: 56px; color: var(--sub); font-size: 14px; border-top: 1px solid var(--borda); padding-top: 16px; }
+@media (max-width: 480px) {
+  body { font-size: 16px; }
+  header h1 { font-size: 26px; }
+  h2 { font-size: 21px; }
+  .ajustes span:last-child { text-align: left; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Guia do Otimizador Gamer</h1>
+  <p>O passo a passo do que o programa não consegue fazer sozinho: BIOS, driver NVIDIA, configurações de cada jogo, temperatura e rede.</p>
+  <div class="pc">
+    <div class="chips"><span class="chip">i5-11400F</span><span class="chip">RTX 3060</span><span class="chip">16 GB RAM</span><span class="chip">SSD 1 TB</span></div>
+    <p>Esse conjunto roda Fortnite, CS2 e LoL muito bem em 1080p. Quando um PC assim trava, quase nunca é falta de potência: costuma ser memória mal configurada, FPS/monitor mal ajustados, temperatura, rede ou Windows carregado. Serve também para qualquer outro PC com Windows e placa NVIDIA.</p>
+  </div>
+</header>
+
+<nav class="indice" aria-label="Índice">
+  <b>Índice</b>
+  <ol>
+    <li><a href="#ordem">O que fazer primeiro</a></li>
+    <li><a href="#programa">Como usar o programa</a></li>
+    <li><a href="#fps">Por que o FPS sobe e desce</a></li>
+    <li><a href="#monitor">Monitor na taxa certa</a></li>
+    <li><a href="#ram">Memória RAM e XMP (BIOS)</a></li>
+    <li><a href="#temperatura">Temperatura e limpeza</a></li>
+    <li><a href="#nvidia">Driver e painel NVIDIA</a></li>
+    <li><a href="#fortnite">Fortnite</a></li>
+    <li><a href="#cs2">CS2</a></li>
+    <li><a href="#lol">League of Legends</a></li>
+    <li><a href="#rede">Rede e ping</a></li>
+    <li><a href="#antes">Antes de cada sessão</a></li>
+    <li><a href="#hvci">Integridade de memória</a></li>
+    <li><a href="#ultimo">Último recurso</a></li>
+    <li><a href="#nao-faz">O que o programa não faz</a></li>
+  </ol>
+</nav>
+
+<h2 id="ordem"><span class="n">1</span>O que fazer primeiro</h2>
+<p>Em ordem do que costuma dar mais resultado em travadas e FPS instável:</p>
+<ol class="prioridade">
+  <li><b>Rodar o Otimizador no "Modo guiado"</b><small>Diagnóstico, otimizações e limpeza. Uns 10 minutos.</small></li>
+  <li><b>Limitar o FPS e ligar o NVIDIA Reflex</b><small>É o que mais resolve o "FPS sobe e desce". <a href="#fps">Ver como</a></small></li>
+  <li><b>Conferir a taxa do monitor (Hz)</b><small>Muita gente joga a 60 Hz num monitor de 144 Hz sem saber. <a href="#monitor">Ver como</a></small></li>
+  <li><b>RAM em dual channel e com XMP</b><small>Grande diferença no FPS mínimo do CS2 e do Fortnite. <a href="#ram">Ver como</a></small></li>
+  <li><b>Temperatura e poeira</b><small>PC com 3 anos ou mais costuma esquentar e cortar desempenho. <a href="#temperatura">Ver como</a></small></li>
+  <li><b>Driver NVIDIA limpo e bem configurado</b><small><a href="#nvidia">Ver como</a></small></li>
+  <li><b>Configurações de cada jogo</b><small><a href="#fortnite">Fortnite</a> · <a href="#cs2">CS2</a> · <a href="#lol">LoL</a></small></li>
+  <li><b>Rede</b><small>Travada em jogo online muitas vezes é perda de pacote, não FPS. <a href="#rede">Ver como</a></small></li>
+</ol>
+
+<h2 id="programa"><span class="n">2</span>Como usar o programa</h2>
+<ol>
+  <li>Copie a pasta <b>OtimizadorGamer</b> inteira para o pendrive (ou para o PC).</li>
+  <li>Dê dois cliques em <code>INICIAR.bat</code> e clique em <b>Sim</b> quando o Windows pedir permissão de administrador.</li>
+  <li>Escolha a opção <b>1 (Modo guiado)</b>. Ele passa por tudo, mostra o que vai fazer e deixa você desmarcar o que não quiser.</li>
+  <li>Reinicie o PC no final.</li>
+  <li>Depois, jogue uma partida com a opção <b>7 (Monitor de desempenho)</b> aberta. Ela diz se o gargalo é o processador, a placa de vídeo, a temperatura ou a memória.</li>
+</ol>
+<div class="caixa aviso">
+  <p><b>Apareceu "O Windows protegeu o computador"?</b> Clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>. Isso aparece com qualquer programa baixado da internet que não tem assinatura digital paga.</p>
+  <p>O programa é um script aberto: dá para abrir <code>app\OtimizadorGamer.ps1</code> no Bloco de Notas e ler tudo o que ele faz.</p>
+</div>
+<ul>
+  <li><b>Relatórios, backups e logs</b> ficam na pasta <code>Dados</code>, ao lado do <code>INICIAR.bat</code>.</li>
+  <li><b>Para desfazer</b> qualquer otimização: opção <b>D</b> do menu.</li>
+  <li><b>Se algo der muito errado</b>: menu Iniciar → digite "Criar um ponto de restauração" → <b>Restauração do Sistema</b> → escolha o ponto "Otimizador Gamer".</li>
+</ul>
+
+<h2 id="fps"><span class="n">3</span>Por que o FPS sobe e desce (e como resolver)</h2>
+<p>Um FPS que vai de 300 para 140 e volta dá sensação de travada, mesmo sendo alto. O olho não percebe o número, percebe a <b>variação</b> do tempo entre um quadro e outro.</p>
+<div class="caixa okbox">
+  <p><b>Regra de ouro:</b> limite o FPS num valor que o PC consegue manter quase o tempo todo. A imagem fica lisa e constante, o PC esquenta menos e o atraso do mouse fica mais estável.</p>
+</div>
+<div class="ajustes">
+  <div><span>Monitor 144 Hz</span><span>limite em 144 <span class="obs">ou 141 se usar G-SYNC</span></span></div>
+  <div><span>Monitor 165 Hz</span><span>limite em 165 <span class="obs">ou 162 se usar G-SYNC</span></span></div>
+  <div><span>Monitor 240 Hz</span><span>240, se o PC segurar <span class="obs">senão, o valor que ele mantém quase sempre</span></span></div>
+  <div><span>Monitor 60 Hz</span><span>120 ou 144 <span class="obs">menos atraso que 60 e mais estável que "ilimitado"</span></span></div>
+</div>
+<ul>
+  <li>Use o <b>limitador do próprio jogo</b>: é o que tem menos atraso. Se o jogo não tiver, use "Taxa máxima de quadros" no Painel de Controle NVIDIA.</li>
+  <li>Ligue o <b>NVIDIA Reflex</b> nos jogos que têm (Fortnite e CS2).</li>
+  <li>Para ver o FPS: overlay do NVIDIA App (<kbd>Alt</kbd>+<kbd>R</kbd>), contador da Steam ou o do próprio jogo.</li>
+</ul>
+
+<h2 id="monitor"><span class="n">4</span>Monitor na taxa certa (Hz)</h2>
+<ol>
+  <li><b>Windows 11:</b> Configurações → Sistema → Tela → Tela avançada → <b>Escolher uma taxa de atualização</b> → escolha a maior.<br>
+      <b>Windows 10:</b> Configurações → Sistema → Vídeo → Configurações de vídeo avançadas → Taxa de atualização.</li>
+  <li>Ligue o cabo do monitor na <b>placa de vídeo</b> (as saídas na horizontal, mais embaixo na traseira do gabinete), nunca na placa-mãe. Com o i5-11400F as saídas da placa-mãe nem funcionam, porque esse processador não tem vídeo integrado.</li>
+  <li>Para 144 Hz ou mais, use cabo <b>DisplayPort</b> (ou HDMI 2.0 ou mais novo). Cabo HDMI antigo pode travar o monitor em 60 Hz.</li>
+</ol>
+<div class="caixa dica"><p>O diagnóstico do Otimizador avisa sozinho se o monitor está abaixo do máximo que ele aceita.</p></div>
+
+<h2 id="ram"><span class="n">5</span>Memória RAM: dual channel e XMP</h2>
+<p><b>Como conferir:</b> abra o Gerenciador de Tarefas (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Esc</kbd>) → Desempenho → Memória.</p>
+<ul>
+  <li><b>Slots usados: 1 de 2</b> (ou 1 de 4) = um pente só = <b>single channel</b>.</li>
+  <li><b>Velocidade: 2133 ou 2666 MHz</b> com um pente de 3200 = <b>XMP desligado</b>.</li>
+</ul>
+
+<h3>Dual channel</h3>
+<p>Com um pente só, a memória trabalha com metade da largura de banda. Em CS2 e Fortnite isso derruba principalmente o FPS mínimo, que é o que você sente como travadinha.</p>
+<ul>
+  <li>Compre outro pente <b>igual</b> ao seu: mesma capacidade, mesma velocidade e, se der, mesma marca e modelo (o modelo está na etiqueta do pente ou no relatório do Otimizador).</li>
+  <li>Em placas com 4 slots, o dual channel normalmente usa os slots <b>A2 e B2</b> (o 2º e o 4º contando a partir do processador). Confirme no manual da placa.</li>
+  <li>Se já tem 2 pentes, confirme que estão nos slots certos.</li>
+</ul>
+
+<h3>Ativar o XMP na BIOS (5 minutos)</h3>
+<ol>
+  <li>Reinicie o PC e, assim que ligar, aperte <kbd>Delete</kbd> várias vezes (em algumas placas é <kbd>F2</kbd>).</li>
+  <li>Se abrir um modo simples ("EZ Mode"), o XMP costuma estar na tela inicial. Se não estiver, aperte <kbd>F7</kbd> para o modo avançado.</li>
+  <li>Procure a opção, que muda de nome conforme a marca:
+    <div class="ajustes">
+      <div><span>ASUS</span><span>Ai Overclock Tuner → XMP I</span></div>
+      <div><span>Gigabyte</span><span>Extreme Memory Profile (X.M.P.)</span></div>
+      <div><span>MSI</span><span>botão XMP no topo da tela</span></div>
+      <div><span>ASRock</span><span>DRAM Configuration → XMP Profile</span></div>
+    </div>
+  </li>
+  <li>Escolha o <b>Perfil 1</b> (Profile 1).</li>
+  <li>Aperte <kbd>F10</kbd> e confirme para salvar e reiniciar.</li>
+  <li>Confira no Gerenciador de Tarefas se a velocidade da memória subiu.</li>
+</ol>
+<div class="caixa aviso">
+  <p><b>O PC não ligou depois?</b> Espere: muitas placas desfazem sozinhas depois de 2 ou 3 tentativas. Se não voltar, desligue da tomada e tire a bateria redonda da placa-mãe por 1 minuto (ou use o botão/jumper "Clear CMOS"). Isso volta a BIOS ao padrão.</p>
+  <p><b>Placas H510</b> (comuns junto com o 11400F) muitas vezes não têm XMP ou limitam a velocidade da memória. Placas B560 e Z590 permitem.</p>
+</div>
+
+<h2 id="temperatura"><span class="n">6</span>Temperatura e limpeza</h2>
+<p>Baixe o <b>HWiNFO64</b> no site oficial (hwinfo.com) e abra no modo <b>Sensors-only</b>. Jogue 15 minutos com ele aberto e depois olhe a coluna <b>Maximum</b>:</p>
+<div class="ajustes">
+  <div><span>CPU Package (processador)</span><span>até ~85 °C: ok <span class="obs">95 a 100 °C: está esquentando demais e cortando desempenho (throttling), o que causa travadas</span></span></div>
+  <div><span>GPU Temperature (placa de vídeo)</span><span>até ~80 °C: normal</span></div>
+</div>
+<p>Se estiver quente:</p>
+<ol>
+  <li><b>Limpe a poeira:</b> PC desligado e fora da tomada; use ar comprimido ou um pincel nos coolers, filtros e placa de vídeo. Segure as hélices paradas enquanto sopra.</li>
+  <li><b>Troque a pasta térmica do processador:</b> depois de 3 anos ou mais ela resseca. Se não se sentir seguro, uma assistência faz rápido.</li>
+  <li><b>Cooler:</b> o cooler que vem na caixa do i5-11400F é bem simples. Se o processador passa de 90 °C mesmo limpo, um cooler torre de entrada resolve e ainda deixa o PC mais silencioso.</li>
+  <li><b>Fluxo de ar:</b> o gabinete precisa puxar ar frio pela frente e jogar o quente para trás e para cima.</li>
+</ol>
+<div class="caixa dica"><p>O Monitor de desempenho do Otimizador (opção 7) avisa quando o Windows detecta que o processador foi limitado, e mostra a temperatura máxima da placa de vídeo.</p></div>
+
+<h2 id="nvidia"><span class="n">7</span>Driver NVIDIA e Painel de Controle</h2>
+<h3>Atualizar o driver com instalação limpa</h3>
+<ul>
+  <li><b>Pelo NVIDIA App:</b> aba Drivers → baixe o Game Ready mais recente. Se aparecer a opção de instalação personalizada, marque "instalação limpa".</li>
+  <li><b>Pelo site</b> nvidia.com/drivers: escolha GeForce → RTX 30 → RTX 3060 → Windows. No instalador, escolha <b>Personalizada (Avançado)</b> e marque <b>Executar uma instalação limpa</b>.</li>
+</ul>
+
+<h3>Painel de Controle NVIDIA</h3>
+<p>Clique com o botão direito na área de trabalho (no Windows 11: "Mostrar mais opções") → <b>Painel de Controle NVIDIA</b>.</p>
+<p><b>Alterar resolução:</b> resolução nativa do monitor e a <b>maior taxa de atualização</b>.</p>
+<p><b>Gerenciar as configurações 3D → Configurações globais:</b></p>
+<div class="ajustes">
+  <div><span>Modo de baixa latência</span><span>Ativado <span class="obs">nos jogos com Reflex, o Reflex assume</span></span></div>
+  <div><span>Tamanho do cache de sombreador</span><span>10 GB ou mais <span class="obs">evita recompilar shaders, que é uma causa clássica de travadinha</span></span></div>
+  <div><span>Filtragem de textura - qualidade</span><span>Alto desempenho</span></div>
+  <div><span>Sincronização vertical</span><span>Desativado <span class="obs">exceto no esquema com G-SYNC abaixo</span></span></div>
+  <div><span>Modo de gerenciamento de energia</span><span>Normal no global <span class="obs">e "Preferir desempenho máximo" só nos jogos, na aba Configurações de programa</span></span></div>
+</div>
+
+<h3>Se o monitor tem G-SYNC ou FreeSync</h3>
+<ol>
+  <li>Painel NVIDIA → <b>Configurar G-SYNC</b> → ativar (marque "tela cheia e em janela").</li>
+  <li>Sincronização vertical: <b>Ativado</b> no painel. No jogo, V-Sync <b>desligado</b> e Reflex <b>ligado</b>.</li>
+  <li>Limite o FPS uns 3 abaixo dos Hz do monitor (141 em 144 Hz, 162 em 165 Hz).</li>
+</ol>
+<p>É a imagem mais lisa possível com pouco atraso. No CS2 competitivo muita gente prefere sem G-SYNC e com FPS bem alto: teste os dois e fique com o que sentir melhor.</p>
+
+<h2 id="fortnite"><span class="n">8</span>Fortnite</h2>
+<p>Configurações → Vídeo/Gráficos:</p>
+<div class="ajustes">
+  <div><span>Modo de janela</span><span>Tela cheia</span></div>
+  <div><span>Limite de taxa de quadros</span><span>igual ao monitor <span class="obs">144, 165 ou 240</span></span></div>
+  <div><span>Modo de renderização</span><span>Desempenho <span class="obs">mais FPS e mais estável. Use DirectX 12 só se quiser gráficos bonitos</span></span></div>
+  <div><span>NVIDIA Reflex</span><span>Ativado + Aumento</span></div>
+  <div><span>Resolução 3D</span><span>100%</span></div>
+  <div><span>Distância de visualização</span><span>Média ou Distante</span></div>
+  <div><span>Sombras, iluminação global, reflexos</span><span>Desligados <span class="obs">no DirectX 12</span></span></div>
+  <div><span>Efeitos e pós-processamento</span><span>Baixo</span></div>
+</div>
+<ul>
+  <li>No DirectX 12, as primeiras partidas depois de cada atualização travam um pouco enquanto o jogo prepara os shaders. É normal e passa.</li>
+  <li><b>Epic Games Launcher</b> → Biblioteca → três pontinhos no Fortnite → Gerenciar → <b>Verificar</b>. Corrige arquivos corrompidos.</li>
+  <li>Deixe o jogo instalado no SSD.</li>
+</ul>
+
+<h2 id="cs2"><span class="n">9</span>Counter-Strike 2</h2>
+<p>Configurações → Vídeo:</p>
+<div class="ajustes">
+  <div><span>Modo de exibição</span><span>Tela cheia</span></div>
+  <div><span>Aumentar contraste dos jogadores</span><span>Ativado</span></div>
+  <div><span>Aguardar sincronização vertical</span><span>Desativado</span></div>
+  <div><span>NVIDIA Reflex</span><span>Ativado</span></div>
+  <div><span>Anti-serrilhamento (MSAA)</span><span>2x ou 4x</span></div>
+  <div><span>Qualidade das sombras globais</span><span>Média ou Alta <span class="obs">ajuda a ver a sombra do inimigo</span></span></div>
+  <div><span>Detalhes de modelos e texturas</span><span>Baixo ou Médio</span></div>
+  <div><span>Detalhes de shaders e partículas</span><span>Baixo</span></div>
+  <div><span>Oclusão de ambiente</span><span>Desativado</span></div>
+  <div><span>FidelityFX Super Resolution</span><span>Desativado</span></div>
+</div>
+<ul>
+  <li><b>Limite de FPS:</b> ative o console (Jogo → "Ativar console de desenvolvedor"), aperte <kbd>'</kbd> e digite <code>fps_max 300</code>, trocando 300 por um valor que seu PC mantém quase sempre num mapa cheio. Para ver o FPS: Steam → Configurações → Em jogo → Contador de FPS.</li>
+  <li>As primeiras partidas depois de uma atualização podem travar enquanto os shaders são preparados. Passa sozinho.</li>
+  <li>Steam → Biblioteca → CS2 → Propriedades → Arquivos instalados → <b>Verificar integridade</b>.</li>
+  <li>Não precisa de opções de inicialização "mágicas" (<code>-high</code>, <code>-threads</code> etc.): no CS2 elas não ajudam e podem atrapalhar.</li>
+</ul>
+
+<h2 id="lol"><span class="n">10</span>League of Legends</h2>
+<p>Dentro da partida, <kbd>Esc</kbd> → Vídeo:</p>
+<div class="ajustes">
+  <div><span>Modo de janela</span><span>Tela cheia</span></div>
+  <div><span>Limite de quadros</span><span>144 ou 240 <span class="obs">o mais próximo do seu monitor; evite "Ilimitado"</span></span></div>
+  <div><span>Aguardar sincronização vertical</span><span>Desligado</span></div>
+  <div><span>Anti-serrilhamento</span><span>Desligado</span></div>
+  <div><span>Sombras</span><span>Desligado</span></div>
+  <div><span>Personagens, efeitos e ambiente</span><span>Médio ou Alto</span></div>
+</div>
+<ul>
+  <li><b>No cliente</b> (engrenagem → Geral): ative o <b>modo de baixa especificação</b> (Low Spec Mode) e a opção de <b>fechar o cliente durante a partida</b>. Isso libera memória e processador.</li>
+  <li>O <b>Riot Vanguard</b> é obrigatório para jogar: não desative.</li>
+  <li>No LoL, travada costuma ser rede: aperte <kbd>Ctrl</kbd>+<kbd>F</kbd> na partida para ver ping e FPS.</li>
+</ul>
+
+<h2 id="rede"><span class="n">11</span>Rede e ping</h2>
+<ul>
+  <li><b>Cabo de rede é sempre melhor que Wi-Fi</b> para jogar. Se não der, use a rede de 5 GHz e fique perto do roteador.</li>
+  <li>Durante a partida, pause downloads: Steam, Epic, Windows Update (Configurações → Windows Update → Pausar), torrents e vídeos em alta qualidade de outras pessoas na mesma internet.</li>
+  <li>Reinicie o roteador de vez em quando (tirar da tomada por 30 segundos).</li>
+  <li>O diagnóstico do Otimizador mede o ping até o <b>roteador</b> e até a <b>internet</b>:
+    <ul>
+      <li>Perda ou ping alto até o roteador: o problema está dentro de casa (Wi-Fi, cabo ou roteador).</li>
+      <li>Roteador ok, mas perda até a internet: operadora. Mostre o relatório quando reclamar.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="antes"><span class="n">12</span>Antes de cada sessão de jogo</h2>
+<ul>
+  <li><b>Reiniciar</b> (não só desligar) se o PC ficou dias sem reiniciar.</li>
+  <li>Fechar o navegador: Chrome e Edge com muitas abas comem memória.</li>
+  <li>Pausar downloads e atualizações.</li>
+  <li>Desligar os overlays que você não usa (por exemplo, Configurações do Discord → Overlay do jogo).</li>
+  <li>Estar no cabo de rede.</li>
+</ul>
+
+<h2 id="hvci"><span class="n">13</span>Integridade de memória (isolamento de núcleo)</h2>
+<p>É uma proteção do Windows contra drivers maliciosos que vem ligada em muitos PCs. Ela pode custar alguns % de FPS. O Otimizador <b>não mexe nisso</b> de propósito.</p>
+<div class="caixa aviso">
+  <p><b>Recomendação:</b> deixe ligada. Se mesmo assim quiser testar: Segurança do Windows → Segurança do dispositivo → Detalhes do isolamento de núcleo → Integridade de memória → Desativado → reinicie. Compare o FPS e, se a diferença for pequena, volte a ligar.</p>
+</div>
+
+<h2 id="ultimo"><span class="n">14</span>Último recurso: reinstalar o Windows mantendo seus arquivos</h2>
+<p>Se depois de tudo o PC continuar travando, o próprio Windows tem um jeito de "zerar" sem apagar seus arquivos pessoais:</p>
+<ul>
+  <li><b>Windows 11:</b> Configurações → Sistema → Recuperação → <b>Restaurar o PC</b> → <b>Manter meus arquivos</b>.</li>
+  <li><b>Windows 10:</b> Configurações → Atualização e Segurança → Recuperação → Restaurar o PC → Manter meus arquivos.</li>
+</ul>
+<div class="caixa perigo">
+  <p>Ele mantém documentos, fotos, vídeos e área de trabalho, mas <b>remove todos os programas</b>: você vai precisar reinstalar jogos, launchers e o driver NVIDIA. Jogos instalados em outro disco (D:, por exemplo) continuam lá e podem ser reaproveitados pelo launcher.</p>
+  <p><b>Antes:</b> copie seus arquivos importantes para um HD externo ou para a nuvem, por garantia.</p>
+</div>
+<p>Depois, rode o Otimizador de novo.</p>
+
+<h2 id="nao-faz"><span class="n">15</span>O que o programa não faz (de propósito)</h2>
+<ul>
+  <li><b>Não usa "limpador de registro":</b> não deixa o PC mais rápido e pode quebrar o Windows.</li>
+  <li><b>Não usa "liberador de RAM":</b> memória livre parada é memória desperdiçada; o Windows gerencia melhor.</li>
+  <li><b>Não desliga antivírus, Windows Update nem dezenas de serviços:</b> o ganho é quase zero e o risco é grande.</li>
+  <li><b>Não mexe em arquivos de jogos nem em anti-cheat</b> (Vanguard, VAC, Easy Anti-Cheat): zero risco de banimento.</li>
+  <li><b>Não aplica "tweaks de ping" e prioridades mágicas:</b> na prática não ajudam, e alguns atrapalham.</li>
+  <li><b>Não apaga seus arquivos pessoais.</b></li>
+</ul>
+
+<footer>
+  Otimizador Gamer v1.0 · Este guia fica em <code>app\Guia.html</code> e funciona sem internet.
+</footer>
+
+</main>
+</body>
+</html>
