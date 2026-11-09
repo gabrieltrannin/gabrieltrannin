@@ -1,4 +1,9 @@
-"""A janela do app."""
+"""A janela do app, no visual "vidro noturno".
+
+Tudo é desenhado num Canvas: o fundo (céu noturno com cartões de vidro fosco)
+é uma imagem gerada em tema.py, e os textos, caixas de marcar e botões ficam
+por cima dela. Assim nenhum pedaço aparece com fundo sólido quebrando o vidro.
+"""
 
 from __future__ import annotations
 
@@ -7,73 +12,207 @@ import re
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import font as tkfont
-from tkinter import messagebox, ttk
-from tkinter.scrolledtext import ScrolledText
+from tkinter import messagebox
+from typing import Callable
 
-from . import VERSAO, sistema
+from PIL import ImageTk
+
+from . import VERSAO, sistema, tema
 from . import otimizacoes as otm
 from . import programas as prg
 from .execucao import Resumo, executar, montar_etapas
 from .executor import EH_WINDOWS, Executor
 
-CINZA = "#6b6b6b"
-VERDE = "#1a7f37"
-VERMELHO = "#c62828"
-AZUL = "#1f5fbf"
+# Tamanhos em pixels "normais"; o tema aumenta tudo se o Windows estiver com zoom.
+LARGURA, ALTURA = 960, 660
+CARTAO_PROG = (24, 100, 474, 420)
+CARTAO_OTIM = (486, 100, 936, 420)
+CARTAO_CONTROLES = (24, 432, 936, 508)
+CARTAO_LOG = (24, 520, 936, 636)
+RAIO = 18
 
-CORES_FONTE = {"arquivo": VERDE, "url": AZUL, "winget": AZUL}
+CORES_FONTE = {"arquivo": tema.VERDE, "url": tema.AZUL, "winget": tema.CIANO}
 
 
-class ListaRolavel(ttk.Frame):
-    """Um quadro com barra de rolagem, para quando a lista crescer."""
+def _cursor_de_mao(canvas: tk.Canvas, tag: str, quando: Callable[[], bool] = lambda: True) -> None:
+    canvas.tag_bind(tag, "<Enter>", lambda e: canvas.configure(cursor="hand2" if quando() else ""))
+    canvas.tag_bind(tag, "<Leave>", lambda e: canvas.configure(cursor=""))
 
-    def __init__(self, pai: tk.Misc, fundo: str):
-        super().__init__(pai)
-        self.canvas = tk.Canvas(self, highlightthickness=0, borderwidth=0, background=fundo)
-        barra = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        self.conteudo = ttk.Frame(self.canvas)
-        janela = self.canvas.create_window((0, 0), window=self.conteudo, anchor="nw")
-        self.conteudo.bind(
-            "<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+class ListaVidro(tk.Canvas):
+    """Lista com rolagem que fica dentro de um cartão de vidro."""
+
+    def __init__(self, pai: tk.Misc, t: tema.Tema, fundo):
+        largura, altura = fundo.size
+        super().__init__(
+            pai, width=largura, height=altura, highlightthickness=0, borderwidth=0,
+            background=tema.hex_(tema.cor_media(fundo)), yscrollincrement=t.s(24),
+        )  # fmt: skip
+        self.t = t
+        self.largura, self.altura = largura, altura
+        self.travada = False
+        self.proxima_y = t.s(6)
+        # O pedaço do fundo que fica atrás da lista. Ele não rola junto.
+        self._fundo = ImageTk.PhotoImage(fundo)
+        self.create_image(0, 0, anchor="nw", image=self._fundo, tags="fundo")
+        self.indicador = self.create_line(
+            0, 0, 0, 0, fill=tema.INDICADOR, width=t.s(4), capstyle="round", state="hidden"
         )
-        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(janela, width=e.width))
-        self.canvas.configure(yscrollcommand=barra.set)
-        self.canvas.pack(side="left", fill="both", expand=True)
-        barra.pack(side="right", fill="y")
-        self.descricoes: list[ttk.Label] = []
-        self.conteudo.bind("<Configure>", self._ajustar_quebra, add="+")
 
-    def _ajustar_quebra(self, evento: tk.Event) -> None:
-        for rotulo in self.descricoes:
-            rotulo.configure(wraplength=max(evento.width - 40, 150))
+    def terminar(self) -> None:
+        """Chamar depois de adicionar as linhas, para ajustar a rolagem."""
+        self.configure(scrollregion=(0, 0, self.largura, max(self.proxima_y, self.altura)))
+        self._atualizar()
 
     def rolar(self, passos: int) -> None:
-        if self.conteudo.winfo_height() > self.canvas.winfo_height():
-            self.canvas.yview_scroll(passos, "units")
+        if self.proxima_y > self.altura:
+            self.yview_scroll(passos, "units")
+            self._atualizar()
 
-    def adicionar(
+    def _atualizar(self) -> None:
+        topo = self.canvasy(0)
+        self.coords("fundo", 0, topo)
+        if self.proxima_y <= self.altura:
+            self.itemconfigure(self.indicador, state="hidden")
+            return
+        inicio, fim = self.yview()
+        x, margem = self.largura - self.t.s(4), self.t.s(6)
+        self.coords(self.indicador, x, topo + inicio * self.altura + margem, x, topo + fim * self.altura - margem)
+        self.itemconfigure(self.indicador, state="normal")
+        self.tag_raise(self.indicador)
+
+
+class Caixa:
+    """Uma linha da lista: caixa de marcar, nome, etiqueta e descrição."""
+
+    _contador = 0
+
+    def __init__(
         self,
+        lista: ListaVidro,
         nome: str,
-        variavel: tk.BooleanVar,
         descricao: str = "",
         etiqueta: str = "",
-        cor: str = CINZA,
-        habilitado: bool = True,
-    ) -> ttk.Checkbutton:
-        linha = ttk.Frame(self.conteudo)
-        linha.pack(fill="x", pady=(8, 0), padx=(4, 8))
-        caixa = ttk.Checkbutton(linha, text=nome, variable=variavel)
-        caixa.pack(side="left")
-        if not habilitado:
-            caixa.state(["disabled"])
+        cor_etiqueta: str = tema.TEXTO_SUAVE,
+        marcada: bool = True,
+        habilitada: bool = True,
+        ao_mudar: Callable[[], None] = lambda: None,
+    ):
+        Caixa._contador += 1
+        self.lista, self.ao_mudar = lista, ao_mudar
+        self.marcada, self.habilitada = marcada and habilitada, habilitada
+        t, s, y = lista.t, lista.t.s, lista.proxima_y
+        tag = f"caixa{Caixa._contador}"
+
+        self.icone = lista.create_image(s(10), y + s(1), anchor="nw", tags=tag)
+        cor_nome = tema.TEXTO if habilitada else tema.TEXTO_APAGADO
+        nome_id = lista.create_text(s(42), y, anchor="nw", text=nome, font=t.f_item, fill=cor_nome, tags=tag)
         if etiqueta:
-            ttk.Label(linha, text=etiqueta, foreground=cor).pack(side="right")
+            lista.create_text(
+                lista.largura - s(16), y + s(2), anchor="ne", text=etiqueta, font=t.f_desc, fill=cor_etiqueta
+            )
+        fim = lista.bbox(nome_id)[3]
         if descricao:
-            rotulo = ttk.Label(self.conteudo, text=descricao, foreground=CINZA, wraplength=300)
-            rotulo.pack(fill="x", padx=(28, 8))
-            self.descricoes.append(rotulo)
-        return caixa
+            desc_id = lista.create_text(
+                s(42), fim + s(2), anchor="nw", text=descricao, width=lista.largura - s(42) - s(18),
+                font=t.f_desc, fill=tema.TEXTO_SUAVE if habilitada else tema.TEXTO_APAGADO, tags=tag,
+            )  # fmt: skip
+            fim = lista.bbox(desc_id)[3]
+        lista.proxima_y = fim + s(14)
+
+        lista.tag_bind(tag, "<Button-1>", lambda e: self.alternar())
+        _cursor_de_mao(lista, tag, lambda: self.habilitada and not lista.travada)
+        self._desenhar()
+
+    def alternar(self) -> None:
+        if self.habilitada and not self.lista.travada:
+            self.marcada = not self.marcada
+            self._desenhar()
+            self.ao_mudar()
+
+    def _desenhar(self) -> None:
+        imagem = self.lista.t.caixa[(self.marcada, not self.habilitada)]
+        self.lista.itemconfigure(self.icone, image=imagem)
+
+
+class Interruptor:
+    """O botão deslizante do modo teste."""
+
+    def __init__(self, canvas: tk.Canvas, t: tema.Tema, direita: int, y: int, ligado: bool, travado: bool):
+        self.canvas, self.t = canvas, t
+        self.ligado, self.travado, self.ocupado = ligado, travado, False
+        s = t.s
+        self.img = canvas.create_image(direita, y, anchor="ne", tags="interruptor")
+        largura = t.interruptor[(True, False)].width()
+        altura = t.interruptor[(True, False)].height()
+        canvas.create_text(
+            direita - largura - s(10), y + altura / 2, anchor="e", text="Modo teste",
+            font=t.f_item, fill=tema.TEXTO, tags="interruptor",
+        )  # fmt: skip
+        dica = "sem administrador, só o modo teste" if travado else "só mostra o que faria"
+        canvas.create_text(direita, y + altura + s(6), anchor="ne", text=dica, font=t.f_desc, fill=tema.TEXTO_SUAVE)
+        canvas.tag_bind("interruptor", "<Button-1>", lambda e: self.alternar())
+        _cursor_de_mao(canvas, "interruptor", self._pode_mudar)
+        self._desenhar()
+
+    def _pode_mudar(self) -> bool:
+        return not self.travado and not self.ocupado
+
+    def alternar(self) -> None:
+        if self._pode_mudar():
+            self.ligado = not self.ligado
+            self._desenhar()
+
+    def definir_ocupado(self, ocupado: bool) -> None:
+        self.ocupado = ocupado
+        self._desenhar()
+
+    def _desenhar(self) -> None:
+        self.canvas.itemconfigure(self.img, image=self.t.interruptor[(self.ligado, not self._pode_mudar())])
+
+
+class Botao:
+    def __init__(self, canvas: tk.Canvas, t: tema.Tema, x: int, y: int, texto: str, comando: Callable[[], None]):
+        self.canvas, self.t, self.comando = canvas, t, comando
+        self.habilitado = True
+        self.img = canvas.create_image(x, y, anchor="nw", image=t.botao, tags="botao")
+        meio_x, meio_y = x + t.botao.width() / 2, y + t.botao.height() / 2
+        self.texto = canvas.create_text(meio_x, meio_y, text=texto, font=t.f_botao, fill="white", tags="botao")
+        canvas.tag_bind("botao", "<Enter>", lambda e: self._foco(True))
+        canvas.tag_bind("botao", "<Leave>", lambda e: self._foco(False))
+        canvas.tag_bind("botao", "<Button-1>", lambda e: self.habilitado and self.comando())
+
+    def _foco(self, dentro: bool) -> None:
+        if self.habilitado:
+            self.canvas.itemconfigure(self.img, image=self.t.botao_foco if dentro else self.t.botao)
+            self.canvas.configure(cursor="hand2" if dentro else "")
+
+    def habilitar(self, sim: bool, texto: str) -> None:
+        self.habilitado = sim
+        self.canvas.itemconfigure(self.img, image=self.t.botao if sim else self.t.botao_apagado)
+        self.canvas.itemconfigure(self.texto, text=texto, fill="white" if sim else tema.TEXTO_SUAVE)
+        if not sim:
+            self.canvas.configure(cursor="")
+
+
+class Barra:
+    """Barra de progresso com gradiente."""
+
+    def __init__(self, canvas: tk.Canvas, t: tema.Tema, x: int, y: int, largura: int):
+        self.canvas, self.largura, self.altura = canvas, largura, t.s(8)
+        self._trilho = ImageTk.PhotoImage(tema.pilula(largura, self.altura, alfa=26))
+        canvas.create_image(x, y, anchor="nw", image=self._trilho)
+        self.item = canvas.create_image(x, y, anchor="nw")
+        self._cheia = None
+
+    def definir(self, fracao: float) -> None:
+        largura = round(self.largura * max(0.0, min(1.0, fracao)))
+        if largura < self.altura:
+            self.canvas.itemconfigure(self.item, image="")
+            return
+        imagem = tema.pilula(largura, self.altura, gradiente=(tema.ACENTO_1, tema.ACENTO_2))
+        self._cheia = ImageTk.PhotoImage(imagem)
+        self.canvas.itemconfigure(self.item, image=self._cheia)
 
 
 class App:
@@ -87,137 +226,146 @@ class App:
         so_teste: bool = False,
         automatico: bool = False,
         avisos: list[str] | None = None,
+        demo: bool = False,
     ):
         self.raiz = raiz
         self.pasta_base = pasta_base
         self.automatico = automatico
-        self.so_teste = so_teste
+        self.demo = demo
         self.codigo_saida = 0
         self.rodando = False
         self.fila: queue.Queue = queue.Queue()
-        self.caixas: list[ttk.Checkbutton] = []
 
+        self.t = t = tema.Tema(raiz)
+        s = t.s
+        largura, altura = s(LARGURA), s(ALTURA)
+        x = max(0, (raiz.winfo_screenwidth() - largura) // 2)
+        y = max(0, (raiz.winfo_screenheight() - altura) // 2 - s(30))
         raiz.title(f"Pós-formatação {VERSAO}")
-        raiz.geometry("940x680")
-        raiz.minsize(760, 560)
-        self._estilo()
+        raiz.geometry(f"{largura}x{altura}+{x}+{y}")
+        raiz.resizable(False, False)
+        raiz.configure(background=tema.hex_(tema.FUNDO_TOPO))
+        self._icone = ImageTk.PhotoImage(tema.icone(64))
+        raiz.iconphoto(True, self._icone)
 
-        raiz.columnconfigure(0, weight=1)
-        raiz.rowconfigure(1, weight=3)
-        raiz.rowconfigure(3, weight=2)
+        def escalar(caixa):
+            return tuple(s(v) for v in caixa)
+
+        cartoes = [escalar(c) for c in (CARTAO_PROG, CARTAO_OTIM, CARTAO_CONTROLES, CARTAO_LOG)]
+        fundo = tema.compor_fundo(largura, altura, cartoes, s(RAIO), t.escala)
+        lx1, ly1, lx2, ly2 = CARTAO_LOG
+        painel = escalar((lx1 + 12, ly1 + 12, lx2 - 12, ly2 - 12))
+        cor_painel = tema.desenhar_painel(fundo, painel, s(10))
+
+        self.canvas = c = tk.Canvas(
+            raiz, width=largura, height=altura, highlightthickness=0, borderwidth=0,
+            background=tema.hex_(tema.FUNDO_TOPO),
+        )  # fmt: skip
+        c.pack()
+        self._fundo = ImageTk.PhotoImage(fundo)
+        c.create_image(0, 0, anchor="nw", image=self._fundo)
 
         # Cabeçalho
-        topo = ttk.Frame(raiz, padding=(16, 14, 16, 4))
-        topo.grid(row=0, column=0, sticky="ew")
-        ttk.Label(topo, text="Pós-formatação", style="Titulo.TLabel").pack(anchor="w")
-        ttk.Label(
-            topo, text="Marque o que você quer e clique em Começar. Dá pra testar antes no modo teste."
-        ).pack(anchor="w")
-        ttk.Label(topo, text=f"Lista de programas: {caminho_config}", foreground=CINZA).pack(anchor="w")
+        c.create_text(s(28), s(22), anchor="nw", text="Pós-formatação", font=t.f_titulo, fill=tema.TEXTO)
+        c.create_text(
+            s(30), s(64), anchor="nw", font=t.f_item, fill=tema.TEXTO_SUAVE,
+            text="Marque o que você quer e clique em Começar.",
+        )  # fmt: skip
+        self.interruptor = Interruptor(c, t, s(936), s(30), ligado=simular, travado=so_teste)
 
         # As duas listas
-        meio = ttk.Frame(raiz, padding=(16, 8))
-        meio.grid(row=1, column=0, sticky="nsew")
-        meio.columnconfigure(0, weight=1, uniform="colunas")
-        meio.columnconfigure(1, weight=1, uniform="colunas")
-        meio.rowconfigure(0, weight=1)
-        fundo = ttk.Style().lookup("TFrame", "background")
-
-        quadro_prog = ttk.LabelFrame(meio, text=" Programas ", padding=(6, 0, 0, 6))
-        quadro_prog.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        self.lista_prog = ListaRolavel(quadro_prog, fundo)
-        self.lista_prog.pack(fill="both", expand=True)
-
-        quadro_otim = ttk.LabelFrame(meio, text=" Otimizações ", padding=(6, 0, 0, 6))
-        quadro_otim.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
-        self.lista_otim = ListaRolavel(quadro_otim, fundo)
-        self.lista_otim.pack(fill="both", expand=True)
-
-        self.vars_prog = [self._linha_programa(p) for p in programas]
+        self.itens_prog: list = []
+        self.itens_otim: list = []
+        self.lista_prog, self.contador_prog = self._cartao_lista(fundo, CARTAO_PROG, "Programas")
+        self.lista_otim, self.contador_otim = self._cartao_lista(fundo, CARTAO_OTIM, "Otimizações")
+        self.itens_prog = [self._linha_programa(p) for p in programas]
         if not programas:
-            ttk.Label(self.lista_prog.conteudo, text="Nenhum programa no apps.json.", foreground=CINZA).pack(
-                anchor="w", pady=8
+            self.lista_prog.create_text(
+                s(12), s(8), anchor="nw", text="Nenhum programa no apps.json.", font=t.f_item, fill=tema.TEXTO_SUAVE
             )
-        self.vars_otim = [self._linha_otimizacao(o) for o in otm.OTIMIZACOES]
+        self.itens_otim = [
+            (o, Caixa(self.lista_otim, o.nome, o.descricao, marcada=o.marcado, ao_mudar=self._contar))
+            for o in otm.OTIMIZACOES
+        ]
+        self.lista_prog.terminar()
+        self.lista_otim.terminar()
+        self._contar()
 
-        # Botão, modo teste e progresso
-        controles = ttk.Frame(raiz, padding=(16, 4))
-        controles.grid(row=2, column=0, sticky="ew")
-        controles.columnconfigure(1, weight=1)
-        self.var_teste = tk.BooleanVar(value=simular)
-        self.caixa_teste = ttk.Checkbutton(
-            controles, text="Modo teste (só mostra o que faria, não muda nada)", variable=self.var_teste
+        # Botão, progresso e situação
+        x1, y1, x2, _ = CARTAO_CONTROLES
+        self.botao = Botao(c, t, s(x1 + 18), s(y1 + 16), "Começar", self.comecar)
+        inicio_barra = x1 + 18 + 160 + 26
+        self.barra = Barra(c, t, s(inicio_barra), s(y1 + 24), s(x2 - 22) - s(inicio_barra))
+        self.status = c.create_text(
+            s(inicio_barra), s(y1 + 42), anchor="nw", text="Pronto para começar.", font=t.f_desc, fill=tema.TEXTO_SUAVE
         )
-        self.caixa_teste.grid(row=0, column=0, columnspan=2, sticky="w")
-        if so_teste:
-            self.caixa_teste.state(["disabled"])
-        self.botao = ttk.Button(controles, text="Começar", style="Grande.TButton", command=self.comecar)
-        self.botao.grid(row=1, column=0, rowspan=2, sticky="w", pady=(8, 0), padx=(0, 14))
-        self.barra = ttk.Progressbar(controles, mode="determinate")
-        self.barra.grid(row=1, column=1, sticky="ew", pady=(10, 0))
-        self.status = ttk.Label(controles, text="Pronto para começar.", foreground=CINZA)
-        self.status.grid(row=2, column=1, sticky="w")
 
         # Registro do que está acontecendo
-        baixo = ttk.Frame(raiz, padding=(16, 8, 16, 14))
-        baixo.grid(row=3, column=0, sticky="nsew")
-        self.log_texto = ScrolledText(baixo, height=8, state="disabled", wrap="word", relief="solid", borderwidth=1)
-        self.log_texto.pack(fill="both", expand=True)
-        self.log_texto.tag_configure("ok", foreground=VERDE)
-        self.log_texto.tag_configure("erro", foreground=VERMELHO)
-        self.log_texto.tag_configure("titulo", font=self.fonte_negrito)
+        px1, py1, px2, py2 = painel
+        folga = s(12)
+        self.log_texto = tk.Text(
+            c, background=tema.hex_(cor_painel), foreground=tema.TEXTO_SUAVE, font=t.f_mono,
+            borderwidth=0, highlightthickness=0, wrap="word", state="disabled", cursor="arrow",
+            selectbackground=tema.hex_(tema.ACENTO_1), selectforeground="white", insertwidth=0,
+            padx=0, pady=0, spacing1=s(1),
+        )  # fmt: skip
+        c.create_window(
+            px1 + folga, py1 + s(8), anchor="nw", window=self.log_texto,
+            width=px2 - px1 - 2 * folga, height=py2 - py1 - s(16),
+        )  # fmt: skip
+        self.log_texto.tag_configure("ok", foreground=tema.VERDE)
+        self.log_texto.tag_configure("erro", foreground=tema.VERMELHO)
+        self.log_texto.tag_configure("titulo", foreground=tema.TEXTO, font=t.f_mono_forte)
 
         raiz.bind_all("<MouseWheel>", self._roda_do_mouse)
         raiz.bind_all("<Button-4>", lambda e: self._rolar_em(e, -1))  # Linux
         raiz.bind_all("<Button-5>", lambda e: self._rolar_em(e, 1))
         raiz.protocol("WM_DELETE_WINDOW", self._fechar)
         raiz.after(100, self._ler_fila)
+        tema.barra_de_titulo_escura(raiz)
 
+        self._log(f"Lista de programas: {caminho_config}")
         for aviso in avisos or []:
             self._log(aviso, "erro")
 
     # ---------- montagem da tela ----------
 
-    def _estilo(self) -> None:
-        estilo = ttk.Style()
-        if not EH_WINDOWS:
-            estilo.theme_use("clam")
-        padrao = tkfont.nametofont("TkDefaultFont")
-        padrao.configure(size=10)
-        tkfont.nametofont("TkTextFont").configure(size=10)
-        familia = padrao.actual("family")
-        self.fonte_negrito = tkfont.Font(family=familia, size=10, weight="bold")
-        estilo.configure("Titulo.TLabel", font=(familia, 16, "bold"))
-        estilo.configure("Grande.TButton", font=(familia, 11, "bold"), padding=(22, 8))
+    def _cartao_lista(self, fundo, cartao, titulo: str):
+        s, c = self.t.s, self.canvas
+        x1, y1, x2, y2 = cartao
+        c.create_text(s(x1 + 20), s(y1 + 16), anchor="nw", text=titulo, font=self.t.f_cabecalho, fill=tema.TEXTO)
+        contador = c.create_text(s(x2 - 20), s(y1 + 19), anchor="ne", font=self.t.f_desc, fill=tema.TEXTO_SUAVE)
+        area = (s(x1 + 8), s(y1 + 48), s(x2 - 8), s(y2 - 10))
+        lista = ListaVidro(c, self.t, fundo.crop(area))
+        c.create_window(area[0], area[1], anchor="nw", window=lista)
+        return lista, contador
 
     def _linha_programa(self, programa: prg.Programa):
         fonte = prg.fonte_preferida(programa, self.pasta_base)
-        variavel = tk.BooleanVar(value=programa.marcado and fonte is not None)
         descricao = programa.descricao
         if fonte is None:
             faltando = [f.valor for f in programa.fontes if f.tipo == "arquivo"]
             descricao = (descricao + "\n" if descricao else "") + f"Coloque o instalador em: {faltando[0]}"
-            etiqueta, cor = "falta o arquivo", VERMELHO
+            etiqueta, cor = "falta o arquivo", tema.VERMELHO
         else:
             etiqueta, cor = prg.ROTULOS[fonte.tipo], CORES_FONTE[fonte.tipo]
-        caixa = self.lista_prog.adicionar(
-            programa.nome, variavel, descricao, etiqueta, cor, habilitado=fonte is not None
-        )
-        if fonte is not None:
-            self.caixas.append(caixa)
-        return programa, variavel
+        caixa = Caixa(
+            self.lista_prog, programa.nome, descricao, etiqueta, cor,
+            marcada=programa.marcado, habilitada=fonte is not None, ao_mudar=self._contar,
+        )  # fmt: skip
+        return programa, caixa
 
-    def _linha_otimizacao(self, otimizacao: otm.Otimizacao):
-        variavel = tk.BooleanVar(value=otimizacao.marcado)
-        self.caixas.append(self.lista_otim.adicionar(otimizacao.nome, variavel, otimizacao.descricao))
-        return otimizacao, variavel
+    def _contar(self) -> None:
+        for itens, contador in ((self.itens_prog, self.contador_prog), (self.itens_otim, self.contador_otim)):
+            marcados = sum(caixa.marcada for _, caixa in itens)
+            self.canvas.itemconfigure(contador, text=f"{marcados} de {len(itens)} marcados" if itens else "")
 
     # ---------- ações ----------
 
     def comecar(self) -> None:
-        programas = [p for p, v in self.vars_prog if v.get()]
-        otimizacoes = [o for o, v in self.vars_otim if v.get()]
-        simular = self.var_teste.get()
+        programas = [p for p, caixa in self.itens_prog if caixa.marcada]
+        otimizacoes = [o for o, caixa in self.itens_otim if caixa.marcada]
+        simular = self.interruptor.ligado
         if not programas and not otimizacoes:
             messagebox.showinfo("Nada marcado", "Marque pelo menos um programa ou uma otimização.")
             return
@@ -258,8 +406,8 @@ class App:
                     self._log(mensagem[1])
                 elif mensagem[0] == "progresso":
                     _, feito, total, titulo = mensagem
-                    self.barra.configure(maximum=max(total, 1), value=feito)
-                    self.status.configure(text=f"{feito}/{total}  {titulo}", foreground=CINZA)
+                    self.barra.definir(feito / max(total, 1))
+                    self.canvas.itemconfigure(self.status, text=f"{feito}/{total}  {titulo}", fill=tema.TEXTO_SUAVE)
                 elif mensagem[0] == "fim":
                     self._terminou(mensagem[1], mensagem[2])
         except queue.Empty:
@@ -270,26 +418,26 @@ class App:
         self._travar(False)
         if resumo.falhas:
             texto = f"Terminou com {len(resumo.falhas)} problema(s): " + ", ".join(resumo.falhas)
-            self.status.configure(text=texto, foreground=VERMELHO)
+            self.canvas.itemconfigure(self.status, text=texto, fill=tema.VERMELHO)
         else:
             texto = f"Tudo certo! {resumo.certas} de {resumo.total} etapas concluídas."
-            self.status.configure(text=texto, foreground=VERDE)
+            self.canvas.itemconfigure(self.status, text=texto, fill=tema.VERDE)
 
         if self.automatico:
             self.codigo_saida = 1 if resumo.falhas else 0
             self.raiz.after(500, self.raiz.destroy)
+        elif self.demo:
+            return
         elif simular:
-            messagebox.showinfo("Teste concluído", texto + "\n\nNada foi alterado. Desmarque o modo teste para valer.")
+            messagebox.showinfo("Teste concluído", texto + "\n\nNada foi alterado. Desligue o modo teste para valer.")
         elif messagebox.askyesno("Pronto", texto + "\n\nReiniciar o PC agora para aplicar tudo?"):
             sistema.reiniciar_pc()
 
     def _travar(self, travar: bool) -> None:
         self.rodando = travar
-        estado = ["disabled"] if travar else ["!disabled"]
-        for caixa in self.caixas:
-            caixa.state(estado)
-        self.botao.state(estado)
-        self.caixa_teste.state(["disabled"] if travar or self.so_teste else ["!disabled"])
+        self.lista_prog.travada = self.lista_otim.travada = travar
+        self.interruptor.definir_ocupado(travar)
+        self.botao.habilitar(not travar, "Rodando..." if travar else "Começar")
 
     def _log(self, texto: str, tag: str | None = None) -> None:
         if tag is None:
@@ -312,7 +460,7 @@ class App:
         """Rola a lista que está embaixo do mouse."""
         widget = self.raiz.winfo_containing(evento.x_root, evento.y_root)
         while widget is not None:
-            if isinstance(widget, ListaRolavel):
+            if isinstance(widget, ListaVidro):
                 widget.rolar(passos)
                 return
             widget = widget.master
@@ -326,7 +474,8 @@ class App:
 
 def main(args: list[str]) -> int:
     automatico = "--autoteste" in args
-    simular = automatico or "--simular" in args
+    demo = "--demo" in args  # roda o modo teste sozinho e deixa a janela aberta (para prints)
+    simular = automatico or demo or "--simular" in args
     so_teste = False
     avisos = []
 
@@ -350,9 +499,11 @@ def main(args: list[str]) -> int:
         avisos.append(f"Problema no apps.json: {erro_config}")
 
     raiz = tk.Tk()
-    app = App(raiz, programas, base, config, simular, so_teste, automatico, avisos)
+    app = App(raiz, programas, base, config, simular, so_teste, automatico, avisos, demo)
     if erro_config and not automatico:
         raiz.after(200, lambda: messagebox.showerror("Problema no apps.json", erro_config))
+    if demo:
+        raiz.after(800, app.comecar)
     if automatico:
         if erro_config:
             app.codigo_saida = 2

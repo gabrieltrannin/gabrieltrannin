@@ -9,3 +9,6 @@ kit/
 *.spec
 
 __pycache__/
+
+# Ícone gerado no build
+icone.ico

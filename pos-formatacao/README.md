@@ -92,6 +92,7 @@ do Sistema** e escolha o ponto "Antes da pos-formatacao".
 Precisa do Python 3.10 ou mais novo.
 
 ```bash
+pip install -r requirements.txt     # Pillow, usado no visual "vidro noturno"
 python main.py --simular            # abre no modo teste
 python -m unittest discover -s tests -v
 ```
@@ -104,6 +105,7 @@ da janela (artifact `print-da-janela`).
 | Arquivo | O que tem |
 |---|---|
 | `instalador/app.py` | A janela |
+| `instalador/tema.py` | O visual "vidro noturno": cores, fundo, vidro e ícone |
 | `instalador/programas.py` | Lê o `apps.json` e instala os programas |
 | `instalador/otimizacoes.py` | As otimizações (scripts do PowerShell) |
 | `instalador/execucao.py` | A ordem das etapas |
