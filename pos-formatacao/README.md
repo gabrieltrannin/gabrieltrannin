@@ -97,8 +97,9 @@ python -m unittest discover -s tests -v
 ```
 
 O `.exe` é gerado pelo GitHub Actions num Windows de verdade
-(`.github/workflows/pos-formatacao.yml`), que também testa o app e aplica as
-otimizações numa máquina virtual para conferir que funcionam.
+(`.github/workflows/pos-formatacao.yml`), que também testa o app, aplica as
+otimizações numa máquina virtual para conferir que funcionam e tira um print
+da janela (artifact `print-da-janela`).
 
 | Arquivo | O que tem |
 |---|---|

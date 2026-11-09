@@ -41,6 +41,26 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "O autoteste falhou (código $($p.ExitCode))." }
           Write-Output 'Autoteste ok.'
 
+      - name: Tirar um print da janela
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Start-Process -FilePath dist\PosFormatacao.exe -ArgumentList '--simular'
+          Start-Sleep -Seconds 8
+          $tela = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $imagem = New-Object System.Drawing.Bitmap $tela.Width, $tela.Height
+          [System.Drawing.Graphics]::FromImage($imagem).CopyFromScreen($tela.Location, [System.Drawing.Point]::Empty, $tela.Size)
+          $imagem.Save("$PWD\print-da-janela.png")
+          Get-Process PosFormatacao -ErrorAction SilentlyContinue | Stop-Process -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: print-da-janela
+          path: pos-formatacao/print-da-janela.png
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Aplicar as otimizações nesta máquina virtual
         run: python tests/verificar_no_windows.py
 
