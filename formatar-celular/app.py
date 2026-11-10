@@ -12,6 +12,7 @@ import platform
 import queue
 import re
 import subprocess
+import sys
 import threading
 import tkinter as tk
 import tkinter.font as tkfont
@@ -50,6 +51,11 @@ TEXTO_RECOVERY = """Agora é com você, no próprio celular:
 A primeira inicialização depois de formatar pode demorar alguns minutos."""
 
 
+def caminho_do_recurso(nome: str) -> Path:
+    """Arquivo que acompanha o programa (no .exe, fica na pasta temporária sys._MEIPASS)."""
+    return Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / nome
+
+
 def nome_de_arquivo_seguro(texto: str) -> str:
     return re.sub(r'[\\/:*?"<>|]+', "-", texto).strip() or "celular"
 
@@ -77,6 +83,10 @@ class App:
 
         raiz.title("Formatar Celular pelo PC")
         raiz.minsize(680, 640)
+        try:
+            raiz.iconphoto(True, tk.PhotoImage(file=str(caminho_do_recurso("icone.png"))))
+        except tk.TclError:
+            pass  # sem ícone, o programa funciona do mesmo jeito
         raiz.protocol("WM_DELETE_WINDOW", self.fechar)
         self._montar_tela()
         self.raiz.after(100, self._processar_fila)
@@ -511,6 +521,9 @@ def main() -> None:
     _ativar_nitidez_no_windows()
     raiz = tk.Tk()
     App(raiz)
+    if "--autoteste" in sys.argv:
+        # Usado pelo GitHub Actions: abre a janela, espera um pouco e fecha.
+        raiz.after(3000, raiz.destroy)
     raiz.mainloop()
 
 

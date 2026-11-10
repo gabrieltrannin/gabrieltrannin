@@ -22,6 +22,9 @@ Por segurança, a formatação só começa depois que você **digita `FORMATAR`*
 
 ## Como usar
 
+> [!TIP]
+> **Não quer instalar Python?** Baixe o `FormatarCelular.exe` pronto (veja [Executável para Windows](#-executável-para-windows-exe)) e pule para o passo 3.
+
 ### 1. Instale o Python
 
 Baixe em [python.org](https://www.python.org/downloads/) (versão 3.9 ou mais nova). No Windows, marque **"Add Python to PATH"** na instalação. O Tkinter já vem junto.
@@ -70,28 +73,47 @@ Clique em **"Fazer backup..."**, escolha uma pasta e espere terminar. Depois esc
 
 O iPhone não tem ADB. Para formatar pelo PC, use o app oficial da Apple: **Finder** (Mac) ou **Dispositivos Apple / iTunes** (Windows) → conecte o iPhone → **Restaurar iPhone**. Antes, desative o *Buscar iPhone* (ou tenha a senha do ID Apple).
 
-## Gerar um `.exe` (opcional)
+## 💾 Executável para Windows (.exe)
 
-Para usar em um PC sem Python:
+### Baixar pronto
+
+A cada mudança no código, o GitHub gera o `FormatarCelular.exe` automaticamente (num Windows de verdade, com testes):
+
+1. Abra a aba **[Actions](https://github.com/gabrieltrannin/gabrieltrannin/actions/workflows/formatar-celular.yml)** do repositório.
+2. Clique na execução mais recente com ✅.
+3. Em **Artifacts**, baixe **FormatarCelular-Windows**, descompacte o `.zip` e dê dois cliques em `FormatarCelular.exe`.
+
+> [!NOTE]
+> Na primeira vez, o Windows pode mostrar **"O Windows protegeu o computador"**. Isso acontece com qualquer programa sem assinatura digital paga. Clique em **Mais informações → Executar assim mesmo**.
+
+Dica: deixe o `.exe` numa pasta só dele (ex.: `C:\FormatarCelular`), porque as ferramentas ADB são baixadas ao lado dele.
+
+### Gerar você mesmo
+
+No Windows, dentro da pasta `formatar-celular`:
 
 ```bash
 pip install pyinstaller
 ```
 
 ```bash
-pyinstaller --onefile --windowed --name FormatarCelular app.py
+python gerar_exe.py
 ```
 
-O executável fica em `dist/FormatarCelular.exe`. As ferramentas ADB são baixadas na mesma pasta do `.exe` quando você clicar em "Baixar ferramentas".
+O executável fica em `dist\FormatarCelular.exe`. O PyInstaller sempre gera para o sistema em que roda: no Linux ou no macOS ele gera um executável daquele sistema.
 
 ## Estrutura do código
 
 ```
 formatar-celular/
-├── app.py          # janela (Tkinter): botões, avisos e registro
-├── adb_tools.py    # comandos do ADB/Fastboot e leitura das respostas
+├── app.py            # janela (Tkinter): botões, avisos e registro
+├── adb_tools.py      # comandos do ADB/Fastboot e leitura das respostas
+├── gerar_exe.py      # gera o executável com o PyInstaller
+├── icone.ico / .png  # ícone do programa
 └── tests/
     └── test_adb_tools.py
+
+.github/workflows/formatar-celular.yml   # GitHub Actions: testa e gera o .exe
 ```
 
 Rodar os testes:
@@ -102,4 +124,4 @@ python -m unittest discover -s tests
 
 ## Tecnologias
 
-Python · Tkinter · ADB · Fastboot · `subprocess` · `threading` · `unittest`. Só usa a biblioteca padrão do Python, nada para instalar com `pip`.
+Python · Tkinter · ADB · Fastboot · `subprocess` · `threading` · `unittest` · PyInstaller · GitHub Actions. O programa só usa a biblioteca padrão do Python (o PyInstaller é usado apenas para gerar o `.exe`).
