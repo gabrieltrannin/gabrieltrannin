@@ -2441,7 +2441,7 @@ fn search_field(ui: &mut Ui, text: &mut String, hint: &str, width: f32, height: 
     let te = egui::TextEdit::singleline(text)
         .id(id)
         .frame(Frame::NONE)
-        .hint_text(RichText::new(hint).color(FAINT).font(font.clone()))
+        .hint_text(RichText::new(hint).color(MUTED).font(font.clone()))
         .font(font)
         .text_color(TEXT)
         .margin(Margin::ZERO)
