@@ -455,7 +455,7 @@ impl VitralApp {
                     self.user = Some(u);
                     self.send(Cmd::Volume(self.s.volume));
                     if self.s.check_updates {
-                        self.send(Cmd::CheckUpdate { manual: false });
+                        self.send(Cmd::CheckUpdate { manual: false, token: self.s.github_token.clone() });
                     }
                 }
                 Ev::LoggedOut => {
@@ -603,7 +603,7 @@ impl VitralApp {
             }
             UpdateEv::Available(info) => {
                 if self.s.update_mode == UpdateMode::Auto {
-                    self.send(Cmd::DownloadUpdate(info.clone()));
+                    self.send(Cmd::DownloadUpdate { info: info.clone(), token: self.s.github_token.clone() });
                     self.update = Upd::Downloading(info, 0.0);
                 } else {
                     let skipped = self.s.skipped_version.as_deref() == Some(info.version.as_str());
@@ -1782,7 +1782,7 @@ impl VitralApp {
                             self.update = Upd::UpToDate;
                             self.toast("Você já está na versão mais nova.", false);
                         } else {
-                            self.send(Cmd::CheckUpdate { manual: true });
+                            self.send(Cmd::CheckUpdate { manual: true, token: self.s.github_token.clone() });
                         }
                     }
                 }
@@ -1806,6 +1806,39 @@ impl VitralApp {
                 self.s.save();
             }
         });
+
+        let token_hint = if self.s.github_token.trim().is_empty() {
+            "O repositório das versões é privado. Cole aqui um token de leitura do GitHub."
+        } else {
+            "Token salvo neste computador."
+        };
+        setting_row(ui, width, "Token do GitHub", token_hint, |ui| {
+            let (rect, _) = ui.allocate_exact_size(vec2(280.0, 40.0), Sense::hover());
+            ui.painter().rect_filled(rect, 8, Color32::from_white_alpha(20));
+            let te = egui::TextEdit::singleline(&mut self.s.github_token)
+                .password(true)
+                .frame(Frame::NONE)
+                .hint_text(RichText::new("github_pat_…").color(MUTED))
+                .font(regular(13.5))
+                .text_color(TEXT)
+                .margin(Margin::ZERO)
+                .align(Align2::LEFT_CENTER)
+                .desired_width(rect.width() - 24.0);
+            let resp = ui.put(rect.shrink2(vec2(12.0, 0.0)), te);
+            if resp.lost_focus() {
+                self.s.github_token = self.s.github_token.trim().to_string();
+                self.s.save();
+            }
+        });
+        ui.label(
+            RichText::new(format!(
+                "Como criar: github.com → Settings → Developer settings → Fine-grained tokens → Generate new token. \
+Em “Repository access” escolha só {}, e em “Permissions” dê Contents: Read-only.",
+                updater::REPO
+            ))
+            .font(regular(12.5))
+            .color(MUTED),
+        );
 
         section(ui, "Conta");
         let who = self.user.as_ref().map(|u| format!("Conectado como {}", u.name)).unwrap_or_default();
@@ -1845,9 +1878,8 @@ impl VitralApp {
         ui.add_space(6.0);
         ui.label(
             RichText::new(format!(
-                "Atualizações vêm de github.com/{} (versões com a tag {}x.y.z). App pessoal, sem ligação oficial com o Spotify.",
-                updater::REPO,
-                updater::TAG_PREFIX
+                "Atualizações vêm de github.com/{} (aba Releases). App pessoal, sem ligação oficial com o Spotify.",
+                updater::REPO
             ))
             .font(regular(12.5))
             .color(FAINT),
@@ -2149,7 +2181,7 @@ impl VitralApp {
                         ui.add_space(18.0);
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                             if pill_button(ui, "Atualizar agora", accent, DARK_TEXT, vec2(160.0, 44.0)).clicked() {
-                                action = Some(Cmd::DownloadUpdate(info.clone()));
+                                action = Some(Cmd::DownloadUpdate { info: info.clone(), token: self.s.github_token.clone() });
                                 new_state = Some(Upd::Downloading(info.clone(), 0.0));
                             }
                             ui.add_space(8.0);

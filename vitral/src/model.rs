@@ -114,8 +114,8 @@ pub enum Cmd {
     CheckLiked(Vec<String>),
     FetchImage { url: String, size: u32 },
     ApplyAudio { quality: u16, normalize: bool },
-    CheckUpdate { manual: bool },
-    DownloadUpdate(UpdateInfo),
+    CheckUpdate { manual: bool, token: String },
+    DownloadUpdate { info: UpdateInfo, token: String },
     RestartForUpdate,
 }
 

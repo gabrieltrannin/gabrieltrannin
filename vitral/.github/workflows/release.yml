@@ -1,0 +1,71 @@
+# Compila o Vitral.exe e publica uma versão (Release) sempre que a versão
+# do Cargo.toml muda. O app confere essas versões pra se atualizar.
+name: Gerar versão para Windows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "assets/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "CHANGELOG.md"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ler a versão
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f2)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "A versão v$v já foi publicada; nada a fazer."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preparar o compilador para Windows
+        if: steps.ver.outputs.exists == 'false'
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+          rustup target add x86_64-pc-windows-gnu
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mingw-w64
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.ver.outputs.exists == 'false'
+        with:
+          key: windows-gnu
+
+      - name: Compilar
+        if: steps.ver.outputs.exists == 'false'
+        run: cargo build --release --locked --target x86_64-pc-windows-gnu
+
+      - name: Publicar a versão
+        if: steps.ver.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.ver.outputs.version }}"
+          cp target/x86_64-pc-windows-gnu/release/vitral.exe Vitral.exe
+          awk -v ver="$v" '$0 ~ "^## v?"ver"$" {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Vitral $v" > notes.md
+          gh release create "v$v" Vitral.exe --title "Vitral $v" --notes-file notes.md --target "$GITHUB_SHA"

@@ -9,7 +9,7 @@ num app nativo (sem navegador por baixo), com visual escuro e fila sempre à mã
 
 ## Como usar (Windows)
 
-1. Baixe o `Vitral.exe` e coloque numa pasta sua (ex.: `Documentos\Vitral`).
+1. Baixe o `Vitral.exe` na aba **Releases** deste repositório e coloque numa pasta sua (ex.: `Documentos\Vitral`).
 2. Abra. Na primeira vez o Windows pode mostrar "O Windows protegeu o computador",
    porque o programa não tem assinatura digital. Clique em **Mais informações → Executar assim mesmo**.
 3. Clique em **Entrar com o Spotify**. O navegador abre na página de login do Spotify. Depois de entrar, volte pro app.
@@ -17,7 +17,7 @@ num app nativo (sem navegador por baixo), com visual escuro e fila sempre à mã
 
 Pra testar a interface sem conta: `Vitral.exe --demo` (sem áudio, só dados de exemplo).
 
-## O que tem nesta versão (0.1.0)
+## O que tem na versão 0.1.0
 
 - Login com a conta do Spotify (pelo navegador) e login salvo.
 - Biblioteca: Músicas curtidas, playlists, álbuns salvos e artistas seguidos, com filtro.
@@ -41,12 +41,24 @@ O botão **Abrir pasta** em Configurações abre esse lugar.
 
 ## Atualizações
 
-O app procura versões novas na aba **Releases** deste repositório (`gabrieltrannin/gabrieltrannin`).
-Uma versão nova é uma release com a tag `vitral-vX.Y.Z` (ex.: `vitral-v0.2.0`) e o `.exe` anexado.
+O app procura versões novas na aba **Releases** deste repositório (`gabrieltrannin/vitral-spotify-client`).
 Em **Configurações → Atualizações** dá pra escolher entre **Perguntar antes** (sim ou não a cada versão)
 e **Instalar sozinho**.
 
-Enquanto nenhuma release `vitral-v…` for publicada, o app simplesmente diz que está atualizado.
+Como o repositório é privado, o app precisa de um token de leitura do GitHub pra enxergar as versões:
+
+1. No GitHub: **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+2. Em **Repository access**, escolha **Only select repositories** e marque `vitral-spotify-client`.
+3. Em **Permissions → Repository permissions**, coloque **Contents: Read-only**. Gere o token.
+4. No Vitral: **Configurações → Atualizações → Token do GitHub**, cole o token e clique fora do campo pra salvar.
+
+O token fica salvo só no seu computador (`%APPDATA%\Vitral\settings.json`).
+
+### Publicar uma versão nova
+
+Mude `version` no `Cargo.toml` (ex.: `0.2.0`), escreva as novidades em `CHANGELOG.md` com o título
+`## v0.2.0` e envie para a branch `main`. A automação em `.github/workflows/release.yml` compila o
+`Vitral.exe` e cria a Release `v0.2.0` com ele. O texto do CHANGELOG aparece na janela de atualização do app.
 
 ## Compilar
 

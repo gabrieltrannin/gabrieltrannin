@@ -244,9 +244,9 @@ async fn run(mut rx: mpsc::UnboundedReceiver<Cmd>, out: Out, cfg: AudioCfg) {
             Cmd::FetchImage { url, size } => {
                 tokio::spawn(fetch_image(s, url, size));
             }
-            Cmd::CheckUpdate { manual } => {
+            Cmd::CheckUpdate { manual, token } => {
                 tokio::spawn(async move {
-                    match updater::check().await {
+                    match updater::check(&token).await {
                         Ok(Some(info)) => s.out.send(Ev::Update(UpdateEv::Available(info))),
                         Ok(None) => s.out.send(Ev::Update(UpdateEv::UpToDate { manual })),
                         Err(e) => {
@@ -258,11 +258,11 @@ async fn run(mut rx: mpsc::UnboundedReceiver<Cmd>, out: Out, cfg: AudioCfg) {
                     }
                 });
             }
-            Cmd::DownloadUpdate(info) => {
+            Cmd::DownloadUpdate { info, token } => {
                 tokio::spawn(async move {
                     let out = s.out.clone();
                     let mut last = -1.0f32;
-                    let res = updater::download(&info, |p| {
+                    let res = updater::download(&info, &token, |p| {
                         if p - last >= 0.02 || p >= 1.0 {
                             last = p;
                             out.send(Ev::Update(UpdateEv::Progress(p)));

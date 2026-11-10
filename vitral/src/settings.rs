@@ -37,6 +37,8 @@ pub struct Settings {
     pub show_queue: bool,
     pub recent_searches: Vec<String>,
     pub skipped_version: Option<String>,
+    /// Token de leitura do GitHub (o repositório das versões é privado).
+    pub github_token: String,
 }
 
 impl Default for Settings {
@@ -51,6 +53,7 @@ impl Default for Settings {
             show_queue: true,
             recent_searches: Vec::new(),
             skipped_version: None,
+            github_token: String::new(),
         }
     }
 }
