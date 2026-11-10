@@ -1,0 +1,11 @@
+# Baixado pelo próprio programa (botão "Baixar ferramentas")
+platform-tools/
+
+# Python
+__pycache__/
+*.pyc
+
+# PyInstaller
+build/
+dist/
+*.spec
