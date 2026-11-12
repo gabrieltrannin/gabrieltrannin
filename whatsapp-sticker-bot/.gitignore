@@ -1,0 +1,7 @@
+node_modules/
+
+# Sessão do WhatsApp: NUNCA envie para o GitHub (dá acesso à sua conta!)
+auth/
+
+# Configurações pessoais
+.env
