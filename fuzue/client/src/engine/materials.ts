@@ -32,7 +32,13 @@ export function toonMap(map: THREE.Texture): THREE.MeshToonMaterial {
 }
 
 const outlineMat = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
-const SPHERE = new THREE.SphereGeometry(1, 24, 16);
+const SPHERE = shared(new THREE.SphereGeometry(1, 24, 16));
+
+/** Marca uma geometria usada por várias telas (não é liberada ao trocar de tela). */
+export function shared<T extends THREE.BufferGeometry>(g: T): T {
+  g.userData.shared = true;
+  return g;
+}
 
 /** Esfera (ou elipsoide) de raio `r`. */
 export function ball(r: number, mat: THREE.Material, sx = 1, sy = 1, sz = 1): THREE.Mesh {

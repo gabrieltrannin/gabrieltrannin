@@ -1,0 +1,16 @@
+# Servidor do Fuzuê no Render (plano grátis).
+# Render → New → Blueprint → escolha este repositório. Ele lê este arquivo.
+services:
+  - type: web
+    name: fuzue-servidor
+    runtime: node
+    plan: free
+    region: virginia
+    rootDir: fuzue
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

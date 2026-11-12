@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CHARACTERS, type CharacterDef } from '@fuzue/shared';
-import { ball, outline, toon, INK } from './materials';
+import { ball, outline, shared, toon, INK } from './materials';
 
 /**
  * Bonecos montados só com primitivas (esferas e cones) + material toon.
@@ -17,9 +17,9 @@ export interface Critter {
   phase: number;
 }
 
-const SMILE = new THREE.TorusGeometry(0.07, 0.022, 6, 16, Math.PI);
-const EAR_CONE = new THREE.ConeGeometry(0.17, 0.36, 4);
-const BEAK = new THREE.ConeGeometry(0.09, 0.2, 10);
+const SMILE = shared(new THREE.TorusGeometry(0.07, 0.022, 6, 16, Math.PI));
+const EAR_CONE = shared(new THREE.ConeGeometry(0.17, 0.36, 4));
+const BEAK = shared(new THREE.ConeGeometry(0.09, 0.2, 10));
 
 export function makeCritter(characterIndex: number): Critter {
   const def = CHARACTERS[characterIndex] ?? CHARACTERS[0];
@@ -248,6 +248,10 @@ export interface CritterPose {
   falling: boolean;
   /** Acenando (tela inicial). */
   waving?: boolean;
+  /** Pulando de alegria (pódio, vitória). */
+  celebrate?: boolean;
+  /** Cabisbaixo (último lugar). */
+  sad?: boolean;
 }
 
 /** Anima o boneco a partir do estado atual. Chame uma vez por quadro. */
@@ -280,6 +284,20 @@ export function animateCritter(c: Critter, t: number, pose: CritterPose): void {
 
   if (pose.waving) {
     c.arms[1].rotation.set(0, 0, 2.5 + Math.sin(t * 8) * 0.35);
+  }
+  if (pose.celebrate) {
+    const hop = Math.abs(Math.sin(ph * 5));
+    c.body.position.y = hop * 0.35;
+    c.arms[0].rotation.set(0, 0, -2.6 + Math.sin(ph * 10) * 0.25);
+    c.arms[1].rotation.set(0, 0, 2.6 - Math.sin(ph * 10) * 0.25);
+  }
+  if (pose.sad) {
+    c.head.rotation.x = 0.35;
+    c.arms[0].rotation.set(0.2, 0, -0.15);
+    c.arms[1].rotation.set(0.2, 0, 0.15);
+    c.body.scale.set(1.03, 0.95, 1.03);
+  } else {
+    c.head.rotation.x = 0;
   }
   if (pose.punching) {
     // braços para frente (rotação negativa em x leva o braço para +z)

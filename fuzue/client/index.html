@@ -2,25 +2,37 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#ff9b7a">
-  <meta name="description" content="Fuzuê: party game 3D para jogar online com os amigos, direto no navegador.">
+  <meta name="description" content="Fuzuê: party game 3D para jogar online com os amigos, direto no navegador. Tabuleiro, minijogos e muita bagunça.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Fuzuê">
+  <meta property="og:title" content="Fuzuê">
+  <meta property="og:description" content="Party game 3D online para jogar com os amigos no navegador.">
   <title>Fuzuê</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap">
 </head>
 <body>
-  <canvas id="scene" aria-label="Arena do jogo"></canvas>
+  <canvas id="scene" aria-label="Cena do jogo"></canvas>
   <div id="fx" class="fx"></div>
 
-  <!-- Tela inicial -->
+  <div class="corner">
+    <button id="soundBtn" class="icon-btn" type="button" aria-label="Ligar ou desligar o som">🔊</button>
+    <button id="fullBtn" class="icon-btn" type="button" aria-label="Tela cheia" hidden>⛶</button>
+    <button id="leaveBtn" class="icon-btn text" type="button" hidden>Sair</button>
+  </div>
+
+  <!-- ================= Menu ================= -->
   <main id="menu" class="menu" hidden>
     <section class="menu-card card">
       <h1 class="logo" aria-label="Fuzuê"><span style="--c:#ffc93c;--r:-5deg">F</span><span style="--c:#ff5fa2;--r:4deg">u</span><span style="--c:#3fd6b0;--r:-3deg">z</span><span style="--c:#4aa3ff;--r:5deg">u</span><span style="--c:#ff8a3d;--r:-4deg">ê</span></h1>
       <h2 id="menuTitle" class="menu-title">Jogar com os amigos</h2>
-
       <form id="menuForm" class="menu-form" novalidate>
         <label class="lbl" for="nameInput">Seu apelido</label>
         <input id="nameInput" class="field" maxlength="16" autocomplete="nickname" placeholder="Como te chamam?" enterkeyhint="go">
@@ -30,7 +42,6 @@
         </fieldset>
         <button id="primaryBtn" class="btn big" type="submit">Criar sala</button>
       </form>
-
       <div id="joinRow" class="join-row">
         <span class="or">Tem um código?</span>
         <form id="codeForm" class="code-form" novalidate>
@@ -39,39 +50,96 @@
         </form>
       </div>
       <a id="newRoomLink" class="link" href="/" hidden>Prefiro criar uma sala nova</a>
+      <p id="menuStatus" class="status" role="status" hidden></p>
       <p id="menuError" class="error" role="alert" hidden></p>
     </section>
   </main>
 
-  <!-- Interface durante a partida -->
-  <div id="hud" class="hud" hidden>
-    <section class="room-card card" aria-label="Sala">
-      <div class="room-top">
-        <div>
-          <span class="eyebrow">Sala</span>
-          <div id="roomCode" class="code">----</div>
-        </div>
-        <button id="copyBtn" class="btn small" type="button">Copiar link</button>
+  <!-- ================= Lobby ================= -->
+  <section id="lobby" class="lobby card" aria-label="Sala" hidden>
+    <div class="lobby-head">
+      <div>
+        <span class="eyebrow">Sala</span>
+        <div id="lobbyCode" class="code">----</div>
       </div>
-      <ul id="playerList" class="plist"></ul>
-    </section>
-
-    <button id="leaveBtn" class="btn small ghost leave" type="button">Sair</button>
-
-    <div id="aloneCard" class="alone card" hidden>
-      <p><b>Só você por aqui.</b> Mande o link para os amigos. Para testar sozinho, abra o mesmo link em outra janela.</p>
-      <div class="alone-row">
-        <input id="aloneLink" class="field" readonly aria-label="Link da sala">
-        <button id="aloneCopy" class="btn small" type="button">Copiar</button>
+      <div class="share">
+        <button id="copyLink" class="btn small" type="button">Copiar link</button>
+        <button id="shareLink" class="btn small ghost" type="button" hidden>Enviar</button>
       </div>
     </div>
+    <ul id="lobbySeats" class="seats"></ul>
+    <div class="lobby-block">
+      <span class="lbl">Seu personagem</span>
+      <div id="lobbyChars" class="char-row"></div>
+    </div>
+    <div class="lobby-block settings">
+      <div class="setting"><span class="lbl">Rodadas</span><div id="setRounds" class="seg"></div></div>
+      <div class="setting"><span class="lbl">Vagas vazias</span><div id="setBots" class="seg"></div></div>
+      <div class="setting"><span class="lbl">Bots</span><div id="setLevel" class="seg"></div></div>
+    </div>
+    <p id="lobbySummary" class="hint summary" hidden></p>
+    <p id="lobbyHint" class="hint"></p>
+    <button id="lobbyAction" class="btn big" type="button">Estou pronto!</button>
+  </section>
 
-    <p class="keys card kb-only"><span class="key">WASD</span> ou <span class="key">setas</span> andam · <span class="key">Espaço</span> empurra</p>
+  <!-- ================= Tabuleiro ================= -->
+  <div id="board" class="hud" hidden>
+    <ol id="bPlayers" class="b-players" aria-label="Placar"></ol>
+    <div class="b-top">
+      <span id="bRound" class="chip">Rodada 1</span>
+      <div id="bTurn" class="turn card" aria-live="polite"></div>
+      <div id="bTimer" class="timer-bar" hidden><i></i></div>
+    </div>
+    <div id="bDock" class="dock"></div>
+    <div id="bShop" class="overlay soft" hidden></div>
+    <div id="bOrder" class="overlay soft" hidden></div>
+    <div id="bDuel" class="overlay soft" hidden></div>
+    <button id="bHelp" class="icon-btn help" type="button" aria-label="O que cada casa faz">?</button>
+    <div id="bLegend" class="legend card" hidden></div>
+  </div>
+
+  <!-- ================= Minijogo ================= -->
+  <div id="mg" class="hud" hidden>
+    <div class="mg-top">
+      <div id="mgName" class="chip"></div>
+      <div id="mgTimer" class="mg-timer">0:00</div>
+    </div>
+    <ol id="mgBoard" class="mg-board card"></ol>
+    <div id="mgNote" class="mg-note card" hidden></div>
+    <p class="keys card kb-only"><span class="key">WASD</span> anda · <span class="key">Espaço</span> pula · <span class="key">J</span> ou clique empurra</p>
     <div id="stick" class="stick touch-only" aria-hidden="true"><div id="knob" class="knob"></div></div>
-    <button id="pushBtn" class="btn push" type="button">Empurrar</button>
+    <div class="pads touch-only">
+      <button id="jumpBtn" class="btn pad jump" type="button">Pular</button>
+      <button id="pushBtn" class="btn pad push" type="button">Empurrar</button>
+    </div>
+    <div id="mgIntro" class="overlay" hidden></div>
+    <div id="mgCount" class="countdown" hidden></div>
+    <div id="mgResult" class="overlay" hidden></div>
+  </div>
+
+  <!-- ================= Final ================= -->
+  <div id="final" class="hud" hidden>
+    <div id="bonus" class="overlay soft" hidden></div>
+    <section id="podium" class="podium card" hidden></section>
+  </div>
+
+  <!-- ================= Conversa ================= -->
+  <div id="chat" class="chat" hidden>
+    <div id="chatPanel" class="chat-panel card" hidden></div>
+    <button id="chatToggle" class="icon-btn" type="button" aria-label="Mensagens rápidas e emotes">💬</button>
   </div>
 
   <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="reconnect" class="overlay" hidden><div class="card msg-card"><b>Reconectando…</b><span>A internet piscou. Um bot está jogando por você até voltar.</span></div></div>
+  <div id="confirm" class="overlay" hidden>
+    <div class="card msg-card">
+      <b>Sair da partida?</b>
+      <span>Um bot assume o seu lugar e a partida continua para os outros.</span>
+      <div class="row"><button id="confirmYes" class="btn" type="button">Sair</button><button id="confirmNo" class="btn ghost" type="button">Continuar</button></div>
+    </div>
+  </div>
+  <div id="update" class="update card" hidden><span id="updateText">Saiu uma atualização do Fuzuê!</span><button id="updateBtn" class="btn small" type="button">Atualizar</button></div>
+
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

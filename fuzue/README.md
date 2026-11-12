@@ -1,20 +1,58 @@
 # Fuzuê
 
-Party game 3D para jogar **online com os amigos, direto no navegador**: sem instalar nada e sem criar conta.
+Party game 3D para jogar **online com os amigos, direto no navegador**, no PC, celular ou tablet. Sem instalar nada e sem criar conta.
 
-> **Fase 1 de 4:** servidor + salas com código e link + arena com física onde até 4 pessoas andam e se empurram. O tabuleiro, os minijogos e os bots chegam nas próximas fases.
+Tabuleiro com coroas, moedas, itens e loja; 6 minijogos com física caótica; bots que completam a mesa ou assumem quem cair da internet.
 
-## O que já funciona
+## Como se joga
 
-- **Salas com código e link:** quem cria recebe um código de 4 caracteres (ex.: `K7QX`) e o link `/sala/K7QX`. Quem abre o link escolhe apelido e personagem e entra na sala.
-- **Arena com física no servidor:** a física roda no servidor (Rapier, 30 vezes por segundo). Tem pilares, duas bolas gigantes empurráveis e o mar de morango em volta. Quem cai conta uma queda e renasce caindo do céu.
-- **Empurrão:** um impulso para a frente; quem é acertado voa longe e fica tonto por um instante ("POW!").
-- **Sem lag aparente:** o seu boneco anda na hora (previsão no cliente) e é corrigido em silêncio quando a resposta do servidor chega. Os outros jogadores aparecem suaves (interpolação).
-- **6 personagens** feitos com formas simples e toon shading: Bolota, Pipoca, Tufo, Brisa, Pingo e Nuvem.
-- **PC e celular:** teclado (WASD/setas + Espaço) ou joystick na tela + botão Empurrar.
-- **Ping de cada jogador** na lista da sala.
+1. Alguém abre o site, escolhe apelido e personagem e toca em **Criar sala**.
+2. Manda o link (ou o código de 4 letras, como `K7QX`) no grupo.
+3. Quem abrir o link escolhe apelido e personagem e aperta **Pronto**.
+4. O anfitrião escolhe o número de rodadas e se as vagas vazias viram bots, e toca em **Começar partida**.
 
-## Como rodar no seu computador
+Cada rodada: todo mundo joga um turno no tabuleiro e depois vem um minijogo. Quem tiver mais **coroas** no fim vence (desempate: moedas).
+
+### O tabuleiro (Ilha Confeito)
+
+| Casa | O que faz |
+| --- | --- |
+| Azul | +3 moedas |
+| Vermelha | −3 moedas |
+| Evento (?) | surpresa: chuva de confeitos, furacão, presente, coroa foge, teletransporte, festa |
+| Loja | compra itens |
+| Armadilha (!) | −5 moedas |
+| Duelo (VS) | dados contra alguém: quem tirar mais leva até 5 moedas |
+
+- **Coroa:** custa 20 moedas. Passou pela casa da coroa com dinheiro, compra na hora, e ela muda de lugar.
+- **Bifurcações:** em duas casas você escolhe entre o caminho normal e o atalho.
+- **Itens** (até 3 na mochila): 🎲 dado duplo, 🥊 luva de boxe (rouba 5 moedas de quem tem mais), 💣 bomba-armadilha, 🛡️ escudo, 🧲 ímã de moedas, 🔀 troca de lugar.
+- **Final:** dois prêmios surpresa, cada um valendo +1 coroa (rei dos minijogos, maratonista, colecionador ou azarado).
+
+### Minijogos
+
+| Minijogo | Objetivo |
+| --- | --- |
+| Ringue Escorregadio | chão de gelo que encolhe: empurre todos para fora |
+| Chão que Some | três andares de pisos que caem depois de pisados |
+| Corrida Doce | pule buracos, aguente a esteira e desvie dos martelos |
+| Chuva de Moedas | pegue moedas que caem e fuja das bombas |
+| Bomba-Relógio | passe a bomba encostando nos outros antes de explodir |
+| Futebol Caótico | 2 contra 2 com bola gigante (times equilibrados pela colocação) |
+
+Prêmios: 1º +10, 2º +6, 3º +3 moedas. No futebol, cada jogador do time vencedor ganha +8.
+
+### Controles
+
+| | Andar | Pular | Empurrar |
+| --- | --- | --- | --- |
+| PC | WASD ou setas | Espaço | J, E, Shift ou clique |
+| Controle (gamepad) | analógico ou direcional | A | X ou B |
+| Celular / tablet | joystick na tela | botão Pular | botão Empurrar |
+
+No tabuleiro, arraste a tela para girar a câmera. Os botões 💬 mandam emotes e frases rápidas, que aparecem em balão sobre o personagem.
+
+## Rodar no seu computador
 
 Precisa do [Node.js](https://nodejs.org) 20 ou mais novo.
 
@@ -24,115 +62,77 @@ npm install
 npm run dev
 ```
 
-Isso sobe duas coisas ao mesmo tempo:
-
 | O quê | Endereço |
 | --- | --- |
-| Jogo (cliente, Vite) | http://localhost:5173 |
-| Servidor do jogo (Colyseus) | ws://localhost:2567 |
+| Jogo (site) | http://localhost:5173 |
+| Servidor do jogo | ws://localhost:2567 |
 
-Abra http://localhost:5173, escolha um apelido e clique em **Criar sala**.
+Para jogar sozinho contra bots, crie a sala e toque em **Começar partida**. Os bots ocupam as vagas.
 
-## Como testar com duas abas
+**Testar com outra pessoa no mesmo Wi-Fi:** o terminal mostra um endereço `Network` (ex.: `http://192.168.0.10:5173`). Abra no celular. Para testar sozinho com dois jogadores, abra o link da sala numa **segunda janela** lado a lado; em duas abas da mesma janela, o navegador pausa a aba escondida.
 
-1. Crie uma sala. A barra de endereço muda para `http://localhost:5173/sala/XXXX`.
-2. Clique em **Copiar link** e abra o link numa **segunda janela** do navegador (ou numa janela anônima).
-3. Escolha outro apelido e personagem e clique em **Entrar na sala XXXX**.
-4. Deixe as duas janelas **lado a lado**.
+### Variáveis úteis do servidor
 
-> Use janelas lado a lado, não duas abas na mesma janela: o navegador pausa a aba que fica escondida, e o boneco dela para de se mexer até você voltar para ela.
+| Variável | Para quê |
+| --- | --- |
+| `GAME_SPEED=3` | acelera todas as esperas (testes) |
+| `MINIGAME_ORDER=corrida,futebol` | força a ordem dos minijogos |
+| `SIMULATE_LATENCY=150` | simula 150 ms de atraso de internet |
+| `PORT` | porta do servidor (padrão 2567) |
 
-### Testar pelo celular (mesma rede Wi-Fi)
+Exemplo: `GAME_SPEED=3 MINIGAME_ORDER=futebol npm run dev`.
 
-O `npm run dev` já deixa o jogo aberto para a rede local. No terminal, o Vite mostra um endereço `Network`, algo como `http://192.168.0.10:5173`. Abra esse endereço no celular. O cliente se conecta sozinho ao servidor no mesmo IP, porta 2567. Se não conectar, libere as portas 5173 e 2567 no firewall do computador.
-
-### Testar com lag de verdade
+### Testes
 
 ```bash
-SIMULATE_LATENCY=150 npm run dev
+npm test -w @fuzue/server                                  # partida completa: lobby → 10 rodadas → pódio
+npx tsx test/simular.ts corrida 10 1   # (dentro de server/) simula um minijogo só com bots
+npm run typecheck                                          # confere os tipos dos três pacotes
 ```
-
-Cada mensagem do servidor passa a atrasar 150 ms. O seu boneco deve continuar respondendo na hora; os outros continuam suaves, só um pouco atrasados.
-
-## O que testar
-
-- [ ] Criar sala → o link `/sala/XXXX` aparece e **Copiar link** funciona.
-- [ ] Abrir o link em outra janela → a tela diz "Te chamaram para a sala XXXX".
-- [ ] As duas janelas veem os dois bonecos com os nomes certos, e a lista mostra ping e quedas.
-- [ ] Andar numa janela → o boneco anda **na hora** nela e aparece andando na outra.
-- [ ] Espaço (ou o botão **Empurrar**) perto do outro → "POW!", ele voa e fica tonto.
-- [ ] Empurrar as bolas gigantes e ver as duas janelas concordando onde elas estão.
-- [ ] Cair da arena → "Tchibum!", +1 queda na lista e renascer caindo do céu.
-- [ ] **Sair** numa janela → a outra mostra "Fulano saiu da sala".
-- [ ] Digitar um código que não existe → mensagem "Não achei a sala…".
-- [ ] Tentar entrar como 5º jogador → "Essa sala já está cheia".
-- [ ] Repetir tudo com `SIMULATE_LATENCY=150`.
 
 ## Como o código está organizado
 
 ```
 fuzue/
-├── shared/            Código usado pelo servidor E pelo cliente
-│   └── src/index.ts   Constantes, personagens, mensagens e a regra de movimento (stepMove)
-├── server/            Node.js + Colyseus + Rapier
-│   └── src/
-│       ├── index.ts              Sobe o servidor HTTP/WebSocket
-│       ├── rooms/ArenaRoom.ts    A sala: entrada/saída, inputs, tick de 30 Hz, empurrões
-│       ├── rooms/ArenaState.ts   O que é sincronizado com os clientes
-│       ├── rooms/roomCodes.ts    Gera os códigos de 4 caracteres
-│       └── physics/ArenaWorld.ts Mundo de física (plataforma, pilares, bolas, jogadores)
-└── client/            TypeScript + Vite + Three.js
-    └── src/
-        ├── main.ts               Liga menu, cena e partida
-        ├── game/Stage.ts         Cena 3D, câmera, nomes e efeitos
-        ├── game/Session.ts       Rede: previsão, reconciliação e interpolação
-        ├── game/critter.ts       Os bonecos (montados com esferas e cones)
-        ├── game/Input.ts         Teclado, joystick e botão de empurrar
-        ├── net/connection.ts     Endereço do servidor, criar/entrar na sala
-        └── ui/                   Menu, HUD da sala e avisos
+├── shared/src/        Regras usadas pelo servidor E pelo navegador
+│   ├── physics.ts     Física dos bonecos (andar, pular, empurrar), determinística
+│   ├── board.ts       Casas e caminhos do tabuleiro
+│   ├── minigames.ts   Textos e "mundo" (chão, buracos, esteiras) de cada minijogo
+│   ├── constants.ts   Personagens, itens, prêmios, rodadas, versão do protocolo
+│   └── messages.ts    Mensagens trocadas entre navegador e servidor
+├── server/src/        Node.js + Colyseus
+│   ├── rooms/GameRoom.ts         Sala: lobby, fases da partida, bots, reconexão
+│   ├── board/BoardController.ts  Turnos, dados, itens, loja, eventos, coroa, duelos
+│   └── minigames/                Os 6 minijogos (cada um com seu bot)
+└── client/src/        TypeScript + Vite + Three.js
+    ├── views/         Telas 3D: menu, lobby, tabuleiro, minijogos, pódio
+    ├── engine/        Renderizador, bonecos, cenário, controles
+    ├── net/           Conexão, reconexão e tipos do estado
+    ├── ui/            Menu, conversa, avisos
+    └── audio/         Sons e música sintetizados (sem arquivos)
 ```
 
-### Como a rede funciona (resumo)
+**Rede, em resumo:** o servidor manda em tudo (dados, moedas, física dos minijogos), então ninguém trapaceia pelo navegador. No minijogo, o seu boneco anda na hora porque o navegador roda a mesma física (`shared/physics.ts`) e só se corrige quando chega a resposta do servidor. Os outros jogadores aparecem suavizados (interpolação). Se a internet cair, um bot joga por você e o link da sala te devolve à partida por até 3 minutos.
 
-1. **O servidor manda.** Cada cliente envia só o input ("quero ir para a direita", "empurrei") 30 vezes por segundo, numerado. O servidor aplica a regra de movimento (`stepMove`, em `shared/`), roda a física e manda o estado de volta, dizendo qual foi o último input que processou.
-2. **Previsão.** O cliente aplica a mesma `stepMove` no próprio boneco assim que você aperta a tecla, sem esperar o servidor.
-3. **Reconciliação.** Quando chega o estado oficial, o cliente parte dele e reaplica os inputs que o servidor ainda não viu. Se sobrar alguma diferença (por exemplo, alguém te empurrou), ela é corrigida aos poucos, sem teleporte.
-4. **Interpolação.** Os outros jogadores são desenhados ~100 ms no passado, deslizando entre dois estados recebidos.
+## Publicar e lançar atualizações
 
-Num teste com 150 ms de atraso simulado, a correção mediana da previsão foi 0 cm e 95% das correções ficaram abaixo de 2 cm. As correções maiores acontecem em empurrões, que só o servidor decide.
+O jogo tem duas partes:
 
-### Ajustar o jogo
+| Parte | Onde fica | Por quê |
+| --- | --- | --- |
+| Site (`client/`) | Vercel | arquivos estáticos, rápido no mundo todo |
+| Servidor (`server/`) | Render (plano grátis) | precisa manter conexões abertas, e a Vercel não faz isso |
 
-Os números que definem a sensação do jogo ficam em `shared/src/index.ts`:
+### Lançar uma atualização
 
-- `MOVE`: velocidade, aceleração, força e recarga do empurrão, tempo de tontura.
-- `ARENA`: tamanho da plataforma, gravidade, posição dos pilares e das bolas.
-- `CHARACTERS`: nome e cores dos personagens.
+1. Mude o código e teste com `npm run dev`.
+2. Rode `npm test -w @fuzue/server` e `npm run typecheck`.
+3. Se mudou **mensagens ou estado** entre navegador e servidor, suba `PROTOCOL_VERSION` em `shared/src/constants.ts`. Quem estiver com a página antiga aberta é avisado para recarregar.
+4. **Servidor:** faça push no GitHub. O Render publica sozinho, se estiver ligado ao repositório (veja `render.yaml`), ou peça "publica o servidor" ao Claude.
+5. **Site:** `npm run deploy:site -w @fuzue/client` (precisa do Vercel CLI logado) ou peça ao Claude. Quem estiver com o jogo aberto vê o aviso **"Saiu uma atualização!"**.
 
-Como servidor e cliente leem o mesmo arquivo, a previsão continua batendo depois da mudança.
+Partidas em andamento não caem com uma atualização do site. Uma atualização do servidor reinicia as salas abertas, então publique o servidor quando ninguém estiver jogando.
 
-## Comandos
+### Plano grátis do Render
 
-| Comando | O que faz |
-| --- | --- |
-| `npm run dev` | Sobe servidor + cliente com recarga automática |
-| `npm run typecheck` | Confere os tipos dos três pacotes |
-| `npm run build` | Gera o cliente de produção em `client/dist` |
-| `npm start` | Sobe só o servidor (modo produção) |
-
-## Publicar (prévia; o deploy completo é a Fase 4)
-
-- **Cliente → Vercel:** crie um projeto apontando para a pasta `client` e defina a variável `VITE_SERVER_URL` com o endereço do servidor (ex.: `wss://fuzue-server.onrender.com`). O `client/vercel.json` já faz os links `/sala/XXXX` funcionarem.
-- **Servidor → Render, Railway ou Fly.io:** precisa de um host que mantenha conexões WebSocket abertas, e a Vercel não faz isso. Comando de início: `npm install && npm start` na raiz `fuzue/`. A porta vem da variável `PORT`.
-
-## Problemas comuns
-
-- **"Não consegui falar com o servidor do jogo"**: o servidor não está rodando ou a porta 2567 está bloqueada. Veja o terminal do `npm run dev`.
-- **Aviso `using deprecated parameters for the initialization function`** no terminal do servidor: vem de dentro da biblioteca de física e pode ser ignorado.
-- **O boneco da outra aba parou**: ela está escondida e o navegador pausou. Use duas janelas lado a lado.
-
-## Próximas fases
-
-- **Fase 2:** lobby completo (pronto/não pronto, anfitrião escolhe rodadas e tabuleiro) e o tabuleiro "Ilha Confeito" sincronizado: turnos, dado, moedas, coroas e loja.
-- **Fase 3:** 6 minijogos online, bots (preenchem vagas e substituem quem cair) e reconexão pelo mesmo link.
-- **Fase 4:** polimento (sons, partículas, customização, celular) e deploy.
+O servidor gratuito "dorme" depois de 15 minutos sem ninguém jogando. A primeira pessoa do dia vê "Acordando o servidor…" por até um minuto; depois disso, tudo normal.
