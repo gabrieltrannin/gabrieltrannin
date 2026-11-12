@@ -1,8 +1,10 @@
 # Pixel Duel
 
-Protótipo de jogo de cartas no navegador, em pixel art, inspirado nos jogos de duelo de cartas da era PlayStation 1 e na dinâmica do Pokémon Showdown: você monta seu deck, escolhe um formato e desafia a CPU ou um amigo por link.
+Protótipo de jogo de cartas no navegador, em 3D low-poly, inspirado nos jogos de duelo de cartas da era PlayStation 1 e na dinâmica do Pokémon Showdown: você monta seu deck, escolhe um formato e desafia a CPU ou um amigo por link.
 
-Todas as cartas, nomes, artes e personagens são originais. A arte de cada carta é gerada por código a partir de uma silhueta por tipo de monstro, então não há imagens externas.
+Todas as cartas, nomes, modelos e personagens são originais. Os monstros são modelos 3D gerados por código (um corpo por tipo, com variações por carta), e a arte das cartas é uma foto desses modelos tirada na hora, então não há imagens externas.
+
+A mesa de duelo é uma cena 3D ([Three.js](https://threejs.org/) r128): as cartas ficam sobre a mesa, os monstros com a face para cima aparecem em pé sobre a carta, e ataques, destruições e ativações são animados. O botão **PS1** no topo reduz a resolução da cena para um visual de console antigo. Sem WebGL, o jogo volta para a mesa 2D em pixel art.
 
 ## Como jogar
 
@@ -59,7 +61,9 @@ pixel-duel/
   js/cards.js         banco de cartas, gerações, formatos, decks iniciais, validação
   js/engine.js        motor de regras (estado JSON puro, determinístico)
   js/ai.js            oponente CPU
-  js/sprites.js       gerador de pixel art das cartas e retratos
+  js/art3d.js         modelos 3D dos monstros, ícones de magias/armadilhas, retratos e arte das cartas
+  js/scene3d.js       mesa de duelo 3D (cartas, monstros, câmera, animações, clique)
+  js/sprites.js       pixel art (reserva para navegadores sem WebGL)
   js/audio.js         efeitos sonoros e música chiptune (WebAudio)
   js/net.js           partidas: CPU, anfitrião e convidado (PeerJS / BroadcastChannel)
   js/app.js           lobby, armazenamento, menus e desafios

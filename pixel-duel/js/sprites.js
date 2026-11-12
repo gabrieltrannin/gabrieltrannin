@@ -511,5 +511,5 @@
     return cache.get(key);
   }
 
-  PD.Sprites = { cardArt, portraitArt, MASKS, GLYPHS };
+  PD.Sprites = { cardArt, portraitArt, glyphFor, MASKS, GLYPHS };
 })();

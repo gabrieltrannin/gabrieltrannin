@@ -30,13 +30,17 @@
       B.closed = true;
       if (B.view.winner === null) {
         U().modal({ title: 'Duelo interrompido', body: msg, dismissable: false,
-          actions: [{ label: 'Voltar ao lobby', cls: 'gold', onClick: (c) => { c(); B = null; PD.App.show('lobby'); } }] });
+          actions: [{ label: 'Voltar ao lobby', cls: 'gold', onClick: (c) => { c(); killScene(); B = null; PD.App.show('lobby'); } }] });
       } else U().toast(msg);
     });
     m.on('rematchAsked', () => { if (B && B.m === m) U().toast('O oponente pediu revanche! Use o botão Revanche.'); });
   }
 
+  function killScene() { if (B && B.scene) { B.scene.dispose(); B.scene = null; B.stageEl = null; } }
+  const use3d = () => !!(PD.Scene3D && PD.Scene3D.supported());
+
   function begin(m, view) {
+    killScene();
     U().closeMenu();
     document.querySelectorAll('.backdrop').forEach((b) => b.remove());
     B = {
@@ -78,6 +82,7 @@
     const m = B.m;
     if (active()) m.act({ type: 'surrender' });
     m.leave();
+    killScene();
     B = null;
   }
 
@@ -209,6 +214,7 @@
   async function playEvents(events) {
     for (const e of events) {
       if (!B) return;
+      const S = B.scene;
       switch (e.t) {
         case 'turn':
           PD.Audio.play('turn');
@@ -216,15 +222,23 @@
           break;
         case 'activate': {
           const c = PD.card(e.id);
-          await showActivation(e.id, c.kind === 'trap' ? 'ARMADILHA!' : 'MAGIA!', c.kind === 'trap');
+          if (S) { PD.Audio.play(c.kind === 'trap' ? 'trap' : 'activate'); await S.animActivate(e.id, c.kind); }
+          else await showActivation(e.id, c.kind === 'trap' ? 'ARMADILHA!' : 'MAGIA!', c.kind === 'trap');
           break;
         }
-        case 'fx': await showActivation(e.id, 'EFEITO!', false); break;
-        case 'attack': await animAttack(e); break;
-        case 'flip': revealInDom(e.uid, e.id); PD.Audio.play('set'); await sleep(250); break;
-        case 'destroy': await animDestroy(e.uid); break;
-        case 'tribute': PD.Audio.play('destroy'); await Promise.all(e.uids.map((u) => animDestroy(u))); break;
-        case 'damage': floatNum(e.p, e.n, false); tickLP(e.p, e.lp); await sleep(350); break;
+        case 'fx':
+          if (S) { PD.Audio.play('activate'); await S.animActivate(e.id, 'fx'); }
+          else await showActivation(e.id, 'EFEITO!', false);
+          break;
+        case 'attack':
+          if (S) { PD.Audio.play('attack'); setTimeout(() => PD.Audio.play('hit'), 380); await S.animAttack(e.uid, e.target, e.p, B.me); }
+          else await animAttack(e);
+          break;
+        case 'flip': PD.Audio.play('set'); if (S) await S.animReveal(e.uid, e.id, B.me); else { revealInDom(e.uid, e.id); await sleep(250); } break;
+        case 'destroy': if (S) { PD.Audio.play('destroy'); await S.animDestroy(e.uid); } else await animDestroy(e.uid); break;
+        case 'tribute': PD.Audio.play('destroy'); await Promise.all(e.uids.map((u) => (S ? S.animDestroy(u) : animDestroy(u)))); break;
+        case 'buff': if (S) await S.animBuff(e.uid, e.atk >= 0); break;
+        case 'damage': floatNum(e.p, e.n, false); tickLP(e.p, e.lp); if (S && e.n >= 1000) S.shake(0.32, 380); await sleep(350); break;
         case 'heal': PD.Audio.play('heal'); floatNum(e.p, e.n, true); tickLP(e.p, e.lp); await sleep(250); break;
         case 'summon': if (e.how !== 'flip') PD.Audio.play('summon'); break;
         case 'set': PD.Audio.play('set'); break;
@@ -255,19 +269,101 @@
     const root = U().$('#screen');
     root.innerHTML = '';
     let tint = '';
-    if (v.field) {
+    const three = use3d();
+    if (v.field && !three) {
       const fc = PD.card(v.field.inst.id);
       if (fc && fc.field) tint = ' field-' + (fc.field.attr || FIELD_TINT[fc.field.race] || 'luz');
     }
     const table = h('div', { class: 'table' + tint },
-      pbar(op), hand(op), board(), pbar(me), hand(me), promptBar());
+      pbar(op), hand(op), three ? stage() : board(), three ? midline() : null, pbar(me), hand(me), promptBar());
     const side = h('aside', { class: 'side' },
       h('section', { class: 'win detail', id: 'detail' }),
       logPanel());
-    root.append(h('div', { class: 'duel-wrap' }, table, side));
+    root.append(h('div', { class: 'duel-wrap' + (three ? ' gfx3d' : '') }, table, side));
     setDetail(B.detail);
     fitHands();
     renderLog();
+    if (three && B.scene) {
+      B.scene.resize();
+      B.scene.sync(v, me);
+      B.scene.setHighlights(highlights());
+    }
+  }
+
+  /* ---------- palco 3D ---------- */
+  function stage() {
+    if (!B.stageEl) {
+      B.stageEl = U().h('div', { class: 'stage' });
+      B.scene = PD.Scene3D.create(B.stageEl, { onPick: onScenePick, onHover: onSceneHover });
+    }
+    return B.stageEl;
+  }
+
+  function highlights() {
+    const v = B.view;
+    const md = B.mode;
+    const out = { targets: [], chosen: [], canAct: [], used: [] };
+    if (md) {
+      if (md.kind === 'target' || md.kind === 'attack') out.targets = md.targets.slice();
+      if (md.kind === 'tribute') {
+        out.chosen = md.chosen.slice();
+        out.targets = v.players[B.me].monsters.filter(Boolean).map((m) => m.uid).filter((u) => !md.chosen.includes(u));
+      }
+      return out;
+    }
+    ['monsters', 'spells'].forEach((zone) => v.players[B.me][zone].forEach((inst) => {
+      if (!inst) return;
+      if (fieldHasAction(inst, zone)) out.canAct.push(inst.uid);
+      if (zone === 'monsters' && v.phase === 'battle' && v.current === B.me && inst.faceUp && inst.pos === 'atk' && !E().canAttackWith(v, B.me, inst)) out.used.push(inst.uid);
+    }));
+    return out;
+  }
+
+  function findLoc(uid) {
+    const v = B.view;
+    for (let p = 0; p < 2; p++) for (const zone of ['monsters', 'spells']) {
+      const inst = v.players[p][zone].find((x) => x && x.uid === uid);
+      if (inst) return { p, zone, inst };
+    }
+    if (v.field && v.field.inst.uid === uid) return { p: v.field.owner, zone: 'field', inst: v.field.inst };
+    return null;
+  }
+
+  function anchorAt(x, y) {
+    let a = document.getElementById('pick-anchor');
+    if (!a) { a = U().h('div', { id: 'pick-anchor', style: { position: 'fixed', width: '1px', height: '1px', pointerEvents: 'none' } }); document.body.append(a); }
+    a.style.left = x + 'px';
+    a.style.top = y + 'px';
+    return a;
+  }
+
+  function onScenePick(pk, x, y) {
+    if (!B) return;
+    U().closeMenu();
+    if (!pk) return;
+    if (pk.pile) {
+      if (pk.pile === 'grave') showGrave(pk.p);
+      else U().toast(`${B.view.players[pk.p].deckCount} carta(s) no deck.`);
+      return;
+    }
+    const loc = findLoc(pk.uid);
+    if (!loc) return;
+    const anchor = anchorAt(x, y);
+    if (loc.zone === 'field') { infoMenu(loc.inst, anchor); return; }
+    onZoneClick(loc.p, loc.zone, loc.inst, anchor);
+  }
+
+  function onSceneHover(pk) {
+    if (!B || !pk) return;
+    if (pk.pile === 'grave') {
+      const g = B.view.players[pk.p].grave;
+      if (g.length) setDetail({ id: g[g.length - 1].id });
+      return;
+    }
+    const loc = pk.uid != null ? findLoc(pk.uid) : null;
+    if (!loc || !loc.inst.id || loc.inst.hidden) return;
+    const stats = loc.zone === 'monsters' && loc.inst.faceUp ? { atk: E().getAtk(B.view, loc.inst), def: E().getDef(B.view, loc.inst) } : null;
+    setDetail({ id: loc.inst.id, stats });
   }
 
   function pbar(p) {
@@ -731,7 +827,7 @@
       dismissable: false,
       actions: [
         { label: 'Ver mesa', cls: 'ghost', onClick: (c) => c() },
-        { label: 'Voltar ao lobby', onClick: (c) => { c(); m.leave(); B = null; PD.App.show('lobby'); } },
+        { label: 'Voltar ao lobby', onClick: (c) => { c(); m.leave(); killScene(); B = null; PD.App.show('lobby'); } },
         !B.closed ? { label: m.mode === 'guest' ? 'Pedir revanche' : 'Revanche', cls: 'gold', onClick: (c) => {
           if (m.mode === 'guest') { m.rematch(); U().toast('Pedido de revanche enviado.'); return; }
           c(); m.rematch();
@@ -743,7 +839,11 @@
   window.addEventListener('resize', () => { if (B && PD.App.screen === 'duel') fitHands(); });
   window.addEventListener('beforeunload', () => { if (B && B.m.mode !== 'cpu') B.m.leave(); });
 
-  function dispose() { if (B) { U().closeMenu(); B.m.leave(); B = null; } }
+  function dispose() { if (B) { U().closeMenu(); killScene(); B.m.leave(); B = null; } }
+  function setLowRes(on) { if (B && B.scene) B.scene.setLowRes(on); }
 
-  PD.Battle = { attach, active, confirmLeave, dispose, render: () => render() };
+  /** Gancho usado pelos testes automatizados para clicar em objetos da cena 3D. */
+  const debug = () => B && { view: B.view, me: B.me, mode: B.mode, pick: (uid) => onScenePick({ uid }, window.innerWidth / 2, window.innerHeight / 2) };
+
+  PD.Battle = { attach, active, confirmLeave, dispose, setLowRes, debug, render: () => render() };
 })();

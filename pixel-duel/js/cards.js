@@ -296,10 +296,10 @@
 
   /* ---------------- Oponentes da CPU ---------------- */
   PD.CPU_OPPONENTS = [
-    { id: 'bento', name: 'Bento, o Aprendiz', title: 'Gen I · fácil', deck: 0, seed: 'bento', hair: 30, cloth: 210, skin: 28 },
-    { id: 'nefra', name: 'Nefra das Ruínas', title: 'Gen II · médio', deck: 1, seed: 'nefra', hair: 280, cloth: 45, skin: 24 },
-    { id: 'volt', name: 'Engenheiro Volt', title: 'Gen III · médio', deck: 2, seed: 'volt', hair: 200, cloth: 25, skin: 30 },
-    { id: 'ignis', name: 'Rainha Ignis', title: 'Gen IV · difícil', deck: 3, seed: 'ignis', hair: 5, cloth: 350, skin: 22 },
+    { id: 'bento', name: 'Bento, o Aprendiz', title: 'Gen I · fácil', deck: 0, seed: 'bento', hair: 30, cloth: 210, skin: 28, accessory: 'cap', style: 'crop' },
+    { id: 'nefra', name: 'Nefra das Ruínas', title: 'Gen II · médio', deck: 1, seed: 'nefra', hair: 280, cloth: 45, skin: 24, accessory: 'headdress', style: 'long' },
+    { id: 'volt', name: 'Engenheiro Volt', title: 'Gen III · médio', deck: 2, seed: 'volt', hair: 200, cloth: 25, skin: 30, accessory: 'goggles', style: 'crop' },
+    { id: 'ignis', name: 'Rainha Ignis', title: 'Gen IV · difícil', deck: 3, seed: 'ignis', hair: 5, cloth: 350, skin: 22, accessory: 'crown', style: 'long' },
   ];
 
   /* ---------------- Validação de deck ---------------- */

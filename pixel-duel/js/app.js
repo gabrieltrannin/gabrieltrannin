@@ -150,7 +150,7 @@
   PD.UI = { h, $, sleep, cardEl, detailBlock, cardSubtitle, toast, modal, menu, closeMenu, copyText };
 
   /* ---------- configurações e decks ---------- */
-  const settings = Object.assign({ name: 'Duelista', sfx: true, music: false, crt: true }, Store.get('settings', {}));
+  const settings = Object.assign({ name: 'Duelista', sfx: true, music: false, crt: false, ps1: false }, Store.get('settings', {}));
   const saveSettings = () => Store.set('settings', settings);
 
   function newId() { return 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -245,7 +245,7 @@
         H('div', { class: 'hero' },
           H('div', { class: 'hero-cards' }, heroCards.map((id) => cardEl(id))),
           H('div', null,
-            H('h1', null, 'PIXEL DUEL', H('small', null, 'ARENA DE CARTAS')),
+            H('h1', null, 'PIXEL DUEL', H('small', null, PD.GFX3D ? 'ARENA 3D DE CARTAS' : 'ARENA DE CARTAS')),
             H('p', null, 'Monte seu deck com cartas de quatro gerações, escolha um formato e desafie a CPU ou um amigo pelo link.'))),
         H('section', { class: 'win' },
           H('h2', null, 'Seu duelista'),
@@ -378,6 +378,10 @@
       ['music', 'MÚSICA', (on) => PD.Audio.setMusic(on)],
       ['crt', 'CRT', (on) => document.body.classList.toggle('crt', on)],
     ];
+    if (PD.GFX3D) {
+      document.body.classList.add('gfx-3d');
+      toggles.push(['ps1', 'PS1', (on) => { document.body.classList.toggle('ps1', on); PD.Battle.setLowRes(on); }]);
+    }
     root.append(
       h('header', { class: 'topbar' },
         h('div', { class: 'logo', role: 'button', tabindex: '0', onclick: () => App.show('lobby') }, 'PIXEL', h('span', null, ' DUEL')),
