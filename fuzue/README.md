@@ -116,20 +116,31 @@ fuzue/
 
 ## Publicar e lançar atualizações
 
-O jogo tem duas partes:
-
-| Parte | Onde fica | Por quê |
+| Parte | Onde fica | Endereço |
 | --- | --- | --- |
-| Site (`client/`) | Vercel | arquivos estáticos, rápido no mundo todo |
-| Servidor (`server/`) | Render (plano grátis) | precisa manter conexões abertas, e a Vercel não faz isso |
+| Site (`client/`) | Vercel, projeto `fuzue` | https://fuzue-delta.vercel.app |
+| Servidor (`server/`) | Render, serviço `fuzue-servidor` (plano grátis) | https://fuzue-servidor.onrender.com |
+
+O servidor fica no Render porque precisa manter conexões abertas, e a Vercel não faz isso. O endereço do servidor que o site usa está em `client/.env.production`.
+
+### Primeira publicação do servidor
+
+1. Crie uma conta grátis em [render.com](https://render.com) (pode entrar com o GitHub).
+2. Abra o link **Deploy to Render** abaixo. Ele lê o `render.yaml` da raiz do repositório e cria o serviço `fuzue-servidor`:
+   https://render.com/deploy?repo=https://github.com/gabrieltrannin/gabrieltrannin/tree/ccr-7338054c-9tuvm0
+3. Espere o primeiro deploy (~3 minutos). Teste em https://fuzue-servidor.onrender.com/health: tem que aparecer `{"ok":true,...}`.
+
+Quando o código for para o branch `main`, troque o final do link por `/tree/main` (ou só o endereço do repositório).
 
 ### Lançar uma atualização
 
 1. Mude o código e teste com `npm run dev`.
 2. Rode `npm test -w @fuzue/server` e `npm run typecheck`.
-3. Se mudou **mensagens ou estado** entre navegador e servidor, suba `PROTOCOL_VERSION` em `shared/src/constants.ts`. Quem estiver com a página antiga aberta é avisado para recarregar.
-4. **Servidor:** faça push no GitHub. O Render publica sozinho, se estiver ligado ao repositório (veja `render.yaml`), ou peça "publica o servidor" ao Claude.
-5. **Site:** `npm run deploy:site -w @fuzue/client` (precisa do Vercel CLI logado) ou peça ao Claude. Quem estiver com o jogo aberto vê o aviso **"Saiu uma atualização!"**.
+3. Se mudou **mensagens ou estado** entre site e servidor, suba `PROTOCOL_VERSION` em `shared/src/constants.ts`. Quem estiver com a página antiga aberta é avisado para recarregar.
+4. **Servidor:** faça push no GitHub. Com o serviço criado pelo `render.yaml`, o Render publica sozinho (`autoDeploy`). Também dá para clicar em *Manual Deploy* no painel do Render.
+5. **Site:** `npm run deploy:site -w @fuzue/client`. Precisa do Vercel CLI logado (`npx vercel login`) ou de `VERCEL_TOKEN`. Quem estiver com o jogo aberto vê o aviso **"Saiu uma atualização!"**.
+
+Também dá para pedir ao Claude: "publica o site" / "publica o servidor".
 
 Partidas em andamento não caem com uma atualização do site. Uma atualização do servidor reinicia as salas abertas, então publique o servidor quando ninguém estiver jogando.
 
