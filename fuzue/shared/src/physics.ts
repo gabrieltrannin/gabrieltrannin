@@ -154,7 +154,7 @@ export function stepPlayer(b: Body, input: PlayerInput, world: WorldDef, dt: num
     if (c) { b.x += c.x * dt; b.z += c.z * dt; }
   }
 
-  if (world.pillars) resolvePillars(b, world.pillars);
+  if (world.pillars) resolvePillars(b, world.pillars, prevY);
   world.bounds?.(b);
 
   const g = world.ground(b.x, b.z, Math.max(prevY, b.y));
@@ -168,10 +168,13 @@ export function stepPlayer(b: Body, input: PlayerInput, world: WorldDef, dt: num
   return { dashed, jumped };
 }
 
-/** Empurra o boneco para fora dos pilares. */
-export function resolvePillars(b: Body, pillars: readonly Pillar[]): void {
+/**
+ * Empurra o boneco para fora dos pilares. `prevY` é a altura no tick anterior:
+ * quem vinha de cima está pousando no topo, não batendo na lateral.
+ */
+export function resolvePillars(b: Body, pillars: readonly Pillar[], prevY = b.y): void {
   for (const p of pillars) {
-    if (b.y > p.h - 0.05) continue; // passando por cima
+    if (Math.max(b.y, prevY) > p.h - 0.05) continue; // passando por cima ou pousando
     const dx = b.x - p.x;
     const dz = b.z - p.z;
     const d = Math.hypot(dx, dz);

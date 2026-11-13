@@ -9,7 +9,7 @@
  */
 export {};
 process.env.GAME_SPEED ??= '8';
-process.env.MINIGAME_ORDER ??= 'ringue,hexa,corrida,chuva,bomba,futebol';
+process.env.MINIGAME_ORDER ??= 'ringue,hexa,corrida,chuva,bomba,futebol,coroa,trono,potes,colheita,moinho,flechas,javali,cerco,bardo,tinta,lava,ladeira,machados,pastoreio,estandarte';
 
 const http = await import('node:http');
 const { Server } = await import('@colyseus/core');

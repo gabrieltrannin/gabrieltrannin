@@ -6,5 +6,6 @@ export * from './constants';
 export * from './util';
 export * from './physics';
 export * from './board';
+export * from './arenas';
 export * from './minigames';
 export * from './messages';

@@ -1,5 +1,5 @@
 import {
-  DT, FFA_REWARDS, IDLE_INPUT, MOVE, MSG,
+  DT, FFA_REWARDS, IDLE_INPUT, MINIGAMES, MOVE, MSG, TEAM_DRAW_REWARD, TEAM_WIN_REWARD,
   clampInput, newBody, separateBodies, stepPlayer,
   type Body, type FxMsg, type HitMsg, type InputMsg, type MgResultMsg, type MinigameId, type PlayerInput, type WorldDef,
 } from '@fuzue/shared';
@@ -57,6 +57,10 @@ export abstract class Minigame {
   protected outGroups: string[][] = [];
   private outThisTick: string[] = [];
   private entitySeq = 0;
+  /** Placar dos times (minijogos 2v2). */
+  protected teamScores = [0, 0];
+  private teamMap = new Map<string, number>();
+  private slotMap = new Map<string, number>();
 
   constructor(protected room: GameRoom) {}
 
@@ -258,6 +262,30 @@ export abstract class Minigame {
     this.mg.entities.delete(key);
   }
 
+  /* ---------- times (2v2) ---------- */
+
+  /** Times equilibrados pela colocação no tabuleiro: 1º+4º contra 2º+3º. */
+  protected teamOf(id: string): number {
+    if (!this.teamMap.size) {
+      const ranked = this.room.participants().sort((a, b) => b.crowns - a.crowns || b.coins - a.coins);
+      ranked.forEach((p, i) => this.teamMap.set(p.id, i === 0 || i === 3 ? 0 : 1));
+      const count = [0, 0];
+      ranked.forEach(p => { const t = this.teamMap.get(p.id)!; this.slotMap.set(p.id, count[t]++); });
+    }
+    return this.teamMap.get(id) ?? 0;
+  }
+
+  /** 0 ou 1: posição do jogador dentro do time. */
+  protected slotOf(id: string): number {
+    this.teamOf(id);
+    return this.slotMap.get(id) ?? 0;
+  }
+
+  protected addTeamPoint(team: number): void {
+    this.teamScores[team]++;
+    this.mg.teamScore[team] = this.teamScores[team];
+  }
+
   /* ---------- resultado ---------- */
 
   /** Sobreviventes empatados em 1º, depois quem saiu por último. */
@@ -280,7 +308,27 @@ export abstract class Minigame {
     return groups;
   }
 
+  /** Ranking de minijogo de time: vencedores juntos, depois perdedores. */
+  protected teamRanking(): string[][] {
+    const t0 = this.rts.filter(r => r.team === 0).map(r => r.id);
+    const t1 = this.rts.filter(r => r.team === 1).map(r => r.id);
+    const [a, b] = this.teamScores;
+    if (a === b) return [[...t0, ...t1]];
+    return a > b ? [t0, t1] : [t1, t0];
+  }
+
   result(): MgResultMsg {
+    if (MINIGAMES[this.id].mode === 'team') {
+      const [a, b] = this.teamScores;
+      const draw = a === b;
+      const winnerTeam = draw ? null : a > b ? 0 : 1;
+      const rewards: Record<string, number> = {};
+      for (const rt of this.rts) {
+        rewards[rt.id] = draw ? TEAM_DRAW_REWARD : rt.team === winnerTeam ? TEAM_WIN_REWARD : 0;
+        rt.score = this.teamScores[rt.team] ?? 0;
+      }
+      return { ranking: this.teamRanking(), rewards, teamScores: [...this.teamScores], winnerTeam };
+    }
     const ranking = this.ranking();
     const rewards: Record<string, number> = {};
     let pos = 0;
@@ -339,5 +387,53 @@ export abstract class Minigame {
 
   protected wantsPush(dt: number): boolean {
     return Math.random() < dt * this.botPushRate;
+  }
+
+  /** Soma um "empurrão para longe" de cada ponto perigoso dentro do raio. */
+  protected repel(rt: Runtime, points: Iterable<{ x: number; z: number }>, radius: number, weight = 3): { x: number; z: number } {
+    let x = 0;
+    let z = 0;
+    for (const p of points) {
+      const ox = rt.body.x - p.x;
+      const oz = rt.body.z - p.z;
+      const d = Math.hypot(ox, oz);
+      if (d >= radius) continue;
+      const w = (radius - d) * weight;
+      x += (ox / (d || 1)) * w;
+      z += (oz / (d || 1)) * w;
+    }
+    return { x, z };
+  }
+
+  /** Foge de alguém, escorregando pela parede de uma arena redonda em vez de travar nela. */
+  protected flee(rt: Runtime, from: { x: number; z: number }, arenaR: number, range = 7): { x: number; z: number } {
+    const b = rt.body;
+    const ox = b.x - from.x;
+    const oz = b.z - from.z;
+    const od = Math.hypot(ox, oz) || 1;
+    const w = Math.max(0, range - od);
+    let dx = (ox / od) * w - b.x * 0.15;
+    let dz = (oz / od) * w - b.z * 0.15;
+    const r = Math.hypot(b.x, b.z);
+    if (r > arenaR - 2) {
+      const tx = -b.z / r;
+      const tz = b.x / r;
+      const side = tx * ox + tz * oz >= 0 ? 1 : -1;
+      dx += tx * side * 4 - (b.x / r) * 2;
+      dz += tz * side * 4 - (b.z / r) * 2;
+    }
+    return { x: dx, z: dz };
+  }
+
+  /** Ponto aleatório dentro de um círculo. */
+  protected randomIn(radius: number): { x: number; z: number } {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random()) * radius;
+    return { x: Math.cos(a) * r, z: Math.sin(a) * r };
+  }
+
+  protected setEntity(key: string, fields: Partial<{ x: number; y: number; z: number; a: number; s: number }>): void {
+    const e = this.mg.entities.get(key);
+    if (e) Object.assign(e, fields);
   }
 }

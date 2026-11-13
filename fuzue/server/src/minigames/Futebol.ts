@@ -1,6 +1,6 @@
 import {
-  PLAYER_RADIUS, SOCCER, TEAM_DRAW_REWARD, TEAM_WIN_REWARD,
-  soccerWorld, type MgResultMsg, type PlayerInput, type WorldDef,
+  PLAYER_RADIUS, SOCCER,
+  soccerWorld, type PlayerInput, type WorldDef,
 } from '@fuzue/shared';
 import { Minigame, type Runtime, type Spawn } from './Minigame.js';
 
@@ -12,30 +12,16 @@ export class Futebol extends Minigame {
   readonly id = 'futebol' as const;
   private readonly w = soccerWorld();
   private ball = { x: 0, y: R, z: 0, vx: 0, vy: 0, vz: 0 };
-  private score = [0, 0];
   private freeze = 0;
   private ballKey = '';
-  private teams = new Map<string, number>();
-  private slots = new Map<string, number>();
 
   world(): WorldDef {
     return this.w;
   }
 
-  /** Times equilibrados pela colocação no tabuleiro: 1º+4º contra 2º+3º. */
-  private teamOf(id: string): number {
-    if (!this.teams.size) {
-      const ranked = this.room.participants().sort((a, b) => b.crowns - a.crowns || b.coins - a.coins);
-      ranked.forEach((p, i) => this.teams.set(p.id, i === 0 || i === 3 ? 0 : 1));
-      const count = [0, 0];
-      ranked.forEach(p => { const t = this.teams.get(p.id)!; this.slots.set(p.id, count[t]++); });
-    }
-    return this.teams.get(id) ?? 0;
-  }
-
   private kickoffSpot(id: string): Spawn {
     const team = this.teamOf(id);
-    const slot = this.slots.get(id) ?? 0;
+    const slot = this.slotOf(id);
     const x = team === 0 ? -5.5 : 5.5;
     const z = slot === 0 ? 2.6 : -2.6;
     return { x, z, team, face: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
@@ -117,8 +103,7 @@ export class Futebol extends Minigame {
     // gol?
     const scored = b.x < -(SOCCER.halfX + 0.25) ? 1 : b.x > SOCCER.halfX + 0.25 ? 0 : -1;
     if (scored >= 0 && Math.abs(b.z) < SOCCER.goalHalf) {
-      this.score[scored]++;
-      this.mg.teamScore[scored] = this.score[scored];
+      this.addTeamPoint(scored);
       this.fx({ kind: 'goal', x: b.x, y: b.y, z: b.z, team: scored });
       this.freeze = 2.2;
       b.vx = 0; b.vz = 0;
@@ -131,22 +116,7 @@ export class Futebol extends Minigame {
   }
 
   ranking(): string[][] {
-    const t0 = this.rts.filter(r => r.team === 0).map(r => r.id);
-    const t1 = this.rts.filter(r => r.team === 1).map(r => r.id);
-    if (this.score[0] === this.score[1]) return [[...t0, ...t1]];
-    return this.score[0] > this.score[1] ? [t0, t1] : [t1, t0];
-  }
-
-  result(): MgResultMsg {
-    const ranking = this.ranking();
-    const rewards: Record<string, number> = {};
-    const draw = this.score[0] === this.score[1];
-    const winnerTeam = draw ? null : this.score[0] > this.score[1] ? 0 : 1;
-    for (const rt of this.rts) {
-      rewards[rt.id] = draw ? TEAM_DRAW_REWARD : rt.team === winnerTeam ? TEAM_WIN_REWARD : 0;
-      rt.score = this.score[rt.team] ?? 0;
-    }
-    return { ranking, rewards, teamScores: [...this.score], winnerTeam };
+    return this.teamRanking();
   }
 
   botInput(rt: Runtime, dt: number): PlayerInput {

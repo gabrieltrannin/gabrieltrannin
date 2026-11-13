@@ -75,7 +75,18 @@ export interface UseItemMsg { index: number }
 export interface ShopMsg { item: ItemId | null }
 
 export interface HitMsg { attacker: string; target: string; x: number; y: number; z: number }
-export interface FxMsg { kind: 'explode' | 'goal' | 'finish' | 'fall' | 'coin' | 'pass' | 'out'; x: number; y: number; z: number; pid?: string; team?: number }
+export type FxKind =
+  | 'explode' | 'goal' | 'finish' | 'fall' | 'coin' | 'pass' | 'out'
+  // minijogos novos
+  | 'grab' | 'drop' | 'score' | 'break' | 'hurt' | 'smash' | 'splash' | 'paint';
+export interface FxMsg {
+  kind: FxKind;
+  x: number; y: number; z: number;
+  pid?: string;
+  team?: number;
+  /** Texto curto que sobe da posição (ex.: "+3"). */
+  text?: string;
+}
 
 export interface MgResultMsg {
   /** Grupos por colocação (empates no mesmo grupo). */

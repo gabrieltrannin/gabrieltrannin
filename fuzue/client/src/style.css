@@ -510,3 +510,7 @@ body[data-scene="lobby"] .chat { left: auto; right: max(14px, var(--safe-r)); al
 .icon-btn { background: linear-gradient(180deg, var(--panel), var(--panel-2)); }
 .banner { color: var(--sun); }
 .char[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--cream); }
+
+/* minijogos novos */
+.banner.bard { color: var(--bard, var(--sun)); font-size: min(13vw, 96px); }
+.pop.big { font-size: 40px; }

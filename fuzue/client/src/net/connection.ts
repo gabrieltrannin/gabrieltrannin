@@ -1,5 +1,5 @@
 import { Client, type Room } from 'colyseus.js';
-import { PROTOCOL_VERSION, ROOM_NAME, type JoinOptions } from '@fuzue/shared';
+import { MIN_PROTOCOL, PROTOCOL_VERSION, ROOM_NAME, type JoinOptions } from '@fuzue/shared';
 
 /**
  * Endereço do servidor de jogo.
@@ -46,16 +46,25 @@ export async function wakeServer(onSlow: (seconds: number) => void, maxSeconds =
   return false;
 }
 
-function options(name: string, character: number): JoinOptions {
-  return { name, character, protocol: PROTOCOL_VERSION };
+/**
+ * Entra com a versão atual; se o servidor ainda for o da versão anterior,
+ * entra com a antiga (aí só aparecem os minijogos clássicos).
+ */
+async function withProtocol(name: string, character: number, go: (o: JoinOptions) => Promise<Room>): Promise<Room> {
+  try {
+    return await go({ name, character, protocol: PROTOCOL_VERSION });
+  } catch (err) {
+    if (!isVersionError(err) || MIN_PROTOCOL >= PROTOCOL_VERSION) throw err;
+    return go({ name, character, protocol: MIN_PROTOCOL });
+  }
 }
 
 export function createRoom(name: string, character: number): Promise<Room> {
-  return getClient().create(ROOM_NAME, options(name, character));
+  return withProtocol(name, character, o => getClient().create(ROOM_NAME, o));
 }
 
 export function joinRoom(code: string, name: string, character: number): Promise<Room> {
-  return getClient().joinById(code, options(name, character));
+  return withProtocol(name, character, o => getClient().joinById(code, o));
 }
 
 export function reconnect(token: string): Promise<Room> {

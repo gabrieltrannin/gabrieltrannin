@@ -152,7 +152,7 @@ export function liquid(kind: 'water' | 'lava' | 'stream'): THREE.MeshStandardMat
   if (kind === 'lava') {
     return lowPoly(new THREE.MeshStandardMaterial({
       color: '#2a0d05', emissive: '#d9420e', emissiveIntensity: 0.6, roughness: 0.6, flatShading: true,
-    }), { facet: 0.25, pulse: 1.1, wave: { amp: 0.35, speed: 0.5, scale: 1 } });
+    }), { facet: 0.16, pulse: 0.9, wave: { amp: 0.35, speed: 0.5, scale: 1 } });
   }
   if (kind === 'stream') {
     return lowPoly(new THREE.MeshStandardMaterial({

@@ -1,12 +1,23 @@
+import {
+  axeWorld, BARDO, BARDO_GONE, CERCO, COROA, FLECHAS, gridWorld, harvestWorld, islandWorld, JAVALI,
+  lavaWorld, millWorld, POTES, slopeWorld, TINTA, TRONO, yardWorld,
+} from './arenas';
 import { clampToCircle, PLAYER_RADIUS, type Body, type Pillar, type WorldDef } from './physics';
 
 /**
- * Os 6 minijogos: textos, regras de cenário e "mundo" para a física.
+ * Os minijogos: textos, regras de cenário e "mundo" para a física.
  * O mundo vem daqui para que o servidor e a previsão do cliente vejam
  * exatamente o mesmo chão, os mesmos buracos e as mesmas esteiras.
+ * Os mundos dos minijogos novos ficam em arenas.ts.
  */
 
-export type MinigameId = 'ringue' | 'hexa' | 'corrida' | 'chuva' | 'bomba' | 'futebol';
+export type MinigameId =
+  | 'ringue' | 'hexa' | 'corrida' | 'chuva' | 'bomba' | 'futebol'
+  | 'coroa' | 'trono' | 'potes' | 'colheita' | 'moinho' | 'flechas' | 'javali' | 'cerco'
+  | 'bardo' | 'tinta' | 'lava' | 'ladeira' | 'machados' | 'pastoreio' | 'estandarte';
+
+/** O que aparece no placar ao lado de cada nome. */
+export type MinigameHud = 'alive' | 'score' | 'lives' | 'race' | 'holder' | 'team';
 
 export interface MinigameDef {
   id: MinigameId;
@@ -16,19 +27,49 @@ export interface MinigameDef {
   mode: 'ffa' | 'team';
   /** Duração máxima (s). */
   duration: number;
-  /** Rótulo do placar, quando o minijogo conta pontos. */
-  scoreLabel?: string;
-  /** Câmera: arena inteira, seguindo o jogador ou o campo. */
-  camera: 'arena' | 'follow' | 'field';
+  /** Câmera: arena inteira, seguindo o jogador, o campo, ou subindo junto (escalada). */
+  camera: 'arena' | 'follow' | 'field' | 'climb';
+  hud: MinigameHud;
+  /** Unidade do placar (hud 'score'). */
+  unit?: string;
+  /** Corridas: z da chegada (para mostrar quantos metros faltam). */
+  finishZ?: number;
+  /** O que flutua sobre a cabeça de quem está com o objeto (mg.holder). */
+  holderProp?: 'bomb' | 'crown';
+  /** Times: dica mostrada nas instruções. */
+  teamHint?: string;
+  /** Existe desde a primeira versão (clientes antigos sabem jogar). */
+  classic?: boolean;
 }
 
 export const MINIGAMES: Record<MinigameId, MinigameDef> = {
-  ringue: { id: 'ringue', name: 'Lago Congelado', rule: 'O gelo está rachando e o lago vai encolhendo. Empurre todo mundo para a água gelada e seja o último de pé!', mode: 'ffa', duration: 50, camera: 'arena' },
-  hexa: { id: 'hexa', name: 'Torre em Ruínas', rule: 'Cada pedra desaba logo depois que alguém pisa nela. Não pare de andar e seja o último a cair na lava!', mode: 'ffa', duration: 70, camera: 'arena' },
-  corrida: { id: 'corrida', name: 'Ponte do Castelo', rule: 'Chegue primeiro ao portão do castelo: pule os buracos da ponte, vença a correnteza e desvie das toras giratórias!', mode: 'ffa', duration: 75, camera: 'follow' },
-  chuva: { id: 'chuva', name: 'Tesouro do Dragão', rule: 'O dragão espalhou o tesouro! Pegue o máximo de moedas e fuja das bolas de fogo!', mode: 'ffa', duration: 40, scoreLabel: 'moedas', camera: 'arena' },
-  bomba: { id: 'bomba', name: 'Barril de Pólvora', rule: 'Está com o barril aceso? Encoste em alguém para passar antes que ele exploda!', mode: 'ffa', duration: 90, camera: 'arena' },
-  futebol: { id: 'futebol', name: 'Torneio da Bola', rule: 'Dois contra dois: leve a bola de couro até o gol da casa rival!', mode: 'team', duration: 60, scoreLabel: 'gols', camera: 'field' },
+  ringue: { id: 'ringue', name: 'Lago Congelado', rule: 'O gelo está rachando e o lago vai encolhendo. Empurre todo mundo para a água gelada e seja o último de pé!', mode: 'ffa', duration: 50, camera: 'arena', hud: 'alive', classic: true },
+  hexa: { id: 'hexa', name: 'Torre em Ruínas', rule: 'Cada pedra desaba logo depois que alguém pisa nela. Não pare de andar e seja o último a cair na lava!', mode: 'ffa', duration: 70, camera: 'arena', hud: 'alive', classic: true },
+  corrida: { id: 'corrida', name: 'Ponte do Castelo', rule: 'Chegue primeiro ao portão do castelo: pule os buracos da ponte, vença a correnteza e desvie das toras giratórias!', mode: 'ffa', duration: 75, camera: 'follow', hud: 'race', finishZ: -68, classic: true },
+  chuva: { id: 'chuva', name: 'Tesouro do Dragão', rule: 'O dragão espalhou o tesouro! Pegue o máximo de moedas e fuja das bolas de fogo!', mode: 'ffa', duration: 40, camera: 'arena', hud: 'score', unit: 'coin', classic: true },
+  bomba: { id: 'bomba', name: 'Barril de Pólvora', rule: 'Está com o barril aceso? Encoste em alguém para passar antes que ele exploda!', mode: 'ffa', duration: 90, camera: 'arena', hud: 'holder', holderProp: 'bomb', classic: true },
+  futebol: { id: 'futebol', name: 'Torneio da Bola', rule: 'Dois contra dois: leve a bola de couro até o gol da casa rival!', mode: 'team', duration: 60, camera: 'field', hud: 'team', teamHint: 'Ataque o gol do outro lado!', classic: true },
+  coroa: { id: 'coroa', name: 'Coroa Roubada', rule: 'Pegue a coroa e fuja! Quem está com ela ganha 1 ponto por segundo. Empurre quem está com a coroa para roubar.', mode: 'ffa', duration: 45, camera: 'arena', hud: 'score', unit: 's', holderProp: 'crown' },
+  trono: { id: 'trono', name: 'Trono Disputado', rule: 'Fique sozinho no círculo do trono para ganhar pontos. Com mais alguém dentro, ninguém pontua. E o trono muda de lugar!', mode: 'ffa', duration: 50, camera: 'arena', hud: 'score', unit: 's' },
+  potes: { id: 'potes', name: 'Quebra-Potes', rule: 'Empurre os potes para quebrar: barro vale 1, ouro vale 3. Cuidado com os potes de pólvora!', mode: 'ffa', duration: 40, camera: 'arena', hud: 'score', unit: 'pts' },
+  colheita: { id: 'colheita', name: 'Colheita', rule: 'Pegue uma abóbora e leve até a carroça no meio. Levou um empurrão? A abóbora cai!', mode: 'ffa', duration: 50, camera: 'arena', hud: 'score', unit: '🎃' },
+  moinho: { id: 'moinho', name: 'Moinho Maluco', rule: 'Pule a pá do moinho, que gira cada vez mais rápido. Quem for varrido cai no rio!', mode: 'ffa', duration: 60, camera: 'arena', hud: 'alive' },
+  flechas: { id: 'flechas', name: 'Chuva de Flechas', rule: 'Os arqueiros do castelo estão treinando! Fuja das sombras no chão. Cada um tem 3 vidas.', mode: 'ffa', duration: 60, camera: 'arena', hud: 'lives' },
+  javali: { id: 'javali', name: 'Fúria do Javali', rule: 'O javali escolhe um alvo e dispara! Saia da frente na hora certa e não caia da ilha.', mode: 'ffa', duration: 60, camera: 'arena', hud: 'alive' },
+  cerco: { id: 'cerco', name: 'Cerco ao Castelo', rule: 'As catapultas estão destruindo o pátio! Fuja das sombras das pedras e seja o último em pé.', mode: 'ffa', duration: 70, camera: 'arena', hud: 'alive' },
+  bardo: { id: 'bardo', name: 'O Bardo Manda', rule: 'O bardo canta uma cor: corra para um piso dessa cor antes que os outros sumam!', mode: 'ffa', duration: 70, camera: 'arena', hud: 'alive' },
+  tinta: { id: 'tinta', name: 'Tinta do Reino', rule: 'Pinte o chão com a sua cor andando por cima. Pegue os baldes para pintar mais. Ganha quem tiver mais pisos no fim!', mode: 'ffa', duration: 45, camera: 'arena', hud: 'score', unit: 'pisos' },
+  lava: { id: 'lava', name: 'Maré de Lava', rule: 'A lava está subindo! Escale as colunas de pedra até o topo e não deixe ninguém te derrubar.', mode: 'ffa', duration: 60, camera: 'climb', hud: 'alive' },
+  ladeira: { id: 'ladeira', name: 'Ladeira dos Barris', rule: 'Suba a ladeira até o topo! Pule ou desvie dos barris que vêm rolando.', mode: 'ffa', duration: 70, camera: 'follow', hud: 'race', finishZ: -58 },
+  machados: { id: 'machados', name: 'Corredor dos Machados', rule: 'Atravesse a passarela sem cair: espere a hora certa de passar pelos machados que balançam!', mode: 'ffa', duration: 75, camera: 'follow', hud: 'race', finishZ: -66 },
+  pastoreio: { id: 'pastoreio', name: 'Pastoreio', rule: 'Dois contra dois: assuste as ovelhas até o curral do seu time. Cada ovelha no curral vale 1 ponto!', mode: 'team', duration: 60, camera: 'field', hud: 'team', teamHint: 'O curral do seu time fica do seu lado do campo.' },
+  estandarte: { id: 'estandarte', name: 'Captura do Estandarte', rule: 'Dois contra dois: pegue o estandarte do outro time e traga até a sua base. Empurre quem estiver levando o seu!', mode: 'team', duration: 70, camera: 'field', hud: 'team', teamHint: 'Sua base fica do seu lado do campo.' },
+};
+
+/** Times dos minijogos 2v2. */
+export const TEAMS = {
+  colors: ['#a3242f', '#2f5a8f'],
+  names: ['Casa do Leão', 'Casa do Lobo'],
 };
 
 export const MINIGAME_IDS = Object.keys(MINIGAMES) as MinigameId[];
@@ -200,8 +241,8 @@ export const SOCCER = {
   goalDepth: 2.2,
   ballR: 1.1,
   /** Time 0 defende o gol da esquerda (x negativo). */
-  teamColors: ['#a3242f', '#2f5a8f'],
-  teamNames: ['Casa do Leão', 'Casa do Lobo'],
+  teamColors: TEAMS.colors,
+  teamNames: TEAMS.names,
 };
 
 export function soccerWorld(): WorldDef {
@@ -234,5 +275,20 @@ export function worldFor(id: MinigameId, v: WorldView): WorldDef {
     case 'chuva': return flatWorld(CHUVA.radius);
     case 'bomba': return flatWorld(BOMBA.radius);
     case 'futebol': return soccerWorld();
+    case 'coroa': return yardWorld(COROA.radius);
+    case 'trono': return yardWorld(TRONO.radius);
+    case 'potes': return yardWorld(POTES.radius);
+    case 'colheita': return harvestWorld();
+    case 'moinho': return millWorld();
+    case 'flechas': return yardWorld(FLECHAS.radius);
+    case 'javali': return islandWorld(JAVALI.radius);
+    case 'cerco': return gridWorld(CERCO, v.tiles, t => t < 2);
+    case 'bardo': return gridWorld(BARDO, v.tiles, t => t < BARDO_GONE);
+    case 'tinta': return gridWorld(TINTA, v.tiles, () => true);
+    case 'lava': return lavaWorld();
+    case 'ladeira': return slopeWorld();
+    case 'machados': return axeWorld();
+    case 'pastoreio': return soccerWorld();
+    case 'estandarte': return soccerWorld();
   }
 }

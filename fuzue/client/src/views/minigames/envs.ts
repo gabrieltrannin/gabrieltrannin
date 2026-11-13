@@ -7,11 +7,13 @@ import { canvasTexture, chunk, liquid, metal, paint } from '../../engine/materia
 import {
   addHorizon, addMotes, addSea, bannerPole, flicker, rock, scatterGrass, setupWorld, SKIES, stoneFloor, torch, type Sky,
 } from '../../engine/scenery';
-import type { NetMinigame } from '../../net/types';
+import type { NetMinigame, NetState } from '../../net/types';
+import { ARENAS } from './arenas';
+import { GROUT, roundYard } from './props';
 
 /** Cenário de um minijogo: monta a arena e reage ao estado (raio, pisos). */
 export interface Env {
-  update(dt: number, t: number, mg: NetMinigame | null): void;
+  update(dt: number, t: number, mg: NetMinigame | null, s?: NetState | null): void;
   /** Raio aproximado da área de jogo (para a câmera). */
   size: number;
 }
@@ -23,25 +25,52 @@ const SKY: Record<MinigameId, Sky> = {
   chuva: SKIES.tarde,
   bomba: SKIES.brasa,
   futebol: SKIES.dia,
+  coroa: SKIES.tarde,
+  trono: SKIES.dia,
+  potes: SKIES.dia,
+  colheita: SKIES.tarde,
+  moinho: SKIES.dia,
+  flechas: SKIES.brasa,
+  javali: SKIES.dia,
+  cerco: SKIES.tarde,
+  bardo: SKIES.crepusculo,
+  tinta: SKIES.dia,
+  lava: SKIES.vulcao,
+  ladeira: SKIES.dia,
+  machados: SKIES.tarde,
+  pastoreio: SKIES.dia,
+  estandarte: SKIES.tarde,
 };
 
+/** Altura do mar em volta (a lava sobe sozinha na Maré de Lava). */
+const SEA: Partial<Record<MinigameId, { y: number; kind: 'water' | 'lava' } | null>> = {
+  hexa: { y: -22, kind: 'lava' },
+  lava: null,
+  cerco: { y: -7, kind: 'water' },
+  bardo: { y: -7, kind: 'water' },
+  machados: { y: -9, kind: 'water' },
+};
+
+const SHADOW_SIZE: Partial<Record<MinigameId, number>> = { corrida: 16, ladeira: 16, machados: 16 };
+
 export function buildEnv(id: MinigameId, scene: THREE.Scene): Env {
-  setupWorld(scene, SKY[id], id === 'corrida' ? 16 : 13);
-  const sea = addSea(scene, 13, id === 'hexa' ? -22 : -3, id === 'hexa' ? 'lava' : 'water');
+  setupWorld(scene, SKY[id], SHADOW_SIZE[id] ?? 13);
+  const seaDef = id in SEA ? SEA[id] : { y: -3, kind: 'water' as const };
+  const sea = seaDef ? addSea(scene, 13, seaDef.y, seaDef.kind) : () => {};
   const sky = addHorizon(scene, 36);
-  const env = ({ ringue, hexa, corrida, chuva, bomba, futebol } as const)[id](scene);
+  const builders = { ringue, hexa, corrida, chuva, bomba, futebol, ...ARENAS };
+  const env = builders[id](scene);
   return {
     size: env.size,
-    update: (dt, t, mg) => {
+    update: (dt, t, mg, s) => {
       sea(dt, t);
       sky(dt, t);
       flicker(scene, t);
-      env.update(dt, t, mg);
+      env.update(dt, t, mg, s);
     },
   };
 }
 
-const GROUT = '#4e4840';
 
 /* ---------------- Lago Congelado ---------------- */
 function ringue(scene: THREE.Scene): Env {
@@ -286,33 +315,6 @@ function corrida(scene: THREE.Scene): Env {
       for (const tex of currents) tex.offset.y -= dt * (RACE.conveyors[0].vz / 3);
     },
   };
-}
-
-/* ---------------- pátios redondos com ameias ---------------- */
-function roundYard(scene: THREE.Scene, radius: number, sideColor: string): void {
-  const side = paint(sideColor, { facet: 0.16 });
-  const yard = new THREE.Mesh(new THREE.CylinderGeometry(radius + 0.3, radius + 0.6, 3, 24), [side, paint(GROUT), side]);
-  yard.position.y = -1.5;
-  yard.userData.noCast = true;
-  scene.add(yard);
-  scene.add(stoneFloor({ radius: radius + 0.2 }, { seed: 9 }));
-  const merlon = paint('#9a9286', { facet: 0.14 });
-  const n = Math.round(radius * 4);
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2;
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55 + (i % 3) * 0.06, 0.45), merlon);
-    m.position.set(Math.cos(a) * (radius + 0.35), 0.27, Math.sin(a) * (radius + 0.35));
-    m.rotation.y = -a + Math.PI / 2;
-    scene.add(m);
-  }
-  for (const [x, c] of [[-1, '#8e2430'], [1, '#2f5a8f']] as const) {
-    const b = bannerPole(c, 3.4);
-    b.position.set(x * (radius + 1.2), 0, -radius * 0.6);
-    scene.add(b);
-    const t = torch();
-    t.position.set(x * (radius + 1.1), 0, radius * 0.3);
-    scene.add(t);
-  }
 }
 
 function chuva(scene: THREE.Scene): Env {

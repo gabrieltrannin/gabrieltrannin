@@ -8,7 +8,12 @@
  * mudar mensagens ou estado de um jeito incompatível: quem estiver com a
  * página antiga aberta é avisado para recarregar.
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
+/**
+ * Clientes a partir desta versão ainda entram (só jogam os minijogos
+ * clássicos, que eles conhecem).
+ */
+export const MIN_PROTOCOL = 2;
 
 /** Ticks de simulação por segundo. */
 export const TICK_RATE = 30;

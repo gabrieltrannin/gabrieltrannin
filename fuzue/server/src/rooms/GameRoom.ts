@@ -1,6 +1,6 @@
 import { Room, ServerError, type Client } from '@colyseus/core';
 import {
-  BOT_NAMES, CHARACTERS, CROWN_SPOTS, EMOTES, MAX_PLAYERS, MINIGAMES, MINIGAME_IDS, MSG, PROTOCOL_VERSION,
+  BOT_NAMES, CHARACTERS, CROWN_SPOTS, EMOTES, MAX_PLAYERS, MIN_PROTOCOL, MINIGAMES, MINIGAME_IDS, MSG, PROTOCOL_VERSION,
   QUICK_CHAT, ROUND_OPTIONS, START_COINS, START_TILE, TICK_RATE,
   pick, sanitizeName, shuffle,
   type BonusMsg, type ChatMsg, type InputMsg, type JoinOptions, type MinigameId, type Phase, type SettingsMsg,
@@ -38,6 +38,10 @@ export class GameRoom extends Room<GameState> {
   private game: Minigame | null = null;
   private lastMinigame: MinigameId | '' = '';
   private minigameCount = 0;
+  /** Minijogos ainda não jogados nesta partida (embaralhados). */
+  private bag: MinigameId[] = [];
+  /** Versão do protocolo de cada humano (clientes antigos só jogam os clássicos). */
+  private protocols = new Map<string, number>();
   private pending = new Map<string, Pending>();
   private sleepers = new Set<(e: Error) => void>();
   private lastChat = new Map<string, number>();
@@ -85,7 +89,8 @@ export class GameRoom extends Room<GameState> {
   }
 
   onAuth(_client: Client, options: Partial<JoinOptions>): boolean {
-    if (options?.protocol !== PROTOCOL_VERSION) throw new ServerError(4010, 'versao-antiga');
+    const v = Number(options?.protocol);
+    if (!(v >= MIN_PROTOCOL && v <= PROTOCOL_VERSION)) throw new ServerError(4010, 'versao-antiga');
     if (this.state.phase !== 'lobby') throw new ServerError(4011, 'partida-em-andamento');
     if (this.humans().length >= MAX_PLAYERS) throw new ServerError(4012, 'sala-cheia');
     return true;
@@ -98,6 +103,7 @@ export class GameRoom extends Room<GameState> {
     const ch = Math.floor(Number(options.character));
     p.character = ch >= 0 && ch < CHARACTERS.length ? ch : 0;
     p.seat = this.freeSeat();
+    this.protocols.set(p.id, Number(options.protocol) || MIN_PROTOCOL);
     this.state.players.set(p.id, p);
     this.stats.set(p.id, newStats());
     if (!this.state.hostId) this.state.hostId = p.id;
@@ -112,6 +118,7 @@ export class GameRoom extends Room<GameState> {
     if (this.state.phase === 'lobby') {
       this.state.players.delete(id);
       this.stats.delete(id);
+      this.protocols.delete(id);
       this.fixHost();
       console.log(`[${this.roomId}] ${p.name} saiu do lobby`);
       return;
@@ -347,6 +354,7 @@ export class GameRoom extends Room<GameState> {
     b.crownTile = pick(CROWN_SPOTS.filter(t => t > 6 && t < 20));
     this.lastMinigame = '';
     this.minigameCount = 0;
+    this.bag = [];
     void this.lock();
     void this.runGame();
   }
@@ -401,9 +409,7 @@ export class GameRoom extends Room<GameState> {
 
   private async minigamePhase(): Promise<void> {
     const players = this.participants();
-    let options = MINIGAME_IDS.filter(id => id !== this.lastMinigame);
-    if (players.length !== 4) options = options.filter(id => MINIGAMES[id].mode !== 'team');
-    const id = FORCED_MINIGAMES.length ? FORCED_MINIGAMES[this.minigameCount % FORCED_MINIGAMES.length] : pick(options);
+    const id = FORCED_MINIGAMES.length ? FORCED_MINIGAMES[this.minigameCount % FORCED_MINIGAMES.length] : this.nextMinigame(players.length);
     this.minigameCount++;
     this.lastMinigame = id;
 
@@ -444,6 +450,21 @@ export class GameRoom extends Room<GameState> {
     this.setPhase('board');
   }
 
+  /**
+   * Próximo minijogo: passa por todos antes de repetir. Os de time só com 4
+   * jogadores; se alguém está com o site antigo, só os clássicos.
+   */
+  private nextMinigame(count: number): MinigameId {
+    const allNew = this.participants().every(p => p.bot || (this.protocols.get(p.id) ?? PROTOCOL_VERSION) >= 3);
+    const ok = (id: MinigameId) => (count === 4 || MINIGAMES[id].mode !== 'team') && (allNew || MINIGAMES[id].classic === true);
+    if (!this.bag.some(id => ok(id) && id !== this.lastMinigame)) {
+      this.bag = shuffle(MINIGAME_IDS.filter(ok));
+    }
+    let i = this.bag.findIndex(id => ok(id) && id !== this.lastMinigame);
+    if (i < 0) i = this.bag.findIndex(ok);
+    return this.bag.splice(Math.max(0, i), 1)[0] ?? 'ringue';
+  }
+
   private async finalPhase(): Promise<void> {
     this.setPhase('final');
     this.state.board.step = 'idle';
@@ -482,6 +503,7 @@ export class GameRoom extends Room<GameState> {
       if (p.bot) {
         this.state.players.delete(p.id);
         this.stats.delete(p.id);
+        this.protocols.delete(p.id);
       } else {
         p.ready = false;
         p.place = 0;

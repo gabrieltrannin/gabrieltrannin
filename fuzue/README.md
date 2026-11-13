@@ -31,7 +31,9 @@ Cada rodada: todo mundo joga um turno no tabuleiro e depois vem um minijogo. Que
 - **Itens** (até 3 na bolsa): 🎲 dados viciados (dado duplo), 🤛 manopla (rouba 5 moedas de quem tem mais), 💣 armadilha de pólvora, 🛡️ escudo, 💰 bolsa do mercador (ímã de moedas), 📜 pergaminho de troca (troca de lugar).
 - **Final:** dois prêmios surpresa, cada um valendo +1 coroa (campeão dos torneios, andarilho do reino, alquimista ou azarado do reino).
 
-### Minijogos
+### Minijogos (21)
+
+Cada partida passa por todos os minijogos antes de repetir algum. Os de 2 contra 2 só aparecem com 4 jogadores (os times são equilibrados pela colocação: 1º+4º contra 2º+3º).
 
 | Minijogo | Objetivo |
 | --- | --- |
@@ -40,9 +42,24 @@ Cada rodada: todo mundo joga um turno no tabuleiro e depois vem um minijogo. Que
 | Ponte do Castelo | pule buracos, vença a correnteza e desvie das toras giratórias até o portão |
 | Tesouro do Dragão | pegue moedas que caem e fuja das bolas de fogo |
 | Barril de Pólvora | passe o barril aceso encostando nos outros antes de explodir |
-| Torneio da Bola | 2 contra 2, Casa do Leão contra Casa do Lobo (times equilibrados pela colocação) |
+| Torneio da Bola | 2 contra 2, Casa do Leão contra Casa do Lobo |
+| Coroa Roubada | quem segura a coroa ganha 1 ponto por segundo; empurrão faz derrubar |
+| Trono Disputado | fique sozinho no círculo do trono para pontuar; ele muda de lugar |
+| Quebra-Potes | quebre potes com empurrões: barro 1, ouro 3, pólvora explode |
+| Colheita | leve abóboras até a carroça; quem leva empurrão derruba a abóbora |
+| Moinho Maluco | pule a pá do moinho, que gira cada vez mais rápido |
+| Chuva de Flechas | fuja das sombras das flechas (muralhas e anéis de flechas); 3 vidas |
+| Fúria do Javali | saia da frente do javali quando ele disparar; não caia da ilha |
+| Cerco ao Castelo | as pedras das catapultas destroem o pátio piso por piso |
+| O Bardo Manda | corra para a cor cantada antes que os outros pisos sumam |
+| Tinta do Reino | pinte o chão com a sua cor; baldes pintam 3×3 |
+| Maré de Lava | escale as colunas antes que a lava suba |
+| Ladeira dos Barris | corrida morro acima desviando dos barris que rolam |
+| Corredor dos Machados | passarela estreita com machados de pêndulo e buracos |
+| Pastoreio | 2 contra 2: assuste as ovelhas até o curral do seu time |
+| Captura do Estandarte | 2 contra 2: traga o estandarte do outro time até a sua base |
 
-Prêmios: 1º +10, 2º +6, 3º +3 moedas. No Torneio da Bola, cada jogador do time vencedor ganha +8.
+Prêmios: 1º +10, 2º +6, 3º +3 moedas. Nos minijogos de time, cada jogador do time vencedor ganha +8 (empate: +3).
 
 ### Controles
 
@@ -78,7 +95,7 @@ Para jogar sozinho contra bots, crie a sala e toque em **Começar partida**. Os 
 | Variável | Para quê |
 | --- | --- |
 | `GAME_SPEED=3` | acelera todas as esperas (testes) |
-| `MINIGAME_ORDER=corrida,futebol` | força a ordem dos minijogos |
+| `MINIGAME_ORDER=corrida,futebol` | força a ordem dos minijogos (ids em `shared/src/minigames.ts`) |
 | `SIMULATE_LATENCY=150` | simula 150 ms de atraso de internet |
 | `PORT` | porta do servidor (padrão 2567) |
 
@@ -99,15 +116,17 @@ fuzue/
 ├── shared/src/        Regras usadas pelo servidor E pelo navegador
 │   ├── physics.ts     Física dos bonecos (andar, pular, empurrar), determinística
 │   ├── board.ts       Casas e caminhos do tabuleiro
-│   ├── minigames.ts   Textos e "mundo" (chão, buracos, esteiras) de cada minijogo
+│   ├── minigames.ts   Lista dos 21 minijogos (textos, placar, câmera) e o mundo dos clássicos
+│   ├── arenas.ts      Mundo dos minijogos novos (chão, colunas, grades, ladeira, machados)
 │   ├── constants.ts   Personagens, itens, prêmios, rodadas, versão do protocolo
 │   └── messages.ts    Mensagens trocadas entre navegador e servidor
 ├── server/src/        Node.js + Colyseus
 │   ├── rooms/GameRoom.ts         Sala: lobby, fases da partida, bots, reconexão
 │   ├── board/BoardController.ts  Turnos, dados, itens, loja, eventos, coroa, duelos
-│   └── minigames/                Os 6 minijogos (cada um com seu bot)
+│   └── minigames/                Os 21 minijogos (cada um com seu bot); Race.ts é a base das corridas
 └── client/src/        TypeScript + Vite + Three.js
     ├── views/         Telas 3D: menu, lobby, tabuleiro, minijogos, pódio
+    │   └── minigames/ Arenas (envs.ts, arenas.ts) e objetos de cada minijogo (entities.ts)
     ├── engine/        Renderizador, bonecos, cenário, controles
     ├── net/           Conexão, reconexão e tipos do estado
     ├── ui/            Menu, conversa, avisos
