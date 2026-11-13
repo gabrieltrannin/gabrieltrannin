@@ -1,0 +1,183 @@
+/* Game interface: cream paper cards with thick rounded borders (docs/GAME_DESIGN.md, Direção de arte). */
+:root {
+  --ui-paper: #fff8ee;
+  --ui-ink: #4a3530;
+  --ui-line: #e6c9ae;
+  --ui-shadow: rgba(74, 53, 48, 0.22);
+  --ui-slot: #f7e8d5;
+  --ui-white: #ffffff;
+  --ui-accent: #d9537d;
+  --ui-sky: #9ed9f2;
+  --font-display: 'Fredoka', 'Nunito', ui-rounded, system-ui, sans-serif;
+  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ui-scale: 1;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ui-sky);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font-display);
+  color: var(--ui-ink);
+  font-size: calc(14px * var(--ui-scale));
+  line-height: 1.25;
+  padding: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px))
+    max(14px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.hud-card {
+  background: var(--ui-paper);
+  border: 3px solid var(--ui-line);
+  border-radius: 1.1em;
+  box-shadow: 0 0.25em 0 var(--ui-shadow);
+  padding: 0.5em 0.8em;
+}
+
+.hud-date {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top, 0px));
+  left: max(14px, env(safe-area-inset-left, 0px));
+}
+
+.hud-date__day {
+  font-weight: 500;
+  font-size: 0.9em;
+}
+
+.hud-date__row {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+}
+
+.hud-date__clock {
+  font-size: 1.9em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.hud-date__island {
+  font-size: 0.78em;
+  opacity: 0.7;
+  margin-top: 0.15em;
+}
+
+.hud-chip {
+  font-size: 0.8em;
+  padding: 0.15em 0.6em;
+  border-radius: 99px;
+  background: var(--ui-slot);
+  white-space: nowrap;
+}
+
+.hud-notice {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ui-ink);
+  color: var(--ui-paper);
+  border-radius: 99px;
+  padding: 0.45em 1.1em;
+  font-size: 0.95em;
+  max-width: calc(100% - 28px);
+  text-align: center;
+}
+
+.hud-dev {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+  display: grid;
+  gap: 0.45em;
+}
+
+.hud-dev__title {
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+
+.hud-dev__buttons {
+  display: flex;
+  gap: 0.4em;
+}
+
+.hud-btn {
+  font: 600 0.95em var(--font-display);
+  color: var(--ui-ink);
+  background: var(--ui-slot);
+  border: 2px solid var(--ui-line);
+  border-radius: 0.8em;
+  padding: 0.35em 0.8em;
+  cursor: pointer;
+}
+
+.hud-btn:hover {
+  background: var(--ui-white);
+}
+
+.hud-btn:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.hud-dev__fps {
+  font-size: 0.75em;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.fatal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  font: 500 18px var(--font-display);
+  color: var(--ui-ink);
+}
+
+@media (max-width: 640px) {
+  #ui {
+    font-size: calc(12px * var(--ui-scale));
+  }
+
+  /* On phones the top row belongs to the date card; the notice goes just below it. */
+  .hud-notice {
+    top: calc(max(14px, env(safe-area-inset-top, 0px)) + 6.4em);
+  }
+}
