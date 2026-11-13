@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { CHARACTERS, type CharacterDef } from '@fuzue/shared';
-import { ball, outline, shared, toon, INK } from './materials';
+import { ball, glow, metal as metalMat, paint, shared, INK } from './materials';
 
 /**
- * Bichinhos com roupa medieval, montados só com primitivas + material toon.
+ * Bichinhos low-poly com roupa medieval, montados só com primitivas facetadas.
  * A origem do grupo fica nos pés; o corpo tem ~1,65 m de altura em escala 1
  * (chapéus e plumas vão além).
  */
@@ -23,14 +23,14 @@ const SMILE = shared(new THREE.TorusGeometry(0.07, 0.022, 6, 16, Math.PI));
 const EAR_CONE = shared(new THREE.ConeGeometry(0.17, 0.36, 4));
 const BEAK = shared(new THREE.ConeGeometry(0.09, 0.2, 10));
 /** Parte de baixo de uma esfera: vira túnica por cima do corpo. */
-const TUNIC = shared(new THREE.SphereGeometry(1, 24, 14, 0, Math.PI * 2, 1.0, Math.PI - 1.0));
-const DOME = shared(new THREE.SphereGeometry(1, 22, 11, 0, Math.PI * 2, 0, Math.PI / 2));
-const HOOD = shared(new THREE.SphereGeometry(1, 22, 14, Math.PI / 2 + 0.85, Math.PI * 2 - 1.7, 0, 2.05));
-const ROBE = shared(new THREE.CylinderGeometry(0.44, 0.56, 0.72, 20));
+const TUNIC = shared(new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 1.0, Math.PI - 1.0));
+const DOME = shared(new THREE.SphereGeometry(1, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2));
+const HOOD = shared(new THREE.SphereGeometry(1, 14, 9, Math.PI / 2 + 0.85, Math.PI * 2 - 1.7, 0, 2.05));
+const ROBE = shared(new THREE.CylinderGeometry(0.44, 0.56, 0.72, 12));
 const BOX = shared(new THREE.BoxGeometry(1, 1, 1));
-const CONE = shared(new THREE.ConeGeometry(1, 1, 16));
-const CYL = shared(new THREE.CylinderGeometry(1, 1, 1, 16));
-const BELT = shared(new THREE.TorusGeometry(1, 0.085, 8, 30));
+const CONE = shared(new THREE.ConeGeometry(1, 1, 9));
+const CYL = shared(new THREE.CylinderGeometry(1, 1, 1, 10));
+const BELT = shared(new THREE.TorusGeometry(1, 0.085, 5, 18));
 
 const LEATHER = '#4a3322';
 const METAL = '#a7adb3';
@@ -68,16 +68,17 @@ export function makeCritter(characterIndex: number): Critter {
   const body = new THREE.Group();
   root.add(body);
 
-  const fur = toon(def.fur);
-  const belly = toon(def.belly);
-  const outfit = toon(def.color);
-  const trim = toon(def.trim);
-  const ink = toon(INK);
-  const white = toon('#f7f1e6');
-  const blush = toon('#d98c8c');
-  const leather = toon(LEATHER);
-  const metal = toon(METAL);
-  const gold = toon(GOLD);
+  const fur = paint(def.fur);
+  const belly = paint(def.belly);
+  const outfit = paint(def.color);
+  const trim = paint(def.trim);
+  const ink = paint(INK, { smooth: true, rough: 0.4 });
+  const white = paint('#f7f1e6', { smooth: true, rough: 0.35 });
+  const blush = paint('#d98c8c', { smooth: true });
+  const leather = paint(LEATHER);
+  const metal = metalMat(METAL);
+  const gold = metalMat(GOLD, 0.28);
+  const darkMetal = metalMat(DARK_METAL, 0.45);
   const ears: THREE.Object3D[] = [];
   const robe = role === 'bruxa' || role === 'frade';
 
@@ -85,7 +86,6 @@ export function makeCritter(characterIndex: number): Critter {
   const torso = ball(0.48, kind === 'ovelha' ? belly : fur, 1, 0.92, 0.95);
   torso.position.y = 0.52;
   torso.castShadow = true;
-  outline(torso);
   body.add(torso);
   if (kind === 'pinguim') {
     const tummy = ball(0.36, belly, 1, 1.1, 0.6);
@@ -97,7 +97,7 @@ export function makeCritter(characterIndex: number): Critter {
   if (role === 'bobo') {
     // túnica de duas cores
     for (const [i, mat] of [outfit, trim].entries()) {
-      const half = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12, i * Math.PI, Math.PI, 1.0, Math.PI - 1.0), mat);
+      const half = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8, i * Math.PI, Math.PI, 1.0, Math.PI - 1.0), mat);
       half.scale.set(0.505, 0.47, 0.5);
       half.position.y = 0.52;
       body.add(half);
@@ -107,7 +107,6 @@ export function makeCritter(characterIndex: number): Critter {
     tunic.scale.set(0.505, 0.47, 0.5);
     tunic.position.y = 0.52;
     tunic.castShadow = true;
-    outline(tunic, 1.03);
     body.add(tunic);
   }
   if (robe) {
@@ -115,10 +114,9 @@ export function makeCritter(characterIndex: number): Critter {
     r.position.y = 0.36;
     if (role === 'frade') r.scale.set(1.05, 1.04, 1.05);
     r.castShadow = true;
-    outline(r, 1.03);
     body.add(r);
   }
-  const beltMat = role === 'frade' ? toon('#d8c08a') : role === 'bruxa' ? gold : leather;
+  const beltMat = role === 'frade' ? paint('#d8c08a') : role === 'bruxa' ? gold : leather;
   body.add(belt(beltMat, robe ? 0.48 : 0.465, robe ? 0.46 : 0.4));
   if (role !== 'frade') {
     const buckle = box(0.11, 0.09, 0.05, gold);
@@ -132,7 +130,6 @@ export function makeCritter(characterIndex: number): Critter {
   body.add(head);
   const skull = ball(0.47, fur, 1.06, 0.95, 1);
   skull.castShadow = true;
-  outline(skull);
   head.add(skull);
 
   for (const s of [-1, 1]) {
@@ -165,7 +162,6 @@ export function makeCritter(characterIndex: number): Critter {
         // um pouco mais para fora: aparecem pelos furos do elmo
         const ear = ball(0.15, fur, 1, 1, 0.7);
         ear.position.set(s * 0.39, 0.4, -0.02);
-        outline(ear);
         head.add(ear);
         const inner = ball(0.08, belly, 1, 1, 0.5);
         inner.position.set(s * 0.39, 0.4, 0.07);
@@ -183,7 +179,6 @@ export function makeCritter(characterIndex: number): Critter {
         g.userData.base = g.rotation.z;
         const ear = ball(0.12, fur, 0.95, 2.6, 0.7);
         ear.position.y = 0.3;
-        outline(ear);
         g.add(ear);
         const inner = ball(0.06, blush, 0.9, 2.2, 0.5);
         inner.position.set(0, 0.3, 0.06);
@@ -199,14 +194,13 @@ export function makeCritter(characterIndex: number): Critter {
         const ear = new THREE.Mesh(EAR_CONE, fur);
         ear.position.set(s * 0.29, 0.47, 0);
         ear.rotation.set(0, Math.PI / 4, -s * 0.38);
-        outline(ear, 1.12);
         head.add(ear);
       }
       break;
     }
     case 'axolote': {
       addSmile(head, ink);
-      const frill = toon('#c9707f');
+      const frill = paint('#c9707f');
       for (const s of [-1, 1]) {
         for (let k = 0; k < 3; k++) {
           const ang = (k - 1) * 0.55;
@@ -214,7 +208,6 @@ export function makeCritter(characterIndex: number): Critter {
           const f = ball(0.075, frill, 1, 2.6, 0.7);
           f.position.set(s * (0.42 + Math.sin(base) * 0.17), 0.1 - ang * 0.25 + Math.cos(base) * 0.17, -0.05);
           f.rotation.z = -s * base;
-          outline(f, 1.14);
           head.add(f);
         }
       }
@@ -224,15 +217,14 @@ export function makeCritter(characterIndex: number): Critter {
       const mask = ball(0.34, belly, 1.15, 0.9, 0.55);
       mask.position.set(0, -0.04, 0.24);
       head.add(mask);
-      const beak = new THREE.Mesh(BEAK, toon('#d98a3d'));
+      const beak = new THREE.Mesh(BEAK, paint('#d98a3d'));
       beak.rotation.x = Math.PI / 2;
       beak.position.set(0, -0.08, 0.52);
-      outline(beak, 1.15);
       head.add(beak);
       break;
     }
     case 'ovelha': {
-      addSmile(head, toon('#efe3c6'));
+      addSmile(head, paint('#efe3c6'));
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2;
         const wool = ball(0.15, belly);
@@ -243,7 +235,6 @@ export function makeCritter(characterIndex: number): Critter {
         const ear = ball(0.09, fur, 1.9, 0.8, 0.7);
         ear.position.set(s * 0.5, 0.08, -0.02);
         ear.rotation.z = s * 0.4;
-        outline(ear, 1.12);
         head.add(ear);
       }
       break;
@@ -259,9 +250,8 @@ export function makeCritter(characterIndex: number): Critter {
     const sleeve = role === 'cavaleiro' ? metal : role === 'viking' ? fur : role === 'bobo' ? (s < 0 ? outfit : trim) : outfit;
     const arm = ball(0.13, sleeve, kind === 'pinguim' ? 0.6 : 0.85, 1.35, 0.85);
     arm.position.y = -0.14;
-    outline(arm, 1.1);
     pivot.add(arm);
-    const paw = ball(0.08, role === 'cavaleiro' ? toon(DARK_METAL) : fur);
+    const paw = ball(0.08, role === 'cavaleiro' ? darkMetal : fur);
     paw.position.y = -0.3;
     pivot.add(paw);
     body.add(pivot);
@@ -269,12 +259,11 @@ export function makeCritter(characterIndex: number): Critter {
   }
 
   /* ---------------- pés ---------------- */
-  const footMat = kind === 'pinguim' ? toon('#d98a3d') : role === 'cavaleiro' ? toon(DARK_METAL) : role === 'bobo' ? outfit : leather;
+  const footMat = kind === 'pinguim' ? paint('#d98a3d') : role === 'cavaleiro' ? darkMetal : role === 'bobo' ? outfit : leather;
   const feet: THREE.Mesh[] = [];
   for (const s of [-1, 1]) {
     const foot = ball(0.16, footMat, 1, 0.55, 1.35);
     foot.position.set(s * 0.21, 0.08, 0.07);
-    outline(foot, 1.08);
     root.add(foot);
     feet.push(foot);
   }
@@ -292,7 +281,6 @@ export function makeCritter(characterIndex: number): Critter {
       for (const s of [-1, 1]) {
         const pad = ball(0.17, metal, 1, 0.7, 1);
         pad.position.set(s * 0.42, 0.8, 0.02);
-        outline(pad, 1.07);
         body.add(pad);
       }
       // elmo aberto: o rosto aparece, as orelhas saem pelos lados
@@ -300,30 +288,27 @@ export function makeCritter(characterIndex: number): Critter {
       helm.scale.set(0.53, 0.42, 0.51);
       helm.position.y = 0.13;
       helm.castShadow = true;
-      outline(helm, 1.04);
       head.add(helm);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 32), toon(DARK_METAL));
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 5, 18), darkMetal);
       rim.scale.set(0.53, 0.51, 0.53);
       rim.rotation.x = Math.PI / 2;
       rim.position.y = 0.14;
       head.add(rim);
-      const nasal = box(0.06, 0.24, 0.05, toon(DARK_METAL));
+      const nasal = box(0.06, 0.24, 0.05, darkMetal);
       nasal.position.set(0, 0.17, 0.48);
       nasal.rotation.x = -0.25;
       head.add(nasal);
-      const plume = ball(0.1, toon('#a3242f'), 1, 2.3, 0.6);
+      const plume = ball(0.1, paint('#a3242f'), 1, 2.3, 0.6);
       plume.position.set(0, 0.66, -0.08);
       plume.rotation.x = -0.45;
-      outline(plume, 1.08);
       head.add(plume);
       ears.push(plume);
       // escudo no braço esquerdo
       const shield = new THREE.Group();
       const face = cyl(0.27, 0.05, outfit);
       face.rotation.z = Math.PI / 2;
-      outline(face, 1.06);
       shield.add(face);
-      const edge = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.03, 6, 24), metal);
+      const edge = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.03, 4, 14), metal);
       edge.rotation.y = Math.PI / 2;
       shield.add(edge);
       const e1 = box(0.03, 0.28, 0.06, gold);
@@ -339,32 +324,30 @@ export function makeCritter(characterIndex: number): Critter {
       const brim = cyl(0.55, 0.035, outfit);
       brim.position.y = 0.36;
       brim.rotation.z = 0.08;
-      outline(brim, 1.03);
       head.add(brim);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.04, 6, 24), gold);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.04, 4, 14), gold);
       band.rotation.x = Math.PI / 2;
       band.position.y = 0.41;
       head.add(band);
       const hat = cone(0.34, 0.85, outfit);
       hat.position.set(0.02, 0.8, -0.05);
       hat.rotation.set(-0.22, 0, -0.12);
-      outline(hat, 1.05);
       head.add(hat);
       const buckle = box(0.12, 0.1, 0.03, gold);
       buckle.position.set(0, 0.42, 0.33);
       head.add(buckle);
       // cajado com orbe
-      const staff = cyl(0.035, 1.35, toon(WOOD));
+      const staff = cyl(0.035, 1.35, paint(WOOD));
       staff.position.set(0, -0.2, 0.1);
       arms[1].add(staff);
-      const orb = ball(0.1, new THREE.MeshBasicMaterial({ color: '#b9a3ff' }));
+      const orb = ball(0.1, glow('#b9a3ff', 2.6));
       orb.position.set(0, 0.5, 0.1);
       orb.name = 'orb';
       arms[1].add(orb);
       break;
     }
     case 'arqueiro': {
-      const hoodMat = new THREE.MeshToonMaterial({ color: def.color, side: THREE.DoubleSide });
+      const hoodMat = paint(def.color, { side: THREE.DoubleSide });
       const hood = new THREE.Mesh(HOOD, hoodMat);
       hood.scale.set(0.53, 0.5, 0.52);
       hood.position.y = 0.01;
@@ -373,22 +356,21 @@ export function makeCritter(characterIndex: number): Critter {
       tip.position.set(0, 0.1, -0.56);
       tip.rotation.x = -1.3;
       head.add(tip);
-      const cape = box(0.78, 0.86, 0.05, toon('#2f5230'));
+      const cape = box(0.78, 0.86, 0.05, paint('#2f5230'));
       cape.position.set(0, 0.55, -0.47);
       cape.rotation.x = 0.1;
-      outline(cape, 1.03);
       body.add(cape);
       const quiver = cyl(0.085, 0.55, leather);
       quiver.position.set(0.22, 0.8, -0.5);
       quiver.rotation.z = -0.35;
       body.add(quiver);
       for (let k = 0; k < 3; k++) {
-        const fl = cone(0.035, 0.11, toon(k === 1 ? '#a3242f' : '#efe3c6'));
+        const fl = cone(0.035, 0.11, paint(k === 1 ? '#a3242f' : '#efe3c6'));
         fl.position.set(0.32 + k * 0.03, 1.1, -0.5 + (k - 1) * 0.03);
         fl.rotation.z = -0.35;
         body.add(fl);
       }
-      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.025, 6, 20, Math.PI), toon(WOOD));
+      const bow = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.025, 4, 10, Math.PI), paint(WOOD));
       bow.position.set(-0.08, 0.7, -0.54);
       bow.rotation.set(0, 0, -0.9);
       body.add(bow);
@@ -402,7 +384,7 @@ export function makeCritter(characterIndex: number): Critter {
         point.rotation.set(Math.sin(a) * 2.3, 0, -Math.cos(a) * 2.3);
         body.add(point);
       }
-      const capBand = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.05, 8, 28), gold);
+      const capBand = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.05, 5, 16), gold);
       capBand.rotation.x = Math.PI / 2;
       capBand.position.y = 0.26;
       capBand.scale.set(1, 0.95, 1);
@@ -418,7 +400,6 @@ export function makeCritter(characterIndex: number): Critter {
         g.rotation.x = s === 0 ? -0.55 : 0;
         const horn = cone(0.1, 0.5, k % 2 ? trim : outfit);
         horn.position.y = 0.25;
-        outline(horn, 1.08);
         g.add(horn);
         const bell = ball(0.065, gold);
         bell.position.y = 0.52;
@@ -429,57 +410,53 @@ export function makeCritter(characterIndex: number): Critter {
       break;
     }
     case 'viking': {
-      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.1, 8, 22), trim);
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.1, 5, 14), trim);
       collar.rotation.x = Math.PI / 2;
       collar.position.y = 0.88;
       body.add(collar);
       for (const s of [-1, 1]) {
         const pelt = ball(0.18, trim, 1.1, 0.75, 1);
         pelt.position.set(s * 0.4, 0.82, 0);
-        outline(pelt, 1.06);
         body.add(pelt);
       }
       const helm = new THREE.Mesh(DOME, metal);
       helm.scale.set(0.52, 0.4, 0.5);
       helm.position.y = 0.17;
       helm.castShadow = true;
-      outline(helm, 1.04);
       head.add(helm);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(1, 0.05, 8, 32), toon(DARK_METAL));
+      const band = new THREE.Mesh(new THREE.TorusGeometry(1, 0.05, 5, 18), darkMetal);
       band.scale.set(0.52, 0.5, 0.52);
       band.rotation.x = Math.PI / 2;
       band.position.y = 0.18;
       head.add(band);
       for (const s of [-1, 1]) {
-        const horn = cone(0.08, 0.4, toon('#e8dcc0'));
+        const horn = cone(0.08, 0.4, paint('#e8dcc0'));
         horn.position.set(s * 0.52, 0.4, 0);
         horn.rotation.z = -s * 0.95;
-        outline(horn, 1.1);
         head.add(horn);
       }
-      const handle = cyl(0.035, 1.0, toon(WOOD));
+      const handle = cyl(0.035, 1.0, paint(WOOD));
       handle.position.set(0.05, 0.62, -0.5);
       handle.rotation.z = 0.6;
       body.add(handle);
       const blade = box(0.3, 0.28, 0.04, metal);
       blade.position.set(-0.22, 0.98, -0.51);
       blade.rotation.z = 0.6;
-      outline(blade, 1.06);
       body.add(blade);
       break;
     }
     case 'frade': {
-      const hoodBack = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.1, 8, 20), outfit);
+      const hoodBack = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.1, 5, 12), outfit);
       hoodBack.rotation.x = Math.PI / 2 - 0.35;
       hoodBack.position.set(0, 0.92, -0.12);
       body.add(hoodBack);
-      const rope = cyl(0.03, 0.42, toon('#d8c08a'));
+      const rope = cyl(0.03, 0.42, paint('#d8c08a'));
       rope.position.set(0.2, 0.25, 0.5);
       body.add(rope);
-      const crossV = box(0.05, 0.2, 0.04, toon(WOOD));
+      const crossV = box(0.05, 0.2, 0.04, paint(WOOD));
       crossV.position.set(0, 0.66, 0.47);
       crossV.rotation.x = -0.25;
-      const crossH = box(0.14, 0.05, 0.04, toon(WOOD));
+      const crossH = box(0.14, 0.05, 0.04, paint(WOOD));
       crossH.position.set(0, 0.7, 0.46);
       crossH.rotation.x = -0.25;
       body.add(crossV, crossH);

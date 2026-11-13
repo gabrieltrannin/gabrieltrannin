@@ -6,7 +6,7 @@ import {
 } from '@fuzue/shared';
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { canvasTexture, outline, toon, toonMap } from '../engine/materials';
+import { canvasTexture, metal, paint, paintMap } from '../engine/materials';
 import { makeBomb, makeCoin, makeFireball, makeShadowMarker } from '../engine/scenery';
 import { isTouch, type Tag } from '../engine/Stage';
 import type { NetEntity, NetMgPlayer, NetState } from '../net/types';
@@ -153,7 +153,7 @@ export class MinigameView implements RoomView {
     const tag = this.ctx.stage.addTag(critter.root, 1.65, `${escapeHtml(info?.name ?? '')}${mine ? ' <small>você</small>' : ''}`, mine ? 'tag me' : 'tag');
     let ring: THREE.Mesh | null = null;
     if (p.team >= 0) {
-      ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.08, 8, 32), toon(SOCCER.teamColors[p.team]));
+      ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.08, 4, 18), paint(SOCCER.teamColors[p.team]));
       ring.rotation.x = Math.PI / 2;
       ring.position.y = 0.05;
       critter.root.add(ring);
@@ -228,31 +228,28 @@ export class MinigameView implements RoomView {
           g.setLineDash([10, 8]);
           for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo((i * w) / 6, 0); g.lineTo((i * w) / 6, h); g.stroke(); }
         });
-        const m = new THREE.Mesh(new THREE.SphereGeometry(SOCCER.ballR, 32, 20), toonMap(tex));
-        m.castShadow = true;
-        outline(m, 1.04);
+        const m = new THREE.Mesh(new THREE.IcosahedronGeometry(SOCCER.ballR, 2), paintMap(tex, { rough: 0.7 }));
+        (m.material as THREE.MeshStandardMaterial).flatShading = true;
         obj = m;
         break;
       }
       case 'sweeper': {
         const g = new THREE.Group();
         // tora giratória com cravos de ferro
-        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, RACE.sweeperLength * 2, 12), toon('#6a4628'));
+        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, RACE.sweeperLength * 2, 8), paint('#6a4628', { facet: 0.14 }));
         log.rotation.z = Math.PI / 2;
-        log.castShadow = true;
-        outline(log, 1.05, 1.02);
         g.add(log);
-        const spike = new THREE.ConeGeometry(0.1, 0.32, 6);
+        const spike = new THREE.ConeGeometry(0.1, 0.32, 4);
         for (let k = 0; k < 10; k++) {
           const x = -RACE.sweeperLength + 0.4 + (k * (RACE.sweeperLength * 2 - 0.8)) / 9;
-          const sp = new THREE.Mesh(spike, toon('#8a9097'));
+          const sp = new THREE.Mesh(spike, metal('#8a9097', 0.4));
           const a = k * 1.7;
           sp.position.set(x, Math.cos(a) * 0.38, Math.sin(a) * 0.38);
           sp.rotation.x = a;
           g.add(sp);
         }
         for (const sx of [-1, 1]) {
-          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.2, 12), toon('#4a4d52'));
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.2, 8), metal('#4a4d52', 0.45));
           cap.rotation.z = Math.PI / 2;
           cap.position.x = sx * RACE.sweeperLength;
           g.add(cap);

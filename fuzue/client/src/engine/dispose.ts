@@ -11,7 +11,7 @@ export function disposeScene(scene: THREE.Scene): void {
     if (mesh.geometry && !mesh.geometry.userData.shared) mesh.geometry.dispose();
     const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
     for (const m of mats) {
-      const map = (m as THREE.MeshToonMaterial).map;
+      const map = (m as THREE.MeshStandardMaterial).map;
       if (map) map.dispose();
     }
   });

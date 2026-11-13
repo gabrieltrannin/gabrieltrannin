@@ -37,6 +37,8 @@ class App {
   private menu: Menu;
 
   constructor() {
+    // diagnóstico só no modo de desenvolvimento (contagem de triângulos, etc.)
+    if (import.meta.env.DEV) (window as unknown as { __stage: Stage }).__stage = this.stage;
     this.menu = new Menu({
       onCreate: (name, ch) => void this.connect(() => createRoom(name, ch)),
       onJoin: (code, name, ch) => void this.connect(() => joinRoom(code, name, ch), code),

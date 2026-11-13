@@ -6,9 +6,9 @@ import {
 } from '@fuzue/shared';
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { canvasTexture, outline, toon, toonMap } from '../engine/materials';
+import { canvasTexture, metal, paint, paintMap } from '../engine/materials';
 import {
-  addHorizon, addLights, addSea, bannerPole, bush, castle, grassTexture, house,
+  addHorizon, addMotes, addSea, bannerPole, bush, castle, house, scatterGrass, setupWorld, SKIES,
   makeBomb, makeCrown, marketTent, oakTree, pineTree, rock, signpost,
 } from '../engine/scenery';
 import { reduceMotion, type Tag } from '../engine/Stage';
@@ -50,6 +50,7 @@ export class BoardView implements RoomView {
   private dice: THREE.Mesh[] = [];
   private diceAnim: { pid: string; values: number[]; t: number } | null = null;
   private sea: (dt: number, t: number) => void;
+  private sky: (dt: number, t: number) => void;
   private target = new THREE.Vector3();
   private az = 0;
   private drag: { id: number; x: number; az: number } | null = null;
@@ -63,24 +64,23 @@ export class BoardView implements RoomView {
 
   constructor(private ctx: Ctx) {
     this.bubbles = new Bubbles(ctx.stage);
-    addLights(this.scene, 13);
+    setupWorld(this.scene, SKIES.dia, 14);
     this.sea = addSea(this.scene, 7);
-    addHorizon(this.scene, 34);
+    this.sky = addHorizon(this.scene, 34);
     this.buildIsland();
     this.buildTiles();
     this.buildProps();
     this.crownGroup.add(this.crown);
     this.crown.scale.setScalar(1.35);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.06, 8, 36), toon('#d4af37'));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.06, 4, 24), metal('#e0b33a', 0.25));
     ring.rotation.x = Math.PI / 2;
     ring.position.y = TILE_TOP + 0.04;
     ring.name = 'ring';
     this.crownGroup.add(ring);
     this.scene.add(this.crownGroup);
     for (let i = 0; i < 2; i++) {
-      const mats = [1, 6, 2, 5, 3, 4].map(n => new THREE.MeshBasicMaterial({ map: pipTexture(n) }));
+      const mats = [1, 6, 2, 5, 3, 4].map(n => paintMap(pipTexture(n), { rough: 0.5 }));
       const die = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.62, 0.62), mats);
-      outline(die, 1.08);
       die.visible = false;
       this.scene.add(die);
       this.dice.push(die);
@@ -94,37 +94,44 @@ export class BoardView implements RoomView {
 
   private buildIsland(): void {
     const R = ISLAND_RADIUS;
-    const grass = grassTexture();
-    grass.repeat.set(5, 5);
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.6, 64), [toon('#5f7d42'), toonMap(grass), toon('#5f7d42')]);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(R, R - 0.1, 0.6, 28), paint('#5f8a3c', { facet: 0.08 }));
     top.position.y = -0.3;
-    top.receiveShadow = true;
-    outline(top, 1.008, 1.06);
     this.scene.add(top);
-    const dirt = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.2, R - 0.45, 0.8, 64), toon('#6b4a2f'));
-    dirt.position.y = -1;
+    const dirt = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.15, R - 0.5, 0.9, 28), paint('#6b4a2f', { facet: 0.14 }));
+    dirt.position.y = -1.05;
     this.scene.add(dirt);
-    const cliffGeo = new THREE.CylinderGeometry(R - 0.5, 1.6, 5.4, 18, 4).toNonIndexed();
-    cliffGeo.computeVertexNormals();
-    const cliff = new THREE.Mesh(cliffGeo, toon('#7d7468'));
+    // penhasco de pedra irregular por baixo da ilha
+    const rand = seeded(4);
+    const cliffGeo = new THREE.CylinderGeometry(R - 0.5, 1.6, 5.4, 18, 4);
+    const p = cliffGeo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i);
+      if (y > 2.69) continue;
+      const a = Math.atan2(p.getZ(i), p.getX(i));
+      const k = 1 + Math.sin(a * 5 + y * 2) * 0.06 + Math.sin(a * 11 - y * 3) * 0.05;
+      p.setXYZ(i, p.getX(i) * k, y, p.getZ(i) * k);
+    }
+    const cliff = new THREE.Mesh(cliffGeo, paint('#7d7468', { facet: 0.22 }));
     cliff.position.y = -4.1;
     this.scene.add(cliff);
-    const rand = seeded(4);
-    for (let i = 0; i < 26; i++) {
-      const a = (i / 26) * Math.PI * 2 + rand() * 0.1;
-      const r = rock(0.9 + rand() * 1.2, rand() < 0.5 ? '#7d7468' : '#8c857a');
+    for (let i = 0; i < 30; i++) {
+      const a = (i / 30) * Math.PI * 2 + rand() * 0.1;
+      const r = rock(0.9 + rand() * 1.3, rand() < 0.5 ? '#7d7468' : '#8c857a');
       r.position.set(Math.cos(a) * (R - 0.1), -0.55 - rand() * 0.4, Math.sin(a) * (R - 0.1));
       r.rotation.y = rand() * 3;
       this.scene.add(r);
     }
+    // grama em volta das casas (não em cima do caminho)
+    scatterGrass(this.scene, 900, { radius: R - 0.4 }, (x, z) => BOARD.every(t => Math.hypot(t.x - x, t.z - z) > 0.95) && Math.hypot(x - 0.2, z + 0.1) > 2.1, 31);
+    addMotes(this.scene, 'poeira', R, 0, 7);
   }
 
   private buildTiles(): void {
-    const baseGeo = new THREE.CylinderGeometry(0.66, 0.72, 0.2, 10);
-    const inlayGeo = new THREE.CylinderGeometry(0.54, 0.54, 0.06, 24);
+    const baseGeo = new THREE.CylinderGeometry(0.66, 0.74, 0.22, 8);
+    const inlayGeo = new THREE.CylinderGeometry(0.54, 0.56, 0.06, 8);
     const iconGeo = new THREE.CircleGeometry(0.46, 24);
     const stoneGeo = new THREE.DodecahedronGeometry(0.11, 0);
-    const stone = toon('#8c857a');
+    const stone = paint('#8c857a', { facet: 0.16 });
     const iconMats = new Map<TileType, THREE.MeshBasicMaterial>();
     for (const type of Object.keys(TILE_INFO) as TileType[]) {
       iconMats.set(type, new THREE.MeshBasicMaterial({ map: iconTexture(type), transparent: true, depthWrite: false }));
@@ -132,10 +139,10 @@ export class BoardView implements RoomView {
     for (const tile of BOARD) {
       const base = new THREE.Mesh(baseGeo, stone);
       base.position.set(tile.x, 0.1, tile.z);
-      base.receiveShadow = true;
-      outline(base, 1.05, 1.2);
+      base.rotation.y = tile.x * 7 + tile.z * 3;
       this.scene.add(base);
-      const inlay = new THREE.Mesh(inlayGeo, toon(TILE_INFO[tile.type].color));
+      const inlay = new THREE.Mesh(inlayGeo, paint(TILE_INFO[tile.type].color, { facet: 0.1, rough: 0.55 }));
+      inlay.rotation.y = base.rotation.y;
       inlay.position.set(tile.x, 0.21, tile.z);
       this.scene.add(inlay);
       const g = new THREE.Group();
@@ -147,7 +154,7 @@ export class BoardView implements RoomView {
       this.iconGroups.push(g);
       for (const n of tile.next) {
         const to = BOARD[n];
-        const d = new THREE.Mesh(stoneGeo, toon('#a39b8e'));
+        const d = new THREE.Mesh(stoneGeo, paint('#a39b8e', { facet: 0.2 }));
         d.position.set((tile.x + to.x) / 2, 0.04, (tile.z + to.z) / 2);
         d.scale.y = 0.5;
         this.scene.add(d);
@@ -559,6 +566,7 @@ export class BoardView implements RoomView {
 
   update(dt: number, t: number): void {
     this.sea(dt, t);
+    this.sky(dt, t);
     const s = this.state;
 
     // peões: animações de pulo e teletransporte

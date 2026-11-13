@@ -3,9 +3,9 @@ import {
   BOMBA, CHUVA, HEX, HEX_PER_LAYER, HEX_TILES, RACE, RING, SOCCER, TILE_CRACK, TILE_GONE,
   seeded, type MinigameId,
 } from '@fuzue/shared';
-import { canvasTexture, outline, toon, toonMap } from '../../engine/materials';
+import { canvasTexture, chunk, glow, liquid, metal, paint } from '../../engine/materials';
 import {
-  addHorizon, addLights, addSea, bannerPole, cobbleTexture, flicker, grassTexture, planksTexture, rock, torch,
+  addHorizon, addMotes, addSea, bannerPole, flicker, rock, scatterGrass, setupWorld, SKIES, stoneFloor, torch, type Sky,
 } from '../../engine/scenery';
 import type { NetMinigame } from '../../net/types';
 
@@ -16,61 +16,75 @@ export interface Env {
   size: number;
 }
 
-const FOG: Record<MinigameId, string> = {
-  ringue: '#a9b8c6',
-  hexa: '#6a4030',
-  corrida: '#b98f6a',
-  chuva: '#b98f6a',
-  bomba: '#8f8090',
-  futebol: '#b9a07a',
+const SKY: Record<MinigameId, Sky> = {
+  ringue: SKIES.gelo,
+  hexa: SKIES.vulcao,
+  corrida: SKIES.dia,
+  chuva: SKIES.tarde,
+  bomba: SKIES.brasa,
+  futebol: SKIES.dia,
 };
 
 export function buildEnv(id: MinigameId, scene: THREE.Scene): Env {
-  addLights(scene, id === 'corrida' ? 16 : 13, { color: FOG[id], near: 34, far: 110 });
+  setupWorld(scene, SKY[id], id === 'corrida' ? 16 : 13);
   const sea = addSea(scene, 13, id === 'hexa' ? -22 : -3, id === 'hexa' ? 'lava' : 'water');
-  addHorizon(scene, 36);
+  const sky = addHorizon(scene, 36);
   const env = ({ ringue, hexa, corrida, chuva, bomba, futebol } as const)[id](scene);
   return {
     size: env.size,
     update: (dt, t, mg) => {
       sea(dt, t);
+      sky(dt, t);
       flicker(scene, t);
       env.update(dt, t, mg);
     },
   };
 }
 
+const GROUT = '#4e4840';
+
 /* ---------------- Lago Congelado ---------------- */
 function ringue(scene: THREE.Scene): Env {
   const rand = seeded(21);
-  const ice = canvasTexture(512, 512, (g, w) => {
-    g.fillStyle = '#dfeaf0';
-    g.fillRect(0, 0, w, w);
-    g.fillStyle = '#eef4f7';
-    for (let i = 0; i < 18; i++) { g.beginPath(); g.ellipse(rand() * w, rand() * w, 20 + rand() * 50, 10 + rand() * 30, rand() * 3, 0, Math.PI * 2); g.fill(); }
-    g.strokeStyle = '#a9c3d1';
+  // bloco de gelo brilhante; as rachaduras são um decalque por cima
+  const ice = paint('#cfe4ee', { rough: 0.12, facet: 0.08 });
+  const platform = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.92, 3, 22), ice);
+  platform.position.y = -1.5;
+  platform.userData.noCast = true;
+  scene.add(platform);
+  const cracks = canvasTexture(512, 512, (g, w) => {
+    g.strokeStyle = 'rgba(120, 165, 190, 0.9)';
     g.lineWidth = 3;
-    for (let i = 0; i < 14; i++) {
-      let x = w / 2 + (rand() - 0.5) * 120;
-      let y = w / 2 + (rand() - 0.5) * 120;
+    for (let i = 0; i < 16; i++) {
+      let x = w / 2 + (rand() - 0.5) * 140;
+      let y = w / 2 + (rand() - 0.5) * 140;
       g.beginPath(); g.moveTo(x, y);
-      for (let k = 0; k < 6; k++) { x += (rand() - 0.5) * 90; y += (rand() - 0.5) * 90; g.lineTo(x, y); }
+      for (let k = 0; k < 6; k++) { x += (rand() - 0.5) * 100; y += (rand() - 0.5) * 100; g.lineTo(x, y); }
       g.stroke();
     }
+    g.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    for (let i = 0; i < 14; i++) { g.beginPath(); g.ellipse(rand() * w, rand() * w, 20 + rand() * 40, 8 + rand() * 18, rand() * 3, 0, Math.PI * 2); g.fill(); }
   });
-  const platform = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 64), [toon('#9fb8c6'), toonMap(ice), toon('#7f98a6')]);
-  platform.position.y = -0.5;
-  platform.receiveShadow = true;
-  outline(platform, 1.006, 1.04);
-  scene.add(platform);
-  // placas de gelo boiando em volta
-  for (let i = 0; i < 9; i++) {
-    const floe = new THREE.Mesh(new THREE.CylinderGeometry(0.6 + rand() * 0.8, 0.7 + rand() * 0.8, 0.2, 7), toon('#dfeaf0'));
+  const decal = new THREE.Mesh(new THREE.CircleGeometry(1, 22), new THREE.MeshStandardMaterial({ map: cracks, transparent: true, roughness: 0.1, depthWrite: false }));
+  decal.rotation.x = -Math.PI / 2;
+  decal.position.y = 1.505;
+  platform.add(decal);
+  // placas de gelo e icebergs em volta
+  for (let i = 0; i < 12; i++) {
+    const floe = new THREE.Mesh(new THREE.CylinderGeometry(0.6 + rand() * 0.9, 0.8 + rand() * 0.9, 0.35, 6), paint('#e4eff4', { rough: 0.2, facet: 0.12 }));
     const a = rand() * Math.PI * 2;
-    const r = 12 + rand() * 8;
-    floe.position.set(Math.cos(a) * r, -2.9, Math.sin(a) * r);
+    const r = 12 + rand() * 10;
+    floe.position.set(Math.cos(a) * r, -2.85, Math.sin(a) * r);
+    floe.rotation.y = rand() * 3;
     scene.add(floe);
   }
+  for (let i = 0; i < 5; i++) {
+    const berg = chunk(1.5 + rand() * 1.5, paint('#e9f3f7', { rough: 0.2, facet: 0.16 }), 1, 1.4 + rand(), 1);
+    const a = rand() * Math.PI * 2;
+    berg.position.set(Math.cos(a) * (22 + rand() * 6), -2.5, Math.sin(a) * (22 + rand() * 6));
+    scene.add(berg);
+  }
+  addMotes(scene, 'neve', 16, 0, 12);
   return {
     size: RING.startRadius,
     update: (_dt, _t, mg) => {
@@ -82,33 +96,38 @@ function ringue(scene: THREE.Scene): Env {
 
 /* ---------------- Torre em Ruínas ---------------- */
 function hexa(scene: THREE.Scene): Env {
-  const geo = new THREE.CylinderGeometry(HEX.size * 0.94, HEX.size * 0.94, 0.5, 6);
+  const geo = new THREE.CylinderGeometry(HEX.size * 0.94, HEX.size * 0.86, 0.6, 6);
   geo.rotateY(Math.PI / 6);
   const colors = ['#a39b8e', '#8a8378', '#6f7d55'];
-  const crackColors = ['#cdc4b6', '#b3ac9f', '#97a37c'];
+  // pedra rachando esquenta: brilho de brasa por dentro
+  const hot = ['#cdc4b6', '#b3ac9f', '#97a37c'].map(c => new THREE.MeshStandardMaterial({
+    color: c, emissive: '#ff5a14', emissiveIntensity: 0.9, roughness: 0.8, flatShading: true,
+  }));
   const tiles: { mesh: THREE.Mesh; layer: number; state: number; fall: number; baseY: number }[] = [];
   HEX.layers.forEach((h, layer) => {
     for (const t of HEX_TILES) {
-      const mesh = new THREE.Mesh(geo, toon(colors[layer]));
-      mesh.position.set(t.x, h - 0.25, t.z);
-      mesh.receiveShadow = true;
+      const mesh = new THREE.Mesh(geo, paint(colors[layer], { facet: 0.16 }));
+      mesh.position.set(t.x, h - 0.3, t.z);
       mesh.castShadow = layer === 0;
-      outline(mesh, 1.03, 1.1);
       scene.add(mesh);
-      tiles.push({ mesh, layer, state: 0, fall: 0, baseY: h - 0.25 });
+      tiles.push({ mesh, layer, state: 0, fall: 0, baseY: h - 0.3 });
     }
   });
   // colunas quebradas saindo da lava
   const rand = seeded(5);
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + rand() * 0.3;
-    const r = 13 + rand() * 4;
+  const colMat = paint('#8a8378', { facet: 0.16 });
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + rand() * 0.3;
+    const r = 13 + rand() * 5;
     const hgt = 6 + rand() * 12;
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, hgt, 10), toon('#8a8378'));
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.85, hgt, 8), colMat);
     col.position.set(Math.cos(a) * r, -22 + hgt / 2, Math.sin(a) * r);
     col.rotation.z = (rand() - 0.5) * 0.2;
-    outline(col, 1.04);
     scene.add(col);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.8, 0.4, 8), colMat);
+    cap.position.set(col.position.x, -22 + hgt + 0.1, col.position.z);
+    cap.rotation.set((rand() - 0.5) * 0.4, rand(), (rand() - 0.5) * 0.4);
+    scene.add(cap);
   }
   return {
     size: HEX.size * Math.sqrt(3) * (HEX.rings + 0.5),
@@ -119,7 +138,7 @@ function hexa(scene: THREE.Scene): Env {
         const s = mg.tiles[i] ?? 0;
         if (s !== tile.state) {
           tile.state = s;
-          if (s === TILE_CRACK) tile.mesh.material = toon(crackColors[tile.layer]);
+          if (s === TILE_CRACK) tile.mesh.material = hot[tile.layer];
         }
         if (tile.state === TILE_CRACK) {
           tile.mesh.position.x = HEX_TILES[i % HEX_PER_LAYER].x + Math.sin(t * 60 + i) * 0.04;
@@ -137,91 +156,113 @@ function hexa(scene: THREE.Scene): Env {
 /* ---------------- Ponte do Castelo ---------------- */
 function corrida(scene: THREE.Scene): Env {
   const W = RACE.halfWidth;
-  const stoneSide = toon('#7d7468');
-  for (const f of RACE.floors) {
+  const stoneSide = paint('#7d7468', { facet: 0.14 });
+  const parapet = paint('#9a9286', { facet: 0.14 });
+  RACE.floors.forEach((f, i) => {
     const len = f.z1 - f.z0;
-    const top = cobbleTexture('#8c857a', '#a39b8e', '#5f594f', 3);
-    top.repeat.set(2, len / 4);
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(W * 2, 1.2, len), [stoneSide, stoneSide, toonMap(top), stoneSide, stoneSide, stoneSide]);
-    floor.position.set(0, -0.6, (f.z0 + f.z1) / 2);
-    floor.receiveShadow = true;
-    outline(floor, 1.01, 1.04);
+    const zc = (f.z0 + f.z1) / 2;
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(W * 2, 1.2, len), [stoneSide, stoneSide, paint(GROUT), stoneSide, stoneSide, stoneSide]);
+    floor.position.set(0, -0.6, zc);
+    floor.userData.noCast = true;
     scene.add(floor);
-    // parapeito de pedra dos dois lados
+    const top = stoneFloor({ w: W * 2, d: len }, { seed: 30 + i });
+    top.position.z = zc;
+    scene.add(top);
+    // parapeito de pedra dos dois lados, em blocos
     for (const sx of [-1, 1]) {
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, len), toon('#9a9286'));
-      wall.position.set(sx * (W + 0.1), 0.25, (f.z0 + f.z1) / 2);
-      wall.castShadow = true;
-      outline(wall, 1.04, 1.06);
-      scene.add(wall);
+      const n = Math.max(1, Math.round(len / 1.4));
+      for (let k = 0; k < n; k++) {
+        const blockLen = len / n;
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5 + (k % 2) * 0.12, blockLen - 0.06), parapet);
+        wall.position.set(sx * (W + 0.12), 0.25 + (k % 2) * 0.06, f.z0 + blockLen * (k + 0.5));
+        scene.add(wall);
+      }
     }
     // pilar de sustentação da ponte
     const pier = new THREE.Mesh(new THREE.BoxGeometry(W * 1.4, 3, 1.4), stoneSide);
-    pier.position.set(0, -2.4, (f.z0 + f.z1) / 2);
+    pier.position.set(0, -2.4, zc);
     scene.add(pier);
-  }
-  // correnteza: água passando por cima da ponte
+  });
+  // correnteza: água facetada + espuma correndo por cima
   const currents: THREE.Texture[] = [];
   for (const c of RACE.conveyors) {
+    const len = c.z1 - c.z0;
+    const geo = new THREE.PlaneGeometry(W * 2, len, 10, Math.round(len * 1.5));
+    geo.rotateX(-Math.PI / 2);
+    const water = new THREE.Mesh(geo, liquid('stream'));
+    water.position.set(0, 0.04, (c.z0 + c.z1) / 2);
+    water.userData.noCast = true;
+    scene.add(water);
     const tex = canvasTexture(64, 256, (g, w, h) => {
-      g.fillStyle = '#4f7f95';
-      g.fillRect(0, 0, w, h);
-      g.strokeStyle = '#9cc3d3';
+      g.clearRect(0, 0, w, h);
+      g.strokeStyle = 'rgba(235, 248, 255, 0.85)';
       g.lineWidth = 4;
       for (let y = 0; y < h; y += 32) { g.beginPath(); g.moveTo(4, y); g.quadraticCurveTo(w / 2, y + 12, w - 4, y); g.stroke(); }
     });
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2, (c.z1 - c.z0) / 3);
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, c.z1 - c.z0), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.9 }));
-    water.rotation.x = -Math.PI / 2;
-    water.position.set(0, 0.02, (c.z0 + c.z1) / 2);
-    scene.add(water);
+    tex.repeat.set(2, len / 3);
+    const foam = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, len), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.7, depthWrite: false }));
+    foam.rotation.x = -Math.PI / 2;
+    foam.position.set(0, 0.12, (c.z0 + c.z1) / 2);
+    scene.add(foam);
     currents.push(tex);
   }
   // barris como obstáculos
-  const barrelMat = new THREE.MeshToonMaterial({ map: planksTexture('#7a5333', '#4a3322') });
+  const wood = paint('#7a5333', { facet: 0.16 });
+  const woodLight = paint('#86603d', { facet: 0.16 });
+  const iron = metal('#3a3a3a', 0.5);
   for (const b of RACE.bumpers) {
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(b.r, b.r * 0.92, b.h, 14), barrelMat);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(b.r, b.r * 0.92, b.h, 10), wood);
     barrel.position.set(b.x, b.h / 2, b.z);
-    barrel.castShadow = true;
-    outline(barrel, 1.05);
     scene.add(barrel);
-    for (const y of [0.25, 0.75]) {
-      const band = new THREE.Mesh(new THREE.TorusGeometry(b.r * 1.01, 0.04, 6, 20), toon('#3a3a3a'));
+    const bulge = new THREE.Mesh(new THREE.CylinderGeometry(b.r * 1.05, b.r * 1.05, b.h * 0.36, 10), woodLight);
+    bulge.position.set(b.x, b.h / 2, b.z);
+    scene.add(bulge);
+    for (const y of [0.18, 0.82]) {
+      const band = new THREE.Mesh(new THREE.TorusGeometry(b.r * 1.01, 0.045, 4, 10), iron);
       band.rotation.x = Math.PI / 2;
       band.position.set(b.x, b.h * y, b.z);
       scene.add(band);
     }
   }
   for (const s of RACE.sweepers) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.5, 10), toon('#6f685e'));
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 1.5, 7), paint('#6f685e', { facet: 0.16 }));
     post.position.set(0, 0.75, s.z);
-    outline(post, 1.06);
     scene.add(post);
   }
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, 0.6), toon('#efe3c6'));
-  line.rotation.x = -Math.PI / 2;
-  line.position.set(0, 0.02, 1);
+  const line = new THREE.Mesh(new THREE.BoxGeometry(W * 2, 0.04, 0.5), paint('#efe3c6'));
+  line.position.set(0, 0.07, 1);
   scene.add(line);
   // portão do castelo na chegada
   const gate = new THREE.Group();
-  const stone = new THREE.MeshToonMaterial({ map: cobbleTexture('#a39b8e', '#b5ad9f', '#6f685e', 5) });
+  const stone = paint('#a39b8e', { facet: 0.12 });
   for (const sx of [-1, 1]) {
-    const tower = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.1, 5.5, 10), stone);
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.15, 5.5, 8), stone);
     tower.position.set(sx * (W + 0.9), 2.75, 0);
-    tower.castShadow = true;
-    outline(tower, 1.03);
     gate.add(tower);
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.25, 1.5, 10), toon('#8e2430'));
-    roof.position.set(sx * (W + 0.9), 6.25, 0);
-    outline(roof, 1.05);
+    const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.05, 0.35, 8), paint('#8a8378', { facet: 0.12 }));
+    ring.position.set(sx * (W + 0.9), 5.6, 0);
+    gate.add(ring);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(1.35, 1.7, 8), paint('#8e2430', { facet: 0.14 }));
+    roof.position.set(sx * (W + 0.9), 6.6, 0);
     gate.add(roof);
+    const t = torch();
+    t.position.set(sx * (W - 0.3), 0, 1.2);
+    gate.add(t);
+    const b = bannerPole(sx < 0 ? '#8e2430' : '#2f5a8f', 3.2);
+    b.position.set(sx * (W + 0.9), 4.2, 1.1);
+    b.scale.setScalar(0.8);
+    gate.add(b);
   }
   const arch = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 0.4, 1.1, 1.2), stone);
   arch.position.y = 4.4;
-  outline(arch, 1.02);
   gate.add(arch);
+  for (let k = 0; k < 6; k++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 1.2), stone);
+    m.position.set(-W + 0.4 + (k * (W * 2 - 0.8)) / 5, 5.15, 0);
+    gate.add(m);
+  }
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(W * 1.6, 0.8), new THREE.MeshBasicMaterial({
     map: canvasTexture(512, 128, (g, w, h) => {
       g.fillStyle = '#efe3c6'; g.fillRect(0, 0, w, h);
@@ -235,10 +276,10 @@ function corrida(scene: THREE.Scene): Env {
   gate.add(sign);
   gate.position.z = RACE.finishZ - 0.5;
   scene.add(gate);
-  const finish = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, 0.7), toon('#c9a227'));
-  finish.rotation.x = -Math.PI / 2;
-  finish.position.set(0, 0.02, RACE.finishZ);
+  const finish = new THREE.Mesh(new THREE.BoxGeometry(W * 2, 0.04, 0.7), metal('#e0b33a', 0.3));
+  finish.position.set(0, 0.07, RACE.finishZ);
   scene.add(finish);
+  addMotes(scene, 'poeira', 10, 0, 6).position.z = RACE.finishZ / 2;
   return {
     size: 12,
     update: (dt) => {
@@ -249,22 +290,19 @@ function corrida(scene: THREE.Scene): Env {
 
 /* ---------------- pátios redondos com ameias ---------------- */
 function roundYard(scene: THREE.Scene, radius: number, sideColor: string): void {
-  const cobble = cobbleTexture('#8c857a', '#a39b8e', '#5f594f', 9);
-  cobble.repeat.set(6, 6);
-  const yard = new THREE.Mesh(new THREE.CylinderGeometry(radius + 0.3, radius + 0.5, 3, 48), [toon(sideColor), toonMap(cobble), toon(sideColor)]);
+  const side = paint(sideColor, { facet: 0.16 });
+  const yard = new THREE.Mesh(new THREE.CylinderGeometry(radius + 0.3, radius + 0.6, 3, 24), [side, paint(GROUT), side]);
   yard.position.y = -1.5;
-  yard.receiveShadow = true;
-  outline(yard, 1.006, 1.02);
+  yard.userData.noCast = true;
   scene.add(yard);
-  const merlon = toon('#9a9286');
+  scene.add(stoneFloor({ radius: radius + 0.2 }, { seed: 9 }));
+  const merlon = paint('#9a9286', { facet: 0.14 });
   const n = Math.round(radius * 4);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2;
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 0.45), merlon);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55 + (i % 3) * 0.06, 0.45), merlon);
     m.position.set(Math.cos(a) * (radius + 0.35), 0.27, Math.sin(a) * (radius + 0.35));
     m.rotation.y = -a + Math.PI / 2;
-    m.castShadow = true;
-    outline(m, 1.05);
     scene.add(m);
   }
   for (const [x, c] of [[-1, '#8e2430'], [1, '#2f5a8f']] as const) {
@@ -279,85 +317,125 @@ function roundYard(scene: THREE.Scene, radius: number, sideColor: string): void 
 
 function chuva(scene: THREE.Scene): Env {
   roundYard(scene, CHUVA.radius, '#7d7468');
-  // baús e pilhas de ouro pelo pátio do dragão
+  // baús abertos e pilhas de ouro em volta do pátio do dragão
   const rand = seeded(3);
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + 0.4;
-    const pile = new THREE.Mesh(new THREE.ConeGeometry(0.7 + rand() * 0.3, 0.5, 10), toon('#d4af37'));
-    pile.position.set(Math.cos(a) * (CHUVA.radius + 2.4), 0.1, Math.sin(a) * (CHUVA.radius + 2.4));
+  const gold = metal('#e0b33a', 0.25);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.4;
+    const x = Math.cos(a) * (CHUVA.radius + 2.6);
+    const z = Math.sin(a) * (CHUVA.radius + 2.6);
+    const pile = new THREE.Mesh(new THREE.ConeGeometry(0.8 + rand() * 0.4, 0.6, 7), gold);
+    pile.position.set(x, -0.05, z);
     scene.add(pile);
+    if (i % 2 === 0) {
+      const chest = new THREE.Group();
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.6), paint('#6a4628', { facet: 0.14 }));
+      box.position.y = 0.25;
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.9, 6, 1, false, 0, Math.PI), paint('#7a5333', { facet: 0.14 }));
+      lid.rotation.set(0, 0, Math.PI / 2);
+      lid.position.set(0, 0.5, -0.28);
+      lid.rotation.x = -0.9;
+      const shine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.5), glow('#f2c75c', 1.8));
+      shine.position.y = 0.48;
+      chest.add(box, lid, shine);
+      chest.position.set(x * 0.92 + 0.8, 0, z * 0.92);
+      chest.lookAt(0, 0, 0);
+      scene.add(chest);
+    }
   }
+  addMotes(scene, 'poeira', CHUVA.radius + 2, 0, 7);
   return { size: CHUVA.radius, update: () => {} };
 }
 
 function bomba(scene: THREE.Scene): Env {
   roundYard(scene, BOMBA.radius, '#6f685e');
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     const r = rock(1 + i * 0.2);
-    const a = i * 1.3;
+    const a = i * 1.1;
     r.position.set(Math.cos(a) * (BOMBA.radius + 3), -0.3, Math.sin(a) * (BOMBA.radius + 3));
     scene.add(r);
   }
+  addMotes(scene, 'brasa', BOMBA.radius, 0, 6);
   return { size: BOMBA.radius, update: () => {} };
 }
 
 /* ---------------- Torneio da Bola ---------------- */
 function futebol(scene: THREE.Scene): Env {
   const { halfX, halfZ, goalHalf, goalDepth } = SOCCER;
-  const grass = grassTexture('#6f8f4e', '#64844a', 15);
-  grass.repeat.set(4, 3);
-  const field = new THREE.Mesh(new THREE.BoxGeometry(halfX * 2 + 1.4, 1, halfZ * 2 + 1.4), [toon('#5f7d42'), toon('#5f7d42'), toonMap(grass), toon('#5f7d42'), toon('#5f7d42'), toon('#5f7d42')]);
+  const side = paint('#5a4a32', { facet: 0.14 });
+  const fw = halfX * 2 + 1.4;
+  const fd = halfZ * 2 + 1.4;
+  const field = new THREE.Mesh(new THREE.BoxGeometry(fw, 1, fd), [side, side, paint('#5f8a3c', { facet: 0.06 }), side, side, side]);
   field.position.y = -0.5;
-  field.receiveShadow = true;
-  outline(field, 1.004, 1.04);
+  field.userData.noCast = true;
   scene.add(field);
+  // grama aparada em faixas
+  const stripe = paint('#6a9844', { facet: 0.06 });
+  const n = 8;
+  for (let i = 0; i < n; i += 2) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry((halfX * 2) / n, halfZ * 2), stripe);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(-halfX + ((i + 0.5) * halfX * 2) / n, 0.005, 0);
+    m.userData.noCast = true;
+    scene.add(m);
+  }
   // linhas de cal
-  const chalk = toon('#efe3c6');
+  const chalk = paint('#f1ead8', { facet: 0 });
   const lineMesh = (w: number, d: number, x: number, z: number) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), chalk);
     m.rotation.x = -Math.PI / 2;
-    m.position.set(x, 0.015, z);
+    m.position.set(x, 0.012, z);
+    m.userData.noCast = true;
     scene.add(m);
   };
   lineMesh(0.12, halfZ * 2, 0, 0);
   lineMesh(halfX * 2, 0.12, 0, -halfZ + 0.1);
   lineMesh(halfX * 2, 0.12, 0, halfZ - 0.1);
-  const circle = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.02, 40), chalk);
+  const circle = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.02, 32), chalk);
   circle.rotation.x = -Math.PI / 2;
-  circle.position.y = 0.016;
+  circle.position.y = 0.013;
   scene.add(circle);
-  // cerca de madeira
-  const wood = new THREE.MeshToonMaterial({ map: planksTexture('#7a5333', '#4a3322') });
-  const fence = (w: number, d: number, x: number, z: number) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.7, d), wood);
-    m.position.set(x, 0.35, z);
-    m.castShadow = true;
-    outline(m, 1.02, 1.08);
-    scene.add(m);
+  // cerca de madeira: mourões e duas travessas
+  const wood = paint('#7a5333', { facet: 0.16 });
+  const fence = (len: number, x: number, z: number, alongX: boolean) => {
+    const g = new THREE.Group();
+    const posts = Math.max(2, Math.round(len / 1.6) + 1);
+    for (let i = 0; i < posts; i++) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.85, 0.16), wood);
+      p.position.set(-len / 2 + (i * len) / (posts - 1), 0.42, 0);
+      g.add(p);
+    }
+    for (const y of [0.3, 0.62]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.1, 0.08), wood);
+      rail.position.set(0, y, 0);
+      g.add(rail);
+    }
+    g.position.set(x, 0, z);
+    if (!alongX) g.rotation.y = Math.PI / 2;
+    scene.add(g);
   };
-  fence(halfX * 2 + 1.4, 0.3, 0, -halfZ - 0.5);
-  fence(halfX * 2 + 1.4, 0.3, 0, halfZ + 0.5);
+  fence(fw, 0, -halfZ - 0.5, true);
+  fence(fw, 0, halfZ + 0.5, true);
   for (const sx of [-1, 1]) {
     const seg = halfZ - goalHalf;
-    fence(0.3, seg, sx * (halfX + 0.5), -(goalHalf + seg / 2));
-    fence(0.3, seg, sx * (halfX + 0.5), goalHalf + seg / 2);
+    fence(seg, sx * (halfX + 0.5), -(goalHalf + seg / 2), false);
+    fence(seg, sx * (halfX + 0.5), goalHalf + seg / 2, false);
     const color = SOCCER.teamColors[sx < 0 ? 0 : 1];
     const goal = new THREE.Group();
-    const postMat = toon('#6a4628');
+    const postMat = paint('#efe3c6', { facet: 0.1 });
     for (const sz of [-1, 1]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.6, 10), postMat);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 2.6, 6), postMat);
       post.position.set(0, 1.3, sz * goalHalf);
-      outline(post, 1.08);
       goal.add(post);
     }
-    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, goalHalf * 2, 10), postMat);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, goalHalf * 2, 6), postMat);
     bar.rotation.x = Math.PI / 2;
     bar.position.y = 2.6;
     goal.add(bar);
-    const net = new THREE.Mesh(new THREE.BoxGeometry(goalDepth, 2.6, goalHalf * 2), new THREE.MeshToonMaterial({ color, transparent: true, opacity: 0.4 }));
+    const net = new THREE.Mesh(new THREE.BoxGeometry(goalDepth, 2.6, goalHalf * 2), paint(color, { opacity: 0.35 }));
     net.position.set(sx * goalDepth / 2, 1.3, 0);
     goal.add(net);
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(goalDepth, 0.9, goalHalf * 2), toon(color));
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(goalDepth, 0.9, goalHalf * 2), paint(color, { facet: 0.1 }));
     floor.position.set(sx * goalDepth / 2, -0.45, 0);
     goal.add(floor);
     goal.position.x = sx * halfX;
@@ -370,5 +448,12 @@ function futebol(scene: THREE.Scene): Env {
       scene.add(b);
     }
   }
+  // gramado em volta, com tufos e flores
+  const around = new THREE.Mesh(new THREE.CylinderGeometry(halfX + 9, halfX + 9.5, 1, 20), paint('#567f37', { facet: 0.1 }));
+  around.position.y = -0.52;
+  around.userData.noCast = true;
+  scene.add(around);
+  scatterGrass(scene, 420, { radius: halfX + 8.5 }, (x, z) => Math.abs(x) > halfX + goalDepth + 0.4 || Math.abs(z) > halfZ + 0.9, 44, -0.02);
+  addMotes(scene, 'poeira', halfX + 2, 0, 6);
   return { size: halfX, update: () => {} };
 }

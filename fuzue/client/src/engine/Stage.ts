@@ -1,4 +1,12 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { glow, TIME } from './materials';
+import { quality } from './quality';
+import { skyDome, type Sky } from './sky';
 
 export const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const isTouch = window.matchMedia('(pointer: coarse)').matches;
@@ -41,12 +49,24 @@ export class Stage {
   private timeScale = 1;
   private slowUntil = 0;
 
+  private composer: EffectComposer | null = null;
+  private renderPass: RenderPass | null = null;
+  private envCache = new Map<string, THREE.Texture>();
+  private pmrem: THREE.PMREMGenerator;
+  private frameNo = 0;
+  private slowSince = 0;
+  private viewSince = 0;
+  private avgFrame = 16;
+
   constructor(readonly canvas: HTMLCanvasElement, private fx: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouch || window.devicePixelRatio < 2, alpha: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2));
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: quality.tier === 'baixa', powerPreference: 'high-performance' });
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.setClearColor('#000000', 1);
+    this.pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.setupPipeline();
 
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
@@ -54,10 +74,12 @@ export class Stage {
     let last = performance.now();
     const frame = (now: number) => {
       requestAnimationFrame(frame);
-      let dt = Math.min(0.1, (now - last) / 1000);
+      const real = now - last;
+      let dt = Math.min(0.1, real / 1000);
       last = now;
       if (now < this.slowUntil) dt *= this.timeScale;
       const t = now / 1000;
+      TIME.value = t;
       const view = this.view;
       if (!view) return;
       view.update(dt, t);
@@ -68,15 +90,83 @@ export class Stage {
         this.camera.position.x += (Math.random() - 0.5) * a;
         this.camera.position.y += (Math.random() - 0.5) * a;
       }
-      this.renderer.render(view.scene, this.camera);
+      if (++this.frameNo % 30 === 0) prepareShadows(view.scene);
+      if (this.composer && this.renderPass) {
+        this.renderPass.scene = view.scene;
+        this.composer.render(dt);
+      } else {
+        this.renderer.render(view.scene, this.camera);
+      }
       this.updateTags();
+      this.watchSpeed(now, real);
     };
     requestAnimationFrame(frame);
   }
 
+  /** Monta o pós-processamento do nível de qualidade atual. */
+  private setupPipeline(): void {
+    this.composer?.dispose();
+    this.composer = null;
+    this.renderPass = null;
+    const tier = quality.tier;
+    const ratio = Math.min(window.devicePixelRatio || 1, tier === 'alta' ? 2 : tier === 'media' ? 1.5 : 1);
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.shadowMap.type = tier === 'baixa' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+    if (tier === 'baixa') return;
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+    const composer = new EffectComposer(this.renderer, target);
+    composer.setPixelRatio(ratio);
+    this.renderPass = new RenderPass(new THREE.Scene(), this.camera);
+    composer.addPass(this.renderPass);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.5, 0.92);
+    if (tier === 'media') {
+      // brilho em meia resolução: quase igual e bem mais leve
+      const setSize = bloom.setSize.bind(bloom);
+      bloom.setSize = (w: number, h: number) => setSize(Math.ceil(w / 2), Math.ceil(h / 2));
+    }
+    composer.addPass(bloom);
+    composer.addPass(new ShaderPass(GRADE));
+    composer.addPass(new OutputPass());
+    this.composer = composer;
+    this.resize();
+  }
+
+  /** Se o jogo ficar lento por alguns segundos, desce a qualidade. */
+  private watchSpeed(now: number, real: number): void {
+    if (quality.pinned || document.hidden || real > 250) return;
+    this.avgFrame += (real - this.avgFrame) * 0.05;
+    if (now - this.viewSince < 4000) return;
+    if (this.avgFrame < 40) { this.slowSince = 0; return; }
+    if (!this.slowSince) this.slowSince = now;
+    else if (now - this.slowSince > 3000 && quality.drop()) {
+      this.slowSince = 0;
+      this.avgFrame = 16;
+      this.viewSince = now;
+      this.setupPipeline();
+    }
+  }
+
+  /** Céu com reflexo: liga o mapa de ambiente da cena (calculado uma vez por céu). */
+  private prepareEnvironment(scene: THREE.Scene): void {
+    const sky = scene.userData.sky as Sky | undefined;
+    if (!sky || scene.environment) return;
+    let env = this.envCache.get(sky.name);
+    if (!env) {
+      const tmp = new THREE.Scene();
+      tmp.add(skyDome(sky));
+      env = this.pmrem.fromScene(tmp, 0.02).texture;
+      this.envCache.set(sky.name, env);
+    }
+    scene.environment = env;
+    scene.environmentIntensity = sky.env;
+  }
+
   show(view: View): void {
     this.view = view;
+    this.viewSince = performance.now();
     this.clearParticles();
+    this.prepareEnvironment(view.scene);
+    prepareShadows(view.scene);
     this.applyViewOffset();
   }
 
@@ -84,6 +174,7 @@ export class Stage {
     this.width = Math.max(1, this.canvas.clientWidth || window.innerWidth);
     this.height = Math.max(1, this.canvas.clientHeight || window.innerHeight);
     this.renderer.setSize(this.width, this.height, false);
+    this.composer?.setSize(this.width, this.height);
     this.camera.aspect = this.width / this.height;
     this.applyViewOffset();
   }
@@ -175,10 +266,11 @@ export class Stage {
   private ensureParticles(scene: THREE.Scene): void {
     if (this.particleScene === scene) return;
     this.clearParticles();
-    const geo = new THREE.SphereGeometry(0.09, 8, 6);
-    const colors = ['#ffc93c', '#ffffff', '#ff5fa2', '#4aa3ff', '#3fd6b0'];
+    const geo = PARTICLE;
+    const mats = [glow('#f2c75c', 2.2), glow('#fff3d6', 1.8), glow('#c9a227', 1.6), glow('#e0703a', 2)];
     for (let i = 0; i < 70; i++) {
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colors[i % colors.length] }));
+      const mesh = new THREE.Mesh(geo, mats[i % mats.length]);
+      mesh.rotation.set(Math.random() * 3, Math.random() * 3, 0);
       mesh.visible = false;
       scene.add(mesh);
       this.particles.push({ mesh, vx: 0, vy: 0, vz: 0, life: 0 });
@@ -222,4 +314,50 @@ export class Stage {
       if (p.life <= 0) p.mesh.visible = false;
     }
   }
+}
+
+const PARTICLE = new THREE.OctahedronGeometry(0.1, 0);
+PARTICLE.userData.shared = true;
+
+/** Pós-processamento de cor: um pouco mais de saturação e vinheta nas bordas. */
+const GRADE = {
+  uniforms: { tDiffuse: { value: null }, uSat: { value: 1.12 }, uVignette: { value: 0.32 } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float uSat;
+    uniform float uVignette;
+    varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      c.rgb = max(mix(vec3(l), c.rgb, uSat), 0.0);
+      vec2 d = (vUv - 0.5) * vec2(1.0, 0.8);
+      c.rgb *= 1.0 - uVignette * smoothstep(0.25, 0.75, length(d) * 1.25);
+      gl_FragColor = c;
+    }`,
+};
+
+/**
+ * Liga sombras em tudo que é sólido e não é gigante (chão e mar só recebem).
+ * Roda em objetos novos: quem já foi visto fica marcado.
+ */
+function prepareShadows(scene: THREE.Scene): void {
+  scene.updateMatrixWorld();
+  const s = new THREE.Vector3();
+  scene.traverse(o => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || m.userData.lpShadow) return;
+    m.userData.lpShadow = true;
+    const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.MeshStandardMaterial;
+    if (!mat?.isMeshStandardMaterial) return;
+    m.receiveShadow = !m.userData.noReceive;
+    if (m.castShadow || m.userData.noCast || mat.transparent) return;
+    if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+    m.getWorldScale(s);
+    const r = (m.geometry.boundingSphere?.radius ?? 1) * Math.max(s.x, s.y, s.z);
+    m.castShadow = r < 7;
+  });
 }

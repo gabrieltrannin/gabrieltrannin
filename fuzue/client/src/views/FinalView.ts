@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { MSG, type BonusMsg } from '@fuzue/shared';
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { canvasTexture, outline, toon, toonMap } from '../engine/materials';
-import { addHorizon, addLights, addSea, bannerPole, cobbleTexture, flicker, makeCrown, torch } from '../engine/scenery';
+import { canvasTexture, glow, metal, paint, paintMap } from '../engine/materials';
+import {
+  addHorizon, addMotes, addSea, bannerPole, flicker, makeCrown, scatterGrass, setupWorld, SKIES, stoneFloor, torch,
+} from '../engine/scenery';
 import { reduceMotion } from '../engine/Stage';
 import { playersBySeat, type NetState } from '../net/types';
 import { $, avatar, escapeHtml, setHtml } from '../ui/dom';
@@ -19,26 +21,29 @@ export class FinalView implements RoomView {
   private unsub: (() => void)[] = [];
   private bubbles: Bubbles;
   private sea: (dt: number, t: number) => void;
+  private sky: (dt: number, t: number) => void;
   private confetti: { mesh: THREE.Mesh; vy: number; spin: number }[] = [];
   private announced = false;
 
   constructor(private ctx: Ctx) {
     this.bubbles = new Bubbles(ctx.stage);
-    addLights(this.scene, 8);
+    setupWorld(this.scene, SKIES.brasa, 8);
     this.sea = addSea(this.scene, 21);
-    addHorizon(this.scene, 30);
-    const cobble = cobbleTexture('#8c857a', '#9e968a', '#5f594f', 12);
-    cobble.repeat.set(4, 4);
-    const floor = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.3, 0.5, 48), [toon('#6f685e'), toonMap(cobble), toon('#6f685e')]);
-    floor.position.y = -0.25;
-    floor.receiveShadow = true;
-    outline(floor, 1.01, 1.1);
-    this.scene.add(floor);
+    this.sky = addHorizon(this.scene, 30);
+    const island = new THREE.Mesh(new THREE.CylinderGeometry(9.5, 10.5, 4, 14), paint('#5f8a3c', { facet: 0.12 }));
+    island.position.y = -2.1;
+    this.scene.add(island);
+    const plinth = new THREE.Mesh(new THREE.CylinderGeometry(6.3, 6.6, 0.4, 16), paint('#6f685e', { facet: 0.15 }));
+    plinth.position.y = -0.25;
+    this.scene.add(plinth);
+    this.scene.add(stoneFloor({ radius: 6.2 }, { seed: 12 }));
+    scatterGrass(this.scene, 200, { radius: 9.4 }, (x, z) => Math.hypot(x, z) > 6.7, 12);
+    addMotes(this.scene, 'poeira', 8, 0, 7);
     for (const [place, spot] of Object.entries(SPOTS)) {
-      const stone = toon('#9a9286');
+      const stone = paint('#9a9286', { facet: 0.14 });
       const block = new THREE.Mesh(new THREE.BoxGeometry(1.8, spot.h, 1.6), [
         stone, stone, stone, stone,
-        new THREE.MeshToonMaterial({ map: canvasTexture(128, 128, g => {
+        paintMap(canvasTexture(128, 128, g => {
           g.fillStyle = '#9a9286';
           g.fillRect(0, 0, 128, 128);
           g.fillStyle = place === '1' ? '#d4af37' : place === '2' ? '#b9bec4' : '#b07a45';
@@ -47,13 +52,10 @@ export class FinalView implements RoomView {
           g.font = '700 64px "Cinzel","Times New Roman",serif';
           g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#22170e';
           g.fillText(['I', 'II', 'III'][Number(place) - 1], 64, 68);
-        }) }),
+        })),
         stone,
       ]);
       block.position.set(spot.x, spot.h / 2, 0);
-      block.castShadow = true;
-      block.receiveShadow = true;
-      outline(block, 1.03);
       this.scene.add(block);
     }
     for (const [x, c] of [[-4.2, '#8e2430'], [4.2, '#2f5a8f']] as const) {
@@ -65,10 +67,11 @@ export class FinalView implements RoomView {
       this.scene.add(t);
     }
     // moedas de ouro e pétalas caindo
-    const colors = ['#d4af37', '#d4af37', '#8e2430', '#efe3c6', '#c98f97'];
-    const geo = new THREE.PlaneGeometry(0.13, 0.13);
+    const mats = [metal('#e0b33a', 0.25, THREE.DoubleSide), glow('#f2c75c', 1.5), paint('#a3242f', { side: THREE.DoubleSide }), paint('#efe3c6', { side: THREE.DoubleSide }), paint('#c98f97', { side: THREE.DoubleSide })];
+    const geo = new THREE.CircleGeometry(0.08, 6);
     for (let i = 0; i < (reduceMotion ? 0 : 110); i++) {
-      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colors[i % colors.length], side: THREE.DoubleSide }));
+      const mesh = new THREE.Mesh(geo, mats[i % mats.length]);
+      mesh.userData.noCast = true;
       mesh.position.set((Math.random() - 0.5) * 12, Math.random() * 9, (Math.random() - 0.5) * 6 - 1);
       this.scene.add(mesh);
       this.confetti.push({ mesh, vy: 0.6 + Math.random(), spin: (Math.random() - 0.5) * 6 });
@@ -172,6 +175,7 @@ export class FinalView implements RoomView {
 
   update(dt: number, t: number): void {
     this.sea(dt, t);
+    this.sky(dt, t);
     flicker(this.scene, t);
     for (const [, c] of this.critters) {
       animateCritter(c.critter, t, { speed: 0, punching: false, stunned: false, falling: false, celebrate: c.place === 1, sad: c.place >= 4, waving: c.place === 2 || c.place === 3 });

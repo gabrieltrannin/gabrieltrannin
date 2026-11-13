@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { BOT_LEVELS, CHARACTERS, MAX_PLAYERS, MSG, ROUND_OPTIONS } from '@fuzue/shared';
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { outline, toon, toonMap } from '../engine/materials';
-import { addHorizon, addLights, bannerPole, cobbleTexture, flicker, torch } from '../engine/scenery';
+import { paint } from '../engine/materials';
+import { addHorizon, addMotes, bannerPole, flicker, setupWorld, SKIES, stoneFloor, torch } from '../engine/scenery';
 import { type Tag } from '../engine/Stage';
 import { playersBySeat, type NetPlayer, type NetState } from '../net/types';
 import { $, avatar, copyText, escapeHtml, setHtml } from '../ui/dom';
@@ -25,27 +25,21 @@ export class LobbyView implements RoomView {
 
   constructor(private ctx: Ctx) {
     this.bubbles = new Bubbles(ctx.stage);
-    addLights(this.scene, 9, { color: '#5a4a52', near: 18, far: 60 });
+    setupWorld(this.scene, SKIES.crepusculo, 9);
     addHorizon(this.scene, 22, 9);
-    const cobble = cobbleTexture('#8c857a', '#9e968a', '#5f594f', 7);
-    cobble.repeat.set(4, 4);
-    const dais = new THREE.Mesh(new THREE.CylinderGeometry(5.4, 5.7, 0.5, 56), [toon('#6f685e'), toonMap(cobble), toon('#6f685e')]);
-    dais.position.y = -0.25;
-    dais.receiveShadow = true;
-    outline(dais, 1.012, 1.1);
+    const dais = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 5.9, 0.6, 16), paint('#6f685e', { facet: 0.15 }));
+    dais.position.y = -0.36;
     this.scene.add(dais);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(5.45, 0.09, 8, 90), toon('#4a3322'));
-    rim.rotation.x = Math.PI / 2;
-    this.scene.add(rim);
-
+    this.scene.add(stoneFloor({ radius: 5.5 }, { seed: 7 }));
+    const ground = new THREE.Mesh(new THREE.CylinderGeometry(30, 30, 0.5, 24), paint('#3f5a32', { facet: 0.1 }));
+    ground.position.y = -0.85;
+    this.scene.add(ground);
+    addMotes(this.scene, 'vagalume', 9, 0, 4);
     for (let i = 0; i < MAX_PLAYERS; i++) {
-      const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.82, 0.42, 10), toon('#8c857a'));
+      const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.82, 0.42, 8), paint('#8c857a', { facet: 0.14 }));
       ped.position.set(SEAT_X[i], 0.21, SEAT_Z[i]);
-      ped.castShadow = true;
-      ped.receiveShadow = true;
-      outline(ped, 1.05);
       this.scene.add(ped);
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.79, 0.79, 0.1, 10), toon('#6f685e'));
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.79, 0.79, 0.1, 8), paint('#6f685e'));
       band.position.set(SEAT_X[i], 0.3, SEAT_Z[i]);
       this.scene.add(band);
       const anchor = new THREE.Object3D();
@@ -144,7 +138,7 @@ export class LobbyView implements RoomView {
         seat.id = '';
         seat.character = -1;
         seat.tag.el.innerHTML = s.fillBots ? '<small>vaga para bot</small>' : '<small>vaga livre</small>';
-        seat.band.material = toon('#6f685e');
+        seat.band.material = paint('#6f685e');
         return;
       }
       if (seat.character !== p.character || seat.id !== p.id) {
@@ -155,7 +149,7 @@ export class LobbyView implements RoomView {
         this.scene.add(seat.critter.root);
         seat.character = p.character;
         seat.id = p.id;
-        seat.band.material = toon(CHARACTERS[p.character].color);
+        seat.band.material = paint(CHARACTERS[p.character].color);
       }
       seat.tag.el.innerHTML = `${escapeHtml(p.name)}${p.id === me ? ' <small>você</small>' : ''}${p.ready || p.id === s.hostId ? ' <small>✓</small>' : ''}`;
     });
