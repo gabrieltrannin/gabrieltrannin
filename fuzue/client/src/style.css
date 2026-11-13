@@ -327,7 +327,7 @@ body[data-scene="board"] #scene { cursor: grab; }
 .mg-board li.out { opacity: .45; text-decoration: line-through; }
 .mg-board .ava { width: 24px; height: 24px; font-size: 12px; }
 .mg-board .teams { font-family: var(--display); font-size: 22px; text-align: center; display: flex; gap: 8px; align-items: center; justify-content: center; }
-.mg-note { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); padding: 10px 16px; font-family: var(--display); font-size: 20px; text-align: center; background: var(--cream); pointer-events: none !important; }
+.mg-note { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); padding: 10px 16px; font-family: var(--display); font-size: 20px; text-align: center; width: max-content; max-width: min(88vw, 560px); background: var(--cream); pointer-events: none !important; }
 .keys { position: absolute; left: max(16px, var(--safe-l)); bottom: calc(16px + var(--safe-b)); margin: 0; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .pads { position: absolute; right: max(16px, var(--safe-r)); bottom: calc(18px + var(--safe-b)); display: flex; gap: 12px; align-items: flex-end; }
 .pad { width: 92px; height: 92px; border-radius: 50%; padding: 0; font-family: var(--body); font-weight: 900; font-size: 17px; letter-spacing: 0; }
