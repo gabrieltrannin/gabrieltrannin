@@ -2,6 +2,7 @@ import type { AssetRegistry } from '../registry';
 import { registerFarm } from './farm';
 import { registerNature } from './nature';
 import { registerVillage } from './village';
+import { registerWork } from './work';
 
 export { repaintStallSigns } from './village';
 
@@ -12,12 +13,15 @@ export { repaintStallSigns } from './village';
  * Conventions a glTF model must keep to plug in:
  * - meshes named "only:winter", "only:autumn" or "only:warm" are shown only in that season;
  * - "fruit" meshes hide in winter; "lamp"/"window" meshes use the night-glow materials;
- * - "sign_face" is the painted face of a sign; the windmill has a child named "blades".
+ * - "sign_face" is the painted face of a sign; the windmill has a child named "blades";
+ * - "only:broken" / "only:fixed" meshes of the greenhouse follow its repair; a stump's "wood" shows while it has wood;
+ * - "fire" meshes flicker; animals and Bento are single meshes named "body" that the world bobs as they walk.
  */
 export function registerProceduralAssets(registry: AssetRegistry): void {
   registerNature(registry);
   registerFarm(registry);
   registerVillage(registry);
+  registerWork(registry);
 }
 
 /** Every object the design document lists under "Elementos que precisam existir", by asset name. */

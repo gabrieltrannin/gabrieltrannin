@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import type { AssetRegistry } from '../assets/registry';
-import type { SeasonId } from '../data/calendar';
-import { BED_CROPS_BY_SEASON, CROP_ICONS } from '../data/crops';
-import { BED_COLUMNS, BED_ROWS, BEDS, FENCE_GATE_POSTS, FENCE_LINES, GROUND_LANTERNS, LEVELS, LIGHT_POLE_HEIGHT, LIGHT_POLES, LIGHT_STRINGS } from '../data/map';
+import { CROP_ICONS, type FarmCropId } from '../data/crops';
+import { BEDS, FENCE_GATE_POSTS, FENCE_LINES, GROUND_LANTERNS, LEVELS, LIGHT_POLE_HEIGHT, LIGHT_POLES, LIGHT_STRINGS } from '../data/map';
 import { t } from '../i18n';
 import { instantiate, type Placement } from '../render/instancing';
 import { seededRandom } from '../render/textures';
 
 export interface FarmDecor {
   root: THREE.Group;
-  applySeason(season: SeasonId): void;
+  /** Shows on each bed's sign the crop growing there (null = nothing planted). */
+  setSignCrops(crops: Record<string, FarmCropId | null>): void;
   /** Repaints the bed signs (after the web fonts load). */
   repaintSigns(): void;
 }
@@ -19,7 +19,7 @@ const FENCE_SPACING = 0.36;
 const STRING_SAG = 0.32;
 const BULB_SPACING = 0.42;
 
-/** Beds, log fence, crop signs, seasonal crops, ground lanterns and the string lights over the paths. */
+/** Beds, log fence, crop signs, ground lanterns and the string lights over the paths. Crops come from the game state (farmPlots). */
 export function buildFarmDecor(assets: AssetRegistry): FarmDecor {
   const root = new THREE.Group();
   root.name = 'farm';
@@ -65,37 +65,21 @@ export function buildFarmDecor(assets: AssetRegistry): FarmDecor {
     return sign;
   });
 
-  // Crops, rebuilt when the season changes.
-  let crops = new THREE.Group();
-  root.add(crops);
-  let current: SeasonId = 'spring';
-
+  let shown: Record<string, FarmCropId | null> = {};
   const paintSigns = () => {
     BEDS.forEach((b, i) => {
-      const crop = BED_CROPS_BY_SEASON[current][b.id];
+      const crop = shown[b.id] ?? null;
       const paint = signs[i]!.userData.paint as ((label: string, icon: string) => void) | undefined;
-      paint?.(t(`crop.${crop}`).toLocaleUpperCase('pt-BR'), CROP_ICONS[crop]);
+      paint?.((crop ? t(`crop.${crop}`) : t('sign.empty')).toLocaleUpperCase('pt-BR'), crop ? CROP_ICONS[crop] : '🌱');
     });
   };
+  paintSigns();
 
   return {
     root,
-    applySeason(season) {
-      current = season;
-      root.remove(crops);
-      crops = new THREE.Group();
-      crops.name = 'crops';
-      const cropRnd = seededRandom(55);
-      for (const b of BEDS) {
-        const w = b.x1 - b.x0, d = b.z1 - b.z0, spots: Placement[] = [];
-        for (let i = 0; i < BED_COLUMNS; i++) {
-          for (let j = 0; j < BED_ROWS; j++) {
-            spots.push({ x: b.x0 + ((i + 0.5) * w) / BED_COLUMNS, y: FLOOR + 0.03, z: b.z0 + ((j + 0.5) * d) / BED_ROWS, s: 0.95 + cropRnd() * 0.15, ry: cropRnd() * Math.PI * 2 });
-          }
-        }
-        crops.add(instantiate(assets.create(`crop.${BED_CROPS_BY_SEASON[season][b.id]}`), spots));
-      }
-      root.add(crops);
+    setSignCrops(crops) {
+      if (BEDS.every(b => (crops[b.id] ?? null) === (shown[b.id] ?? null))) return;
+      shown = { ...crops };
       paintSigns();
     },
     repaintSigns: paintSigns,

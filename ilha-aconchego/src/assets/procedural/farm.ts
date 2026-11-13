@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { CROPS, type CropId } from '../../data/crops';
-import { BED_COLUMNS, BED_ROWS, LIGHT_POLE_HEIGHT } from '../../data/map';
+import { CROPS, FARM_CROPS, type CropId, type FarmCropId } from '../../data/crops';
+import { LIGHT_POLE_HEIGHT } from '../../data/map';
 import { materials } from '../../render/materials';
 import { paintSign } from '../../render/textures';
 import type { AssetRegistry } from '../registry';
@@ -77,18 +77,13 @@ export function registerFarm(registry: AssetRegistry): void {
     return g;
   });
 
-  // Raised bed: wooden frame and 4 x 3 tilled mounds. Origin at the bed center.
+  // Raised bed: the wooden frame. Tilled soil is drawn per tile from the game state. Origin at the bed center.
   registry.register('bed.frame', () => {
     const { width: w, depth: d } = BED_SIZE;
     const parts = [
       box(w + 0.24, 0.22, 0.12, 0, 0.11, -d / 2 - 0.06, WOOD), box(w + 0.24, 0.22, 0.12, 0, 0.11, d / 2 + 0.06, WOOD),
       box(0.12, 0.22, d, -w / 2 - 0.06, 0.11, 0, WOOD), box(0.12, 0.22, d, w / 2 + 0.06, 0.11, 0, WOOD),
     ];
-    for (let i = 0; i < BED_COLUMNS; i++) {
-      for (let j = 0; j < BED_ROWS; j++) {
-        parts.push(ball(0.36, 0.09, 0.34, -w / 2 + ((i + 0.5) * w) / BED_COLUMNS, 0.02, -d / 2 + ((j + 0.5) * d) / BED_ROWS, 0x6b4426));
-      }
-    }
     return group('bed.frame', vcMesh(parts, 'frame'));
   });
 
@@ -171,4 +166,40 @@ export function registerFarm(registry: AssetRegistry): void {
   );
 
   for (const crop of CROPS) registry.register(`crop.${crop}`, () => group(`crop.${crop}`, vcMesh(CROP_PARTS[crop](), 'crop')));
+
+  // Growth stages: a seed mound, then a young plant (leaves without fruit), then the ripe crop.
+  registry.register('crop.seed', () =>
+    group('crop.seed', vcMesh([ball(0.2, 0.06, 0.2, 0, 0.03, 0, 0x5a3a22), ball(0.035, 0.025, 0.03, -0.06, 0.08, 0.02, 0xe8d6a8), ball(0.035, 0.025, 0.03, 0.05, 0.08, -0.04, 0xe8d6a8), ball(0.03, 0.02, 0.03, 0.02, 0.08, 0.07, 0xe8d6a8)], 'crop')),
+  );
+  for (const crop of FARM_CROPS) {
+    registry.register(`crop.${crop}.young`, () => group(`crop.${crop}.young`, vcMesh(YOUNG_PARTS[crop](), 'crop')));
+  }
+
+  // Tilled soil of one farm tile, with furrows. Each copy is tinted darker when watered.
+  registry.register('soil.tilled', () => {
+    const parts = [box(0.86, 0.1, 0.86, 0, 0.05, 0, 0x8a5a36)];
+    for (const x of [-0.27, 0, 0.27]) parts.push(box(0.16, 0.06, 0.78, x, 0.12, 0, 0x7a4c2c));
+    return group('soil.tilled', vcMesh(parts, 'soil', false));
+  });
+
+  // Copper sprinkler on a stone base.
+  registry.register('farm.sprinkler', () =>
+    group('farm.sprinkler', vcMesh([
+      cyl(0.26, 0.3, 0.12, 0, 0.06, 0, 0xa8a49a, 10), cyl(0.05, 0.05, 0.4, 0, 0.3, 0, 0xc0773f, 8),
+      ball(0.13, 0.08, 0.13, 0, 0.52, 0, 0xd28a4a), ...[0, 1, 2, 3].map(k => cyl(0.02, 0.02, 0.18, Math.cos(k * 1.57) * 0.12, 0.53, Math.sin(k * 1.57) * 0.12, 0x8a5a2e, 5, 0, -k * 1.57, Math.PI / 2)),
+    ], 'sprinkler')),
+  );
 }
+
+/** Young plant of each crop: the leaves of the ripe one, without the fruit. */
+const YOUNG_PARTS: Record<FarmCropId, () => THREE.BufferGeometry[]> = {
+  strawberry: () => CROP_PARTS.strawberry().slice(0, 3),
+  lettuce: () => CROP_PARTS.lettuce(),
+  carrot: () => CROP_PARTS.carrot().slice(1),
+  wheat: () => CROP_PARTS.wheatGreen(),
+  tomato: () => CROP_PARTS.tomato().slice(0, 4),
+  corn: () => CROP_PARTS.corn().slice(0, 4),
+  pumpkin: () => [...CROP_PARTS.pumpkin().slice(2), ball(0.12, 0.1, 0.12, 0.02, 0.1, 0, 0x8dbf5a)],
+  cabbage: () => CROP_PARTS.cabbage(),
+  kale: () => CROP_PARTS.kale(),
+};

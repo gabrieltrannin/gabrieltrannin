@@ -147,6 +147,13 @@ async function start(): Promise<void> {
     weatherFx.setWeather(game.state.weather);
   };
   syncLook();
+  // Farm, animals, rocks and the other things that follow the game state.
+  world.syncState(game.state);
+  const STATE_EVENTS = new Set(['farm.changed', 'world.changed', 'animals.changed', 'day.started', 'date.changed']);
+  game.on(event => {
+    if (STATE_EVENTS.has(event.type)) world.syncState(game.state);
+    if (event.type === 'farm.watered') world.farm.splash(event.tiles);
+  });
   game.on(event => {
     if (event.type !== 'player.moved' && event.type !== 'inventory.changed') syncLook();
     if (event.type === 'day.started' || event.type === 'date.changed') syncOrchard();
@@ -156,7 +163,7 @@ async function start(): Promise<void> {
   const avatar = buildAvatar(me().appearance);
   avatar.name = 'player';
   scene.add(avatar);
-  const colliders = buildColliders();
+  const colliders = buildColliders({ greenhouseFixed: game.state.greenhouse });
   const player = new PlayerController(avatar, colliders, me().position);
   const pet = new Pet(assets.create('pet.bunny'), player.x - 0.8, player.z - 0.6);
   scene.add(pet.object);
@@ -428,7 +435,7 @@ async function start(): Promise<void> {
     dev?.frame(dtMs);
   });
 
-  if (import.meta.env.DEV) Object.assign(window, { __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow });
+  if (import.meta.env.DEV) Object.assign(window, { __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow, __world: world });
 }
 
 void start().catch(error => {

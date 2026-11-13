@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readSaveFile, toSaveFile } from './save';
-import { createInitialState, SAVE_VERSION } from './state';
+import { createInitialState } from './state';
 
 describe('save files', () => {
   it('round-trips a new island through JSON', () => {
@@ -21,7 +21,7 @@ describe('save files', () => {
   it('refuses old versions, missing data and tampered values', () => {
     const good = () => JSON.parse(JSON.stringify(toSaveFile(createInitialState(), 'sleep', 1)));
     expect(readSaveFile(null)).toBeNull();
-    expect(readSaveFile({ ...good(), version: SAVE_VERSION - 1 })).toBeNull();
+    expect(readSaveFile({ ...good(), version: 1 })).toBeNull();
 
     const badItem = good();
     badItem.state.players.local.inventory[0] = { item: 'tool.laser', qty: 1 };

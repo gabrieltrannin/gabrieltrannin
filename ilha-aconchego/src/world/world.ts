@@ -6,7 +6,11 @@ import type { FruitId } from '../data/defaults';
 import { HOUSE, HOUSE_CHIMNEY } from '../data/map';
 import { SEASON_PALETTES } from '../data/seasonPalettes';
 import { materials } from '../render/materials';
+import { BEDS, FARM_TILES } from '../data/map';
+import type { FarmCropId } from '../data/crops';
+import type { GameState } from '../core/types';
 import { buildFarmDecor } from './farmDecor';
+import { buildFarmWorld, type FarmWorld } from './farmWorld';
 import { GroundPainter } from './groundPainter';
 import { buildIsland } from './island';
 import { buildProps } from './props';
@@ -28,6 +32,10 @@ export interface World {
   shakeOrchardTree(index: number): void;
   /** Repaints signs once the web fonts are ready. */
   repaintSigns(): void;
+  /** Farm, animals, machines, rocks and the rest that follow the game state. */
+  farm: FarmWorld;
+  /** Redraws what follows the game state (call after farm or world events). */
+  syncState(state: Readonly<GameState>): void;
   update(dt: number, elapsed: number, reducedMotion: boolean): void;
 }
 
@@ -40,7 +48,8 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
   const vegetation = buildVegetation(assets, opts.nativeFruit);
   const farm = buildFarmDecor(assets);
   const props = buildProps(assets);
-  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root);
+  const farmWorld = buildFarmWorld(assets);
+  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root, farmWorld.root);
 
   // Season visibility by mesh name, so glTF models can follow the same rule.
   const onlyIn: Record<string, THREE.Object3D[]> = { 'only:winter': [], 'only:autumn': [], 'only:warm': [], fruit: [] };
@@ -72,7 +81,6 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
     for (const o of onlyIn['only:warm']!) o.visible = season === 'spring' || season === 'summer';
     for (const o of onlyIn.fruit!) o.visible = p.fruitOnTrees;
     vegetation.applySeason(p);
-    farm.applySeason(season);
   };
   setSeason(opts.season);
 
@@ -86,9 +94,26 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
       farm.repaintSigns();
       repaintStallSigns();
     },
+    farm: farmWorld,
+    syncState(state) {
+      farmWorld.sync(state);
+      vegetation.setGrassCut(new Set(Object.keys(state.grass).map(Number)));
+      // Each sign shows the crop planted most in its bed.
+      const signs: Record<string, FarmCropId | null> = {};
+      for (const bed of BEDS) {
+        const counts = new Map<FarmCropId, number>();
+        for (const t of FARM_TILES) {
+          const crop = t.bed === bed.id ? state.plots[t.id]?.crop : null;
+          if (crop) counts.set(crop, (counts.get(crop) ?? 0) + 1);
+        }
+        signs[bed.id] = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      }
+      farm.setSignCrops(signs);
+    },
     update(dt, elapsed, reducedMotion) {
       sea.update(elapsed, reducedMotion);
       vegetation.update(dt);
+      farmWorld.update(dt, elapsed, reducedMotion);
       if (!reducedMotion) for (const b of props.blades) b.rotation.z = elapsed * 0.8;
       if (props.boat) {
         props.boat.position.y = boatBase + Math.sin(elapsed * 1.3) * 0.06;

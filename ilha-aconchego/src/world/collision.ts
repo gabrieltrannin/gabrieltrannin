@@ -1,8 +1,9 @@
 import type { SeasonId } from '../data/calendar';
 import { FOOTPRINTS, type Footprint } from '../data/footprints';
 import {
-  BEDS, BLOSSOM_TREES, BUSHES, FENCE_GATE_POSTS, FENCE_LINES, GLOBE_LAMPS, GROUND_LANTERNS, HEDGES, LEVELS, LIGHT_POLES,
-  ORCHARD, PALMS, PIER, PINES, PROPS, ROCKS, ROUND_TREES, STAIRS, STALLS,
+  BARN, BEDS, BENTO_SPOT, BLOSSOM_TREES, BUSHES, COOP, CREEK, FENCE_GATE_POSTS, FENCE_LINES, GLOBE_LAMPS, GREENHOUSE, GREENHOUSE_BED, GROUND_LANTERNS, HEDGES,
+  KITCHEN, LEVELS, LIGHT_POLES, MACHINE_PADS, MINE_NODES, ORCHARD, PALMS, PEN, PIER, PINES, POND, PROPS, ROCKS, ROUND_TREES, SHIPPING_BIN, SMITHY, STAIRS, STALLS,
+  STUMPS, WORKBENCH,
 } from '../data/map';
 import { groundHeight, insideRoundedRect } from './terrain';
 
@@ -48,9 +49,45 @@ function footprintCollider(footprint: Footprint, x: number, z: number, ry = 0, s
 
 const fp = (asset: string): Footprint => FOOTPRINTS[asset] ?? { r: 0.4 };
 
-/** Everything solid on the starting island, built from the map data. */
-export function buildColliders(): Collider[] {
-  const list: Collider[] = [];
+const rect = (x: number, z: number, w: number, d: number): Collider => ({ kind: 'box', x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2 });
+const segment = (ax: number, az: number, bx: number, bz: number, t = 0.15): Collider => ({ kind: 'box', x0: Math.min(ax, bx) - t, z0: Math.min(az, bz) - t, x1: Math.max(ax, bx) + t, z1: Math.max(az, bz) + t });
+
+/** Stage 3: barn, coop, pen fence, pond, smithy, work spots, greenhouse, machine pads, rocks and stumps. */
+function workColliders(greenhouseFixed: boolean): Collider[] {
+  const list: Collider[] = [
+    { kind: 'box', x0: BARN.x - BARN.w / 2, z0: BARN.z - BARN.d / 2, x1: BARN.x + BARN.w / 2, z1: BARN.z + BARN.d / 2 + 0.65 },
+    { kind: 'box', x0: COOP.x - COOP.w / 2, z0: COOP.z - COOP.d / 2, x1: COOP.x + COOP.w / 2 + 0.45, z1: COOP.z + COOP.d / 2 + 0.1 },
+    segment(PEN.x0, PEN.z1, PEN.x1, PEN.z1), segment(PEN.x0, PEN.z0, PEN.x0, PEN.z1),
+    segment(PEN.x1, PEN.z0, PEN.x1, PEN.gate[0]), segment(PEN.x1, PEN.gate[1], PEN.x1, PEN.z1),
+    segment(BARN.x + BARN.w / 2, PEN.z0, PEN.x1, PEN.z0),
+    { kind: 'circle', x: POND.x, z: POND.z, r: POND.rz - 0.05 },
+    { kind: 'circle', x: POND.x - POND.rx + POND.rz, z: POND.z, r: POND.rz - 0.15 },
+    { kind: 'circle', x: POND.x + POND.rx - POND.rz, z: POND.z, r: POND.rz - 0.15 },
+    ...CREEK.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.45 }) as Collider),
+    { kind: 'circle', x: (POND.x + CREEK[0]![0]) / 2, z: (POND.z + 0.9 + CREEK[0]![1]) / 2, r: 0.45 },
+    rect(SMITHY.x, SMITHY.z, SMITHY.w, SMITHY.d),
+    { kind: 'circle', x: BENTO_SPOT[0], z: BENTO_SPOT[1], r: 0.4 },
+    { kind: 'circle', x: SHIPPING_BIN[0], z: SHIPPING_BIN[1], r: 0.55 },
+    { kind: 'circle', x: KITCHEN[0], z: KITCHEN[1], r: 0.55 },
+    { kind: 'circle', x: KITCHEN[0] - 0.97, z: KITCHEN[1] + 0.25, r: 0.4 },
+    rect(WORKBENCH[0], WORKBENCH[1], 1.55, 0.7),
+    ...MACHINE_PADS.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.45 }) as Collider),
+    ...MINE_NODES.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.5 }) as Collider),
+    ...STUMPS.map(([x, z]) => ({ kind: 'circle', x, z, r: 0.45 }) as Collider),
+  ];
+  // Greenhouse: three glass walls, the front wall on both sides of the door, the bed inside.
+  const { x, z, w, d, door } = GREENHOUSE;
+  const x0 = x - w / 2, x1 = x + w / 2, z0 = z - d / 2, z1 = z + d / 2;
+  list.push(segment(x0, z0, x1, z0, 0.1), segment(x0, z0, x0, z1, 0.1), segment(x1, z0, x1, z1, 0.1));
+  list.push(segment(x0, z1, x - door / 2, z1, 0.1), segment(x + door / 2, z1, x1, z1, 0.1));
+  if (!greenhouseFixed) list.push(segment(x - door / 2, z1, x + door / 2, z1, 0.12));
+  list.push({ kind: 'box', x0: GREENHOUSE_BED.x0 - 0.1, z0: GREENHOUSE_BED.z0 - 0.1, x1: GREENHOUSE_BED.x1 + 0.1, z1: GREENHOUSE_BED.z1 + 0.05 });
+  return list;
+}
+
+/** Everything solid on the starting island, built from the map data (the greenhouse door opens once it is fixed). */
+export function buildColliders(opts: { greenhouseFixed?: boolean } = {}): Collider[] {
+  const list: Collider[] = workColliders(opts.greenhouseFixed ?? false);
   for (const p of PROPS) {
     const c = footprintCollider(fp(p.asset), p.at[0], p.at[1], p.ry, p.scale);
     if (p.asset === 'boat') continue;

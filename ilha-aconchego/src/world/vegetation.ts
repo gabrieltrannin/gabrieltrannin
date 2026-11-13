@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { AssetRegistry } from '../assets/registry';
 import type { FruitId } from '../data/defaults';
-import { BLOSSOM_TREES, BUSHES, FLOWER_COLORS, FLOWER_PATCHES, ORCHARD, PALMS, PINES, ROCKS, ROUND_TREES, TALL_GRASS, UPPER_FLOWER_ROW } from '../data/map';
+import { BLOSSOM_TREES, BUSHES, FLOWER_COLORS, FLOWER_PATCHES, grassPatchOf, ORCHARD, PALMS, PINES, ROCKS, ROUND_TREES, TALL_GRASS, UPPER_FLOWER_ROW } from '../data/map';
 import type { SeasonPalette } from '../data/seasonPalettes';
 import { instantiate, setInstancePlacement, setInstanceVisible, type Placement } from '../render/instancing';
 import { seededRandom } from '../render/textures';
@@ -14,6 +14,8 @@ export interface Vegetation {
   setOrchardFruit(index: number, visible: boolean): void;
   /** Makes one orchard tree wobble for a moment. */
   shakeOrchardTree(index: number): void;
+  /** Hides the tall grass of the patches that were cut. */
+  setGrassCut(cut: ReadonlySet<number>): void;
   update(dt: number): void;
 }
 
@@ -78,6 +80,12 @@ export function buildVegetation(assets: AssetRegistry, nativeFruit: FruitId): Ve
     },
     shakeOrchardTree(index) {
       shaking.set(index, 0.7);
+    },
+    setGrassCut(cut) {
+      tuftSpots.forEach((spot, i) => {
+        const visible = !cut.has(grassPatchOf(spot.x, spot.z));
+        for (const m of tufts) if (m.name) setInstanceVisible(tuftGroup, i, m.name, visible);
+      });
     },
     update(dt) {
       for (const [index, left] of shaking) {

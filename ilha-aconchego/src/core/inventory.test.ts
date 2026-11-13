@@ -7,7 +7,7 @@ describe('inventory', () => {
     const inv = createInventory(STARTING_INVENTORY);
     expect(inv).toHaveLength(INVENTORY_SIZE);
     expect(inv[0]).toEqual({ item: 'tool.hoe', qty: 1 });
-    expect(countItem(inv, 'seed.strawberry')).toBe(12);
+    expect(countItem(inv, 'seed.strawberry')).toBe(6);
   });
 
   it('stacks items up to the maximum, then uses new slots', () => {

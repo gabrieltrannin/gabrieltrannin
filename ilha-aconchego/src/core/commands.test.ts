@@ -92,6 +92,8 @@ describe('Game', () => {
     game.dispatch({ type: 'sleep' }, host);
     off();
     game.dispatch({ type: 'sleep' }, host);
-    expect(seen).toEqual(['time.changed', 'day.started']);
+    expect(seen[0]).toBe('time.changed');
+    expect(seen.filter(t => t === 'day.started')).toHaveLength(1);
+    expect(seen).toContain('farm.changed');
   });
 });

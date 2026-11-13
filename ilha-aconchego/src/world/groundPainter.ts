@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BEDS, CLEARINGS, GROUND_AREA, PATHS, PLAZA, STEPPING_STONES, TALL_GRASS } from '../data/map';
+import { BEDS, CLEARINGS, CREEK, CREEK_WIDTH, GROUND_AREA, PATHS, PEN_YARD, PLAZA, POND, SMITHY, STEPPING_STONES, TALL_GRASS } from '../data/map';
 import type { SeasonPalette } from '../data/seasonPalettes';
 import { seededRandom } from '../render/textures';
 
@@ -85,6 +85,32 @@ export class GroundPainter {
     ctx.fillStyle = 'rgba(30,60,20,.18)';
     ctx.beginPath();
     ctx.ellipse(gx((TALL_GRASS.x0 + TALL_GRASS.x1) / 2), gz((TALL_GRASS.z0 + TALL_GRASS.z1) / 2), 3.6 * PX, 2 * PX, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Animal yard: trampled earth with a little straw.
+    ctx.fillStyle = 'rgba(150,110,70,.55)';
+    roundRectPath(ctx, gx(PEN_YARD.x0 - 0.3), gz(PEN_YARD.z0 - 0.6), (PEN_YARD.x1 - PEN_YARD.x0 + 0.6) * PX, (PEN_YARD.z1 - PEN_YARD.z0 + 0.8) * PX, 0.6 * PX);
+    ctx.fill();
+    ctx.fillStyle = '#E3C46A';
+    for (let i = 0; i < 260; i++) {
+      ctx.globalAlpha = 0.5 + rnd() * 0.4;
+      ctx.fillRect(gx(PEN_YARD.x0 + rnd() * (PEN_YARD.x1 - PEN_YARD.x0)), gz(PEN_YARD.z0 - 0.4 + rnd() * (PEN_YARD.z1 - PEN_YARD.z0 + 0.5)), 5, 1.6);
+    }
+    ctx.globalAlpha = 1;
+    // Smithy floor.
+    ctx.fillStyle = 'rgba(120,110,100,.6)';
+    roundRectPath(ctx, gx(SMITHY.x - SMITHY.w / 2 - 0.3), gz(SMITHY.z - SMITHY.d / 2), (SMITHY.w + 0.6) * PX, (SMITHY.d + 0.6) * PX, 0.3 * PX);
+    ctx.fill();
+    // Pond and creek banks: wet earth and pebbles (the water surface is a mesh on top).
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(90,70,50,.55)';
+    ctx.lineWidth = (CREEK_WIDTH + 0.5) * PX;
+    ctx.beginPath();
+    [[POND.x, POND.z] as const, ...CREEK].forEach(([x, z], i) => (i ? ctx.lineTo(gx(x), gz(z)) : ctx.moveTo(gx(x), gz(z))));
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(90,70,50,.55)';
+    ctx.beginPath();
+    ctx.ellipse(gx(POND.x), gz(POND.z), (POND.rx + 0.35) * PX, (POND.rz + 0.35) * PX, 0, 0, Math.PI * 2);
     ctx.fill();
 
     this.paintPaths(p, pick, rnd);

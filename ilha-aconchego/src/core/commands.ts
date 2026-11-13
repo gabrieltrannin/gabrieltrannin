@@ -1,13 +1,23 @@
+import type { BuffId, ItemId, Quality } from '../data/items';
 import { DAYS_PER_SEASON, SEASONS, TIME_STEP_MINUTES } from '../data/calendar';
-import { fruitItem, HOTBAR_SIZE, INVENTORY_SIZE, MAX_ENERGY, type ItemId } from '../data/items';
+import type { FishSpot } from '../data/fish';
+import { fruitItem, HOTBAR_SIZE, INVENTORY_SIZE } from '../data/items';
 import { BED_REACH, HOUSE_DOOR, ORCHARD, orchardTreeId, TOUR_PLACES, TOUR_REWARD, TREE_REACH } from '../data/map';
+import type { ShopId } from '../data/shops';
+import type { SkillId } from '../data/skills';
+import type { ToolId } from '../data/tools';
 import type { WeatherId } from '../data/weather';
 import { groundHeight } from '../world/terrain';
-import { STEPS_PER_DAY, absoluteDay, advanceSteps, seasonOf, startNextDay } from './clock';
+import { STEPS_PER_DAY, absoluteDay, advanceSteps, seasonOf } from './clock';
+import { distance, isInt, isNum, playerOf, PLAYERS, type Handler } from './commandKit';
+import { startNewDay } from './day';
+import { economyHandlers } from './handlers/economy';
+import { farmHandlers } from './handlers/farm';
+import { gatherHandlers } from './handlers/gather';
 import { addItem, moveSlot, spaceFor } from './inventory';
 import { nextInt } from './rng';
-import type { Actor, GameState, GameTime, PlayerState, Role } from './types';
-import { isWeatherId, rollWeather } from './weather';
+import type { Actor, GameState, GameTime } from './types';
+import { isWeatherId } from './weather';
 
 /**
  * Every change to the game goes through one of these commands.
@@ -33,7 +43,39 @@ export type Command =
   /** Shake a fruit tree of the orchard: 1 to 3 fruits, once a day, not in winter. */
   | { type: 'tree.shake'; treeId: string }
   /** The player reached one of the places of the first request. */
-  | { type: 'place.visit'; placeId: string };
+  | { type: 'place.visit'; placeId: string }
+  // Farm (stage 3). `tile` is a farm tile id from data/map (FARM_TILES).
+  | { type: 'farm.till'; tile: string }
+  | { type: 'farm.plant'; tile: string; item: ItemId }
+  | { type: 'farm.water'; tile: string }
+  | { type: 'farm.harvest'; tile: string }
+  | { type: 'farm.fertilize'; tile: string; item: 'supply.fertilizer' | 'supply.growth' }
+  | { type: 'farm.sprinkler'; tile: string }
+  | { type: 'greenhouse.repair' }
+  // Gathering.
+  | { type: 'grass.cut'; patch: number }
+  | { type: 'node.mine'; node: string }
+  | { type: 'stump.chop'; stump: string }
+  | { type: 'hive.collect'; hive: string }
+  | { type: 'bug.catch'; item: ItemId }
+  /** Cast the line: the fish on the hook is rolled now; the minigame decides if it is caught. */
+  | { type: 'fishing.cast'; spot: FishSpot }
+  | { type: 'fishing.finish'; caught: boolean }
+  // Animals.
+  | { type: 'animal.feed'; animal: string }
+  | { type: 'animal.pet'; animal: string }
+  | { type: 'animal.collect'; animal: string }
+  // Food, making things, buying and selling.
+  | { type: 'item.eat'; slot: number }
+  | { type: 'cook'; recipe: string }
+  | { type: 'craft'; recipe: string }
+  | { type: 'shop.buy'; shop: ShopId; item: ItemId; qty: number }
+  | { type: 'ship.add'; slot: number; qty: number }
+  | { type: 'ship.take'; index: number }
+  | { type: 'tool.upgrade'; tool: ToolId }
+  | { type: 'machine.place'; pad: number; slot: number }
+  | { type: 'machine.load'; pad: number; slot: number }
+  | { type: 'machine.collect'; pad: number };
 
 export type CommandType = Command['type'];
 
@@ -46,32 +88,37 @@ export type GameEvent =
   | { type: 'player.moved'; playerId: string }
   | { type: 'inventory.changed'; playerId: string }
   | { type: 'tree.shaken'; playerId: string; treeId: string; item: ItemId; qty: number }
-  | { type: 'quest.updated'; questId: string; done: boolean; reward: number };
+  | { type: 'quest.updated'; questId: string; done: boolean; reward: number }
+  /** Coins, energy, tool levels or today's bonus changed. */
+  | { type: 'player.changed'; playerId: string }
+  | { type: 'item.gained'; playerId: string; item: ItemId; qty: number; q: Quality }
+  | { type: 'skill.up'; playerId: string; skill: SkillId; level: number }
+  | { type: 'farm.changed' }
+  | { type: 'farm.watered'; tiles: string[] }
+  | { type: 'farm.withered' }
+  | { type: 'farm.rained' }
+  /** Rocks, stumps, grass, hives, machines or the greenhouse changed. */
+  | { type: 'world.changed' }
+  | { type: 'animals.changed' }
+  | { type: 'shipping.changed'; playerId: string }
+  | { type: 'shipping.paid'; playerId: string; coins: number }
+  | { type: 'fishing.cast'; playerId: string; item: ItemId | null }
+  | { type: 'fishing.done'; playerId: string; item: ItemId; caught: boolean }
+  | { type: 'ate'; playerId: string; item: ItemId; energy: number; buff: BuffId | null }
+  | { type: 'made'; playerId: string; item: ItemId; qty: number }
+  | { type: 'tool.upgraded'; playerId: string; tool: ToolId; level: number };
 
-export type CommandError = 'unknown_command' | 'forbidden' | 'invalid' | 'day_ended' | 'too_far' | 'inventory_full' | 'not_available';
+export type CommandError =
+  | 'unknown_command' | 'forbidden' | 'invalid' | 'day_ended' | 'too_far' | 'inventory_full' | 'not_available'
+  | 'tired' | 'no_tool' | 'no_money' | 'missing' | 'not_tilled' | 'occupied' | 'wrong_season' | 'not_ready';
 
 export type CommandResult = { ok: true; events: GameEvent[] } | { ok: false; error: CommandError };
 
-interface Handler<C extends Command> {
-  /** Roles allowed to send this command. */
-  roles: readonly Role[];
-  /** Must not change the state. Returns an error code or null. */
-  validate(state: Readonly<GameState>, cmd: C, actor: Actor): CommandError | null;
-  /** Changes the state in place and returns what happened. Only called after `validate` passed. */
-  apply(state: GameState, cmd: C, actor: Actor): GameEvent[];
-}
-
 type HandlerMap = { [K in CommandType]: Handler<Extract<Command, { type: K }>> };
 
-const PLAYERS: readonly Role[] = ['host', 'resident', 'visitor'];
-const isInt = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n);
-const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
-const playerOf = (state: Readonly<GameState>, actor: Actor): PlayerState | undefined =>
-  Object.prototype.hasOwnProperty.call(state.players, actor.id) ? state.players[actor.id] : undefined;
-const distance = (p: PlayerState, [x, z]: readonly [number, number]) => Math.hypot(p.position.x - x, p.position.z - z);
 const orchardIndex = (treeId: unknown) => ORCHARD.findIndex((_, i) => orchardTreeId(i) === treeId);
 
-const handlers: HandlerMap = {
+const baseHandlers = {
   'time.advance': {
     roles: ['system'],
     validate(state, cmd) {
@@ -135,13 +182,7 @@ const handlers: HandlerMap = {
       return distance(player, HOUSE_DOOR) <= BED_REACH ? null : 'too_far';
     },
     apply(state) {
-      const r = startNextDay(state.time);
-      state.time = r.time;
-      const w = rollWeather(state.rng, seasonOf(state.time));
-      state.rng = w.rng;
-      state.weather = w.weather;
-      for (const p of Object.values(state.players)) p.energy = MAX_ENERGY;
-      return [{ type: 'day.started', time: { ...state.time }, newSeason: r.newSeason, newYear: r.newYear, weather: state.weather }];
+      return startNewDay(state);
     },
   },
 
@@ -236,7 +277,9 @@ const handlers: HandlerMap = {
       return [{ type: 'quest.updated', questId: quest.id, done: quest.done, reward }];
     },
   },
-};
+} satisfies Partial<HandlerMap>;
+
+const handlers: HandlerMap = { ...baseHandlers, ...farmHandlers, ...gatherHandlers, ...economyHandlers };
 
 /**
  * The single entry point that validates and applies a command.

@@ -1,6 +1,12 @@
+import type { AnimalKind } from '../data/animals';
 import type { Appearance } from '../data/appearance';
+import type { FarmCropId } from '../data/crops';
 import type { FruitId } from '../data/defaults';
-import type { ItemId } from '../data/items';
+import type { FishSpot } from '../data/fish';
+import type { BuffId, ItemId, Quality } from '../data/items';
+import type { MachineKind } from '../data/recipes';
+import type { SkillId } from '../data/skills';
+import type { ToolId } from '../data/tools';
 import type { WeatherId } from '../data/weather';
 
 /** Position in the calendar plus the time of day. Plain data, safe to save and send over the network. */
@@ -40,6 +46,8 @@ export interface Placement2D {
 export interface ItemStack {
   item: ItemId;
   qty: number;
+  /** Quality of crops (1 silver, 2 gold). Left out for common items. */
+  q?: Quality;
 }
 
 /** 24 slots; null is an empty slot. The first 8 are the item bar. */
@@ -55,7 +63,51 @@ export interface PlayerState {
   inventory: Inventory;
   /** Selected slot of the item bar (0 to 7). */
   activeSlot: number;
+  /** 1 copper, 2 silver, 3 gold, 4 crystal. */
+  toolLevels: Record<ToolId, number>;
+  /** Experience of each skill (the level comes from data/skills). */
+  skills: Record<SkillId, number>;
+  /** Bonus from today's meal, cleared when a new day starts. */
+  buff: BuffId | null;
+  /** A fish on the line, rolled when the line is cast. */
+  fishing: { item: ItemId; spot: FishSpot } | null;
 }
+
+/** One planting spot of the farm. */
+export interface PlotState {
+  tilled: boolean;
+  crop: FarmCropId | null;
+  /** Watered days the crop has grown. */
+  growth: number;
+  ripe: boolean;
+  /** Watered today (by hand, rain or a sprinkler). */
+  watered: boolean;
+  fertilizer: 'fertilizer' | 'growth' | null;
+  /** A sprinkler stands here and waters the tiles around it every morning. */
+  sprinkler: boolean;
+}
+
+export interface AnimalState {
+  id: string;
+  kind: AnimalKind;
+  name: string;
+  friendship: number;
+  fedToday: boolean;
+  pettedToday: boolean;
+  /** A product is waiting to be picked up. */
+  ready: boolean;
+  /** absoluteDay of the last product (sheep give wool every other day). */
+  lastProduct: number;
+}
+
+export interface MachineState {
+  kind: MachineKind;
+  /** What is being made, and when it is ready (absolute game minute). */
+  output: ItemId | null;
+  readyAt: number;
+}
+
+export type OreId = 'stone' | 'copper' | 'silver' | 'gold' | 'crystal';
 
 /** First request: visit the beach, the orchard and the market. Stage 4 brings the villagers' requests. */
 export interface QuestState {
@@ -85,4 +137,20 @@ export interface GameState {
   quests: QuestState[];
   /** Fruit trees that were shaken, by tree id: the day number (absoluteDay) of the last shake. */
   trees: Record<string, { shakenDay: number }>;
+  /** Tomorrow's weather, rolled a day ahead so it can be shown. */
+  forecast: WeatherId;
+  /** Farm tiles that are not plain soil, by tile id. */
+  plots: Record<string, PlotState>;
+  animals: AnimalState[];
+  /** Machines set down on the machine pads, by pad index. */
+  machines: Record<string, MachineState>;
+  /** Rocks for the pickaxe: what each holds today (null = broken) and when it comes back. */
+  nodes: Record<string, { ore: OreId | null; back: number }>;
+  /** Stumps, tall grass patches and beehives: absoluteDay when each is ready again (missing = ready). */
+  stumps: Record<string, number>;
+  grass: Record<string, number>;
+  hives: Record<string, number>;
+  /** What each player put in the shipping bin today (paid when the next day starts). */
+  shipping: Record<string, ItemStack[]>;
+  greenhouse: boolean;
 }

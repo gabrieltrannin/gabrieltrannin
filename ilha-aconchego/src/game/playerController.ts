@@ -25,7 +25,7 @@ export class PlayerController {
 
   constructor(
     readonly object: THREE.Object3D,
-    private readonly colliders: readonly Collider[],
+    private colliders: readonly Collider[],
     start: { x: number; z: number; facing: number },
   ) {
     this.facing = start.facing;
@@ -39,6 +39,11 @@ export class PlayerController {
 
   get z(): number {
     return this.object.position.z;
+  }
+
+  /** Swaps the obstacles (for example when the greenhouse door opens). */
+  setColliders(colliders: readonly Collider[]): void {
+    this.colliders = colliders;
   }
 
   /** Puts the character somewhere at once (waking up at the door, for example). */
