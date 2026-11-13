@@ -181,3 +181,65 @@ body {
     top: calc(max(14px, env(safe-area-inset-top, 0px)) + 6.4em);
   }
 }
+
+/* Development test panel. */
+.hud-chip {
+  font-family: var(--font-display);
+}
+
+.dev-toggle {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+  box-shadow: 0 0.25em 0 var(--ui-shadow);
+}
+
+.dev-panel {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left, 0px));
+  bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+  display: grid;
+  gap: 0.55em;
+  max-width: min(30em, calc(100vw - 28px));
+  max-height: calc(100vh - 9em);
+  overflow-y: auto;
+}
+
+.dev-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1em;
+}
+
+.dev-row {
+  display: grid;
+  gap: 0.25em;
+}
+
+.dev-row__label {
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.dev-row__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+}
+
+.hud-btn--small {
+  font-size: 0.85em;
+  padding: 0.25em 0.65em;
+  border-radius: 0.7em;
+}
+
+.hud-btn[aria-pressed='true'] {
+  background: var(--ui-white);
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}

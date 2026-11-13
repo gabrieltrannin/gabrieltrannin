@@ -18,13 +18,13 @@ npm run build    # versão de produção em dist/
 
 ```
 src/
-  core/      estado do jogo, comandos, relógio e sorteio (sem Three.js)
-  data/      conteúdo do jogo em dados (calendário, padrões da ilha)
+  core/      estado do jogo, comandos, relógio, clima e sorteio (sem Three.js)
+  data/      conteúdo em dados: mapa da ilha, calendário, clima, cultivos, cores das estações, luz do dia
   i18n/      textos da tela (pt-BR agora; en e es depois)
   assets/    registro de objetos por nome e as versões de formas simples
-  render/    renderizador, câmera de maquete e texturas pintadas em canvas
-  world/     montagem da cena (por enquanto, a cena de teste)
-  ui/        interface do jogo em HTML/CSS
+  render/    renderizador, câmera de maquete, luz do dia, efeitos de clima, desfoque e texturas pintadas
+  world/     montagem da ilha: terreno, chão pintado, mar, vegetação, fazenda e construções
+  ui/        interface do jogo e painel de testes em HTML/CSS
 docs/        design e progresso
 ```
 

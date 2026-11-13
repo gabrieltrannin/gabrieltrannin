@@ -1,6 +1,8 @@
-import { TIME_STEP_MINUTES } from '../data/calendar';
-import { STEPS_PER_DAY, advanceSteps, startNextDay } from './clock';
+import { DAYS_PER_SEASON, SEASONS, TIME_STEP_MINUTES } from '../data/calendar';
+import type { WeatherId } from '../data/weather';
+import { STEPS_PER_DAY, advanceSteps, seasonOf, startNextDay } from './clock';
 import type { Actor, GameState, GameTime, Role } from './types';
+import { isWeatherId, rollWeather } from './weather';
 
 /**
  * Every change to the game goes through one of these commands.
@@ -9,9 +11,13 @@ import type { Actor, GameState, GameTime, Role } from './types';
 export type Command =
   /** System only: the clock moved forward by whole 10-minute steps. */
   | { type: 'time.advance'; steps: number }
-  /** System only: set the time of day directly ("Horário real" option, server sync). */
+  /** System only: set the time of day directly ("Horário real" option, server sync, test panel). */
   | { type: 'time.sync'; minuteOfDay: number }
-  /** A player goes to bed: the next day starts at 06:00. */
+  /** System only: jump to a season and day (test panel, server sync). Keeps the time of day. */
+  | { type: 'time.setDate'; seasonIndex: number; day: number }
+  /** System only: change today's weather (test panel, server sync). */
+  | { type: 'weather.set'; weather: WeatherId }
+  /** A player goes to bed: the next day starts at 06:00 with newly rolled weather. */
   | { type: 'sleep' };
 
 export type CommandType = Command['type'];
@@ -19,7 +25,9 @@ export type CommandType = Command['type'];
 export type GameEvent =
   | { type: 'time.changed'; time: GameTime }
   | { type: 'day.ended'; time: GameTime }
-  | { type: 'day.started'; time: GameTime; newSeason: boolean; newYear: boolean };
+  | { type: 'day.started'; time: GameTime; newSeason: boolean; newYear: boolean; weather: WeatherId }
+  | { type: 'date.changed'; time: GameTime }
+  | { type: 'weather.changed'; weather: WeatherId };
 
 export type CommandError = 'unknown_command' | 'forbidden' | 'invalid' | 'day_ended';
 
@@ -68,6 +76,30 @@ const handlers: HandlerMap = {
     },
   },
 
+  'time.setDate': {
+    roles: ['system'],
+    validate(_state, cmd) {
+      if (!isInt(cmd.seasonIndex) || cmd.seasonIndex < 0 || cmd.seasonIndex >= SEASONS.length) return 'invalid';
+      if (!isInt(cmd.day) || cmd.day < 1 || cmd.day > DAYS_PER_SEASON) return 'invalid';
+      return null;
+    },
+    apply(state, cmd) {
+      state.time = { ...state.time, seasonIndex: cmd.seasonIndex, day: cmd.day };
+      return [{ type: 'date.changed', time: { ...state.time } }];
+    },
+  },
+
+  'weather.set': {
+    roles: ['system'],
+    validate(_state, cmd) {
+      return isWeatherId(cmd.weather) ? null : 'invalid';
+    },
+    apply(state, cmd) {
+      state.weather = cmd.weather;
+      return [{ type: 'weather.changed', weather: state.weather }];
+    },
+  },
+
   sleep: {
     // Visitors sleep at home, on their own island.
     roles: ['host', 'resident'],
@@ -77,7 +109,10 @@ const handlers: HandlerMap = {
     apply(state) {
       const r = startNextDay(state.time);
       state.time = r.time;
-      return [{ type: 'day.started', time: { ...state.time }, newSeason: r.newSeason, newYear: r.newYear }];
+      const w = rollWeather(state.rng, seasonOf(state.time));
+      state.rng = w.rng;
+      state.weather = w.weather;
+      return [{ type: 'day.started', time: { ...state.time }, newSeason: r.newSeason, newYear: r.newYear, weather: state.weather }];
     },
   },
 };

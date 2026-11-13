@@ -168,3 +168,152 @@ export function rippleTexture(): THREE.CanvasTexture {
     }
   }, { repeat: true, seed: 13 });
 }
+
+/** Horizontal wooden planks (pier deck). */
+export function woodPlankTexture(): THREE.CanvasTexture {
+  return canvasTexture(256, 256, (ctx, w, h, rnd) => {
+    ctx.fillStyle = '#B98B5C';
+    ctx.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 32) {
+      ctx.fillStyle = pick(['#B48556', '#C29464', '#AE8050'], rnd);
+      ctx.fillRect(0, y + 2, w, 28);
+      ctx.fillStyle = '#7E5A38';
+      ctx.fillRect(0, y, w, 3);
+      for (let k = 0; k < 6; k++) {
+        ctx.fillStyle = 'rgba(110,70,40,.25)';
+        ctx.fillRect(rnd() * w, y + 6 + rnd() * 20, 30 + rnd() * 60, 1.5);
+      }
+    }
+  }, { repeat: true, seed: 21 });
+}
+
+/** Straw bands for the thatched roof. */
+export function thatchTexture(): THREE.CanvasTexture {
+  return canvasTexture(256, 256, (ctx, w, h, rnd) => {
+    for (let y = 0; y < h; y += 16) {
+      ctx.fillStyle = (y / 16) % 2 ? '#C69552' : '#B48345';
+      ctx.fillRect(0, y, w, 16);
+      for (let k = 0; k < 90; k++) {
+        ctx.strokeStyle = rnd() < 0.5 ? 'rgba(240,200,120,.6)' : 'rgba(110,70,30,.45)';
+        ctx.lineWidth = 1.5;
+        const x = rnd() * w;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + rnd() * 3 - 1.5, y + 14);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(90,55,25,.4)';
+      ctx.fillRect(0, y + 14, w, 2);
+    }
+  }, { repeat: true, seed: 23 });
+}
+
+/** Ochre vertical boards for the round hut. */
+export function hutWallTexture(): THREE.CanvasTexture {
+  return canvasTexture(256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#E4BA62';
+    ctx.fillRect(0, 0, w, h);
+    for (let x = 0; x < w; x += 21) {
+      ctx.fillStyle = '#A9793B';
+      ctx.fillRect(x, 0, 3, h);
+      ctx.fillStyle = 'rgba(255,240,200,.25)';
+      ctx.fillRect(x + 4, 0, 3, h);
+    }
+  }, { repeat: true });
+}
+
+const AWNING_GREEN = '#5E8A4A';
+const AWNING_CREAM = '#F4EED9';
+
+/** Green and cream stripes for the market awnings. */
+export function awningTexture(): THREE.CanvasTexture {
+  return canvasTexture(256, 64, (ctx, _w, h) => {
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = i % 2 ? AWNING_CREAM : AWNING_GREEN;
+      ctx.fillRect(i * 32, 0, 32, h);
+    }
+  });
+}
+
+/** The scalloped fringe that hangs from the awning (transparent between the scallops). */
+export function valanceTexture(): THREE.CanvasTexture {
+  return canvasTexture(256, 64, ctx => {
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = i % 2 ? AWNING_CREAM : AWNING_GREEN;
+      ctx.fillRect(i * 32, 0, 32, 40);
+      ctx.beginPath();
+      ctx.arc(i * 32 + 16, 40, 16, 0, Math.PI);
+      ctx.fill();
+    }
+  });
+}
+
+export function brickTexture(): THREE.CanvasTexture {
+  return canvasTexture(256, 256, (ctx, w, h, rnd) => {
+    ctx.fillStyle = '#E2C9B0';
+    ctx.fillRect(0, 0, w, h);
+    for (let r = 0; r < 16; r++) {
+      for (let c = -1; c < 8; c++) {
+        ctx.fillStyle = pick(['#B5654A', '#A95B42', '#C0705A', '#9F533C'], rnd);
+        ctx.fillRect(c * 32 + (r % 2) * 16 + 2, r * 16 + 2, 28, 12);
+      }
+    }
+  }, { repeat: true, seed: 29 });
+}
+
+/** Soft round dot for particles (rain drops, snow, petals, fireflies). */
+export function dotTexture(): THREE.CanvasTexture {
+  return canvasTexture(64, 64, ctx => {
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.45, 'rgba(255,255,255,.9)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+  });
+}
+
+/** Rainbow bands across the width (used along the tube of a half torus). */
+export function rainbowTexture(): THREE.CanvasTexture {
+  return canvasTexture(8, 128, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    const colors = ['rgba(255,80,80,0)', '#FF5A5A', '#FFA347', '#FFE45C', '#7CDB6B', '#5BB8F2', '#8E7CF2', 'rgba(142,124,242,0)'];
+    colors.forEach((c, i) => g.addColorStop(i / (colors.length - 1), c));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  });
+}
+
+/** Paints a wooden sign: an icon on top and a label below (crop signs and stall signs). */
+export function paintSign(canvas: HTMLCanvasElement, label: string, icon: string, style: 'crop' | 'stall'): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const round = (x: number, y: number, rw: number, rh: number, r: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x, y, rw, rh, r);
+    ctx.fill();
+  };
+  const emojiFont = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  if (style === 'crop') {
+    round(0, 0, w, h, 16, '#4E3626');
+    round(9, 9, w - 18, h - 18, 12, '#6E4E36');
+    ctx.fillStyle = '#FFF4DE';
+    ctx.font = `62px ${emojiFont}`;
+    ctx.fillText(icon, w / 2, h * 0.4);
+    ctx.font = '600 28px Fredoka, Nunito, sans-serif';
+    ctx.fillText(label, w / 2, h * 0.8);
+  } else {
+    round(0, 0, w, h, 14, AWNING_CREAM);
+    round(6, 6, w - 12, h - 12, 10, AWNING_GREEN);
+    ctx.fillStyle = AWNING_CREAM;
+    ctx.font = `44px ${emojiFont}`;
+    ctx.fillText(icon, w * 0.2, h / 2 + 2);
+    ctx.font = '600 34px Fredoka, Nunito, sans-serif';
+    ctx.fillText(label, w * 0.59, h / 2 + 2);
+  }
+}

@@ -1,4 +1,5 @@
 import type { FruitId } from '../data/defaults';
+import type { WeatherId } from '../data/weather';
 
 /** Position in the calendar plus the time of day. Plain data, safe to save and send over the network. */
 export interface GameTime {
@@ -46,6 +47,8 @@ export interface GameState {
   /** Current state of the deterministic random generator. */
   rng: number;
   time: GameTime;
+  /** Weather of the current day. Rolled when a new day starts. */
+  weather: WeatherId;
   island: IslandState;
   players: Record<string, PlayerState>;
 }

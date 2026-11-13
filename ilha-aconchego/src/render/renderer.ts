@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { setMaxAnisotropy } from './textures';
 
+export interface RendererOptions {
+  /** Phones get a lower cap to keep the frame rate smooth. */
+  maxPixelRatio?: number;
+}
+
 /** Creates the WebGL renderer with the soft-shadow, sRGB setup the art direction asks for. Throws if WebGL is missing. */
-export function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+export function createRenderer(canvas: HTMLCanvasElement, opts: RendererOptions = {}): THREE.WebGLRenderer {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, opts.maxPixelRatio ?? 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1;
