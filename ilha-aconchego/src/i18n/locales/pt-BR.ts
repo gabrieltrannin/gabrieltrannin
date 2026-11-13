@@ -384,7 +384,6 @@ export const ptBR = {
   'msg.machineLoaded': 'A máquina começou a trabalhar.',
   'msg.machineWorking': 'Ficará pronto às {time}.',
   'msg.machineWorkingTomorrow': 'Ficará pronto amanhã.',
-  'msg.bugCaught': 'Pegou: {item}!',
   'msg.bugMissed': 'Escapou!',
   'msg.greenhouseRepaired': 'A estufa está nova! Planta-se nela o ano todo.',
   'msg.needItems': 'Faltam materiais.',
@@ -394,6 +393,8 @@ export const ptBR = {
   'msg.grassCut': '+{qty} Feno',
   'msg.produced': '{name} deu {item}!',
   'msg.waterFirst': 'Regado!',
+  'msg.noTool': 'Você precisa da ferramenta certa.',
+  'msg.notAvailable': 'Agora não dá.',
 
   // Stage 3: panels.
   'panel.close': 'Fechar',
@@ -440,6 +441,9 @@ export const ptBR = {
   'greenhouse.cost': 'Reforma: {coins} moedas, {wood} madeiras e {stone} pedras',
   'place.pier': 'o píer',
   'sign.empty': 'Livre',
+  'msg.signEmpty': 'Canteiro livre. Are a terra e plante sementes da estação.',
+  'msg.signRipe': '{crop} pronto para colher!',
+  'msg.signDays': '{crop}: faltam {days} dias regados.',
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof ptBR;

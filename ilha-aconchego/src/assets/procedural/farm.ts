@@ -177,8 +177,10 @@ export function registerFarm(registry: AssetRegistry): void {
 
   // Tilled soil of one farm tile, with furrows. Each copy is tinted darker when watered.
   registry.register('soil.tilled', () => {
-    const parts = [box(0.86, 0.1, 0.86, 0, 0.05, 0, 0x8a5a36)];
-    for (const x of [-0.27, 0, 0.27]) parts.push(box(0.16, 0.06, 0.78, x, 0.12, 0, 0x7a4c2c));
+    // Dark ploughed earth: a low mound with three rounded furrows and a few clods.
+    const parts = [ball(0.46, 0.07, 0.46, 0, 0.02, 0, 0x5a3820)];
+    for (const x of [-0.25, 0, 0.25]) parts.push(cyl(0.075, 0.075, 0.74, x, 0.075, 0, 0x6e4628, 8, Math.PI / 2));
+    for (const [x, z] of [[-0.12, 0.3], [0.15, -0.28], [0.32, 0.12]] as const) parts.push(ball(0.04, 0.03, 0.04, x, 0.11, z, 0x7d5232));
     return group('soil.tilled', vcMesh(parts, 'soil', false));
   });
 

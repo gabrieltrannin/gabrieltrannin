@@ -17,6 +17,8 @@ const TURN_RATE = 12;
  */
 export class PlayerController {
   facing: number;
+  /** Walking speed multiplier (today's "Passos ligeiros" bonus). */
+  speedFactor = 1;
   private phase = 0;
   private moveBlend = 0;
   private runBlend = 0;
@@ -71,7 +73,7 @@ export class PlayerController {
       const mx = Math.cos(cameraYaw) * input.moveX - Math.sin(cameraYaw) * input.moveY;
       const mz = -Math.sin(cameraYaw) * input.moveX - Math.cos(cameraYaw) * input.moveY;
       const len = Math.hypot(mx, mz) || 1;
-      let remaining = (running ? RUN_SPEED : WALK_SPEED) * amount * dt;
+      let remaining = (running ? RUN_SPEED : WALK_SPEED) * this.speedFactor * amount * dt;
       while (remaining > 1e-4) {
         const d = Math.min(MAX_SUBSTEP, remaining);
         remaining -= d;

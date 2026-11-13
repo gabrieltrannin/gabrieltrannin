@@ -1143,3 +1143,270 @@ body {
     transition: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Stage 3: shop and work windows, fishing, item badges, skills.        */
+/* ------------------------------------------------------------------ */
+.hud-date__forecast {
+  font-size: 0.75em;
+  margin-top: 0.15em;
+  opacity: 0.8;
+}
+
+.hud-buff {
+  font-size: 0.8em;
+  padding: 0.25em 0.7em;
+  color: var(--ui-accent);
+  font-weight: 600;
+}
+
+.slot__star {
+  position: absolute;
+  left: 0.2em;
+  bottom: 0.05em;
+  font-size: 0.75em;
+  line-height: 1;
+  text-shadow: 0 0 0.2em var(--ui-paper);
+  pointer-events: none;
+}
+
+.slot__star--1 {
+  color: #9aa7b4;
+}
+
+.slot__star--2 {
+  color: #e2a823;
+}
+
+.slot__badge {
+  position: absolute;
+  right: 0.15em;
+  top: 0.05em;
+  font-size: 0.6em;
+  pointer-events: none;
+}
+
+.slot__lvl {
+  position: absolute;
+  right: 0.25em;
+  top: 0.25em;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.slot__lvl--2 {
+  background: #cfd6de;
+}
+
+.slot__lvl--3 {
+  background: #f2c230;
+}
+
+.slot__lvl--4 {
+  background: #b48cf2;
+}
+
+.bag {
+  max-height: calc(100vh - 28px);
+  overflow-y: auto;
+}
+
+.bag__details {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 2.2em;
+  font-size: 0.9em;
+}
+
+.bag__details-icon {
+  font-size: 1.5em;
+}
+
+.bag__details-sub {
+  opacity: 0.75;
+  font-size: 0.9em;
+  flex: 1;
+}
+
+.bag__skills {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5em 0.9em;
+}
+
+.skill {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15em 0.4em;
+  font-size: 0.85em;
+}
+
+.skill .meter {
+  grid-column: 1 / -1;
+}
+
+.skill__level {
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.panel__section {
+  margin: 0.4em 0 0;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ui-accent);
+}
+
+.panel {
+  width: min(34em, 100%);
+}
+
+.panel__coins {
+  margin-left: auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel__body {
+  display: grid;
+  gap: 0.4em;
+  max-height: min(60vh, 32em);
+  overflow-y: auto;
+  padding-right: 0.2em;
+}
+
+.panel__empty {
+  margin: 0;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.panel-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.4em 0.55em;
+  background: var(--ui-slot);
+  border: 2px solid var(--ui-line);
+  border-radius: 0.9em;
+}
+
+.panel-row__icon {
+  font-size: 1.6em;
+  width: 1.4em;
+  text-align: center;
+}
+
+.panel-row__name {
+  font-weight: 600;
+}
+
+.panel-row__sub {
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+
+.panel-row__actions {
+  display: flex;
+  gap: 0.3em;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ui-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+.fishing {
+  position: absolute;
+  right: calc(var(--edge-r) + 0.5em);
+  top: 58%;
+  transform: translateY(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 0.5em;
+  padding: 0.8em;
+  width: 9.5em;
+  background: var(--ui-paper);
+  border: 3px solid var(--ui-line);
+  border-radius: 1.2em;
+  box-shadow: 0 0.25em 0 var(--ui-shadow);
+  text-align: center;
+}
+
+.fishing__title {
+  font-weight: 600;
+}
+
+.fishing__meter {
+  position: relative;
+  width: 2.4em;
+  height: 12em;
+  border-radius: 99px;
+  background: #dfeff2;
+  border: 3px solid var(--ui-line);
+  overflow: hidden;
+}
+
+.fishing__zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(124, 191, 90, 0.75);
+}
+
+.fishing__fill {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 0;
+  border-radius: 99px 99px 0 0;
+  background: rgba(91, 141, 217, 0.55);
+}
+
+.fishing__needle {
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  height: 0.35em;
+  margin-bottom: -0.17em;
+  background: var(--ui-ink);
+  border-radius: 99px;
+}
+
+.fishing--danger .fishing__meter {
+  border-color: var(--ui-accent);
+}
+
+.fishing__progress {
+  width: 100%;
+}
+
+.fishing__progress > i {
+  background: var(--ui-gold);
+  transition: none;
+}
+
+.fishing__hint {
+  margin: 0;
+  font-size: 0.75em;
+  opacity: 0.8;
+}
+
+@media (max-width: 640px) {
+  .bag__skills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fishing {
+    top: 38%;
+  }
+}

@@ -51,8 +51,9 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
   const clock = el('span', 'hud-date__clock');
   const weather = el('span', 'hud-chip');
   const island = el('div', 'hud-date__island');
+  const forecast = el('div', 'hud-date__forecast');
   row.append(clock, weather);
-  card.append(date, row, island);
+  card.append(date, row, forecast, island);
   const quest = el('div', 'hud-card hud-quest');
   const questHead = el('div', 'hud-quest__head');
   const questProgress = el('span', 'hud-quest__progress');
@@ -80,6 +81,8 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
   const energyFill = el('i');
   energyBar.append(energyFill);
   energy.append(el('span', '', t('hud.energy')), energyBar);
+  const buff = el('div', 'hud-card hud-buff');
+  buff.hidden = true;
   const mapButton = el('button', 'hud-map');
   mapButton.type = 'button';
   mapButton.setAttribute('aria-label', t('hud.minimap'));
@@ -88,7 +91,7 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
   const mapLabel = el('span', 'hud-map__label', t('hud.mapOpen'));
   mapButton.append(mapCanvas, mapLabel);
   mapButton.addEventListener('click', () => opts.onToggleMap());
-  right.append(coins, energy, mapButton);
+  right.append(coins, energy, buff, mapButton);
 
   // Bottom: messages, prompt, item bar.
   const bottom = el('div', 'hud-bottom');
@@ -125,6 +128,9 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
     date.textContent = formatDate(s.time);
     clock.textContent = formatTime(s.time);
     weather.textContent = weatherLabel(s);
+    forecast.textContent = t('hud.forecast', { weather: t(`weather.${s.forecast}`) });
+    buff.hidden = !p.buff;
+    if (p.buff) buff.textContent = `✨ ${t(`buff.${p.buff}`)}`;
     island.textContent = `${t('hud.island', { name: s.island.name })} · ${t('hud.year', { year: s.time.year })}`;
     coinValue.textContent = p.coins.toLocaleString('pt-BR');
     coins.setAttribute('aria-label', t('hud.coins', { coins: p.coins.toLocaleString('pt-BR') }));
@@ -140,7 +146,7 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
       questFill.style.width = `${(tour.visited.length / TOUR_PLACES.length) * 100}%`;
     }
     slots.forEach((b, i) => {
-      paintSlot(b, i, p.inventory);
+      paintSlot(b, i, p.inventory, p.toolLevels);
       b.setAttribute('aria-pressed', String(p.activeSlot === i));
     });
   };

@@ -95,7 +95,7 @@ export const ITEMS = {
   'res.silver': res('🥈', 60),
   'res.gold': res('🥇', 150),
   'res.crystal': res('💎', 350),
-  'res.hay': res('🌱', 4),
+  'res.hay': res('🍂', 4),
 
   'supply.fertilizer': { icon: '🪣', kind: 'supply', maxStack: 99, sell: 10 },
   'supply.growth': { icon: '🧪', kind: 'supply', maxStack: 99, sell: 20 },

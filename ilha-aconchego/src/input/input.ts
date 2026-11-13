@@ -9,6 +9,8 @@ export interface InputFrame {
   run: boolean;
   /** E, the Ação button or gamepad A, pressed this frame. */
   action: boolean;
+  /** The same button held down (reeling in a fish). */
+  actionHeld: boolean;
   /** Item bar slot chosen with 1 to 8, or null. */
   slot: number | null;
   /** Gamepad shoulder buttons: -1 previous slot, +1 next slot. */
@@ -26,6 +28,7 @@ export interface TouchState {
   moveY: number;
   run: boolean;
   action: boolean;
+  actionHeld: boolean;
   toggleBag: boolean;
 }
 
@@ -47,7 +50,7 @@ function typingInField(target: EventTarget | null): boolean {
 export class Input {
   /** Off while a screen like the character creator is open. */
   enabled = true;
-  readonly touch: TouchState = { moveX: 0, moveY: 0, run: false, action: false, toggleBag: false };
+  readonly touch: TouchState = { moveX: 0, moveY: 0, run: false, action: false, actionHeld: false, toggleBag: false };
   private readonly held = new Set<string>();
   private readonly pressed = new Set<string>();
   private padButtons: boolean[] = [];
@@ -64,7 +67,7 @@ export class Input {
   }
 
   poll(): InputFrame {
-    const frame: InputFrame = { moveX: 0, moveY: 0, run: false, action: false, slot: null, slotStep: 0, toggleBag: false, toggleMap: false, escape: false, turn: 0 };
+    const frame: InputFrame = { moveX: 0, moveY: 0, run: false, action: false, actionHeld: false, slot: null, slotStep: 0, toggleBag: false, toggleMap: false, escape: false, turn: 0 };
     if (!this.enabled) {
       this.pressed.clear();
       this.clearTouchPresses();
@@ -79,7 +82,8 @@ export class Input {
       }
     }
     frame.run = this.held.has('ShiftLeft') || this.held.has('ShiftRight');
-    frame.action = this.pressed.has('KeyE');
+    frame.action = this.pressed.has('KeyE') || this.pressed.has('Space');
+    frame.actionHeld = this.held.has('KeyE') || this.held.has('Space');
     for (let i = 1; i <= 8; i++) if (this.pressed.has(`Digit${i}`) || this.pressed.has(`Numpad${i}`)) frame.slot = i - 1;
     frame.toggleBag = this.pressed.has('Tab');
     frame.toggleMap = this.pressed.has('KeyM');
@@ -93,6 +97,7 @@ export class Input {
     frame.moveY += t.moveY;
     frame.run ||= t.run;
     frame.action ||= t.action;
+    frame.actionHeld ||= t.actionHeld;
     frame.toggleBag ||= t.toggleBag;
     this.clearTouchPresses();
 
@@ -110,6 +115,7 @@ export class Input {
       const edge = (i: number) => !!down[i] && !this.padButtons[i];
       frame.run ||= !!down[PAD.B];
       frame.action ||= edge(PAD.A);
+      frame.actionHeld ||= !!down[PAD.A];
       frame.toggleBag ||= edge(PAD.Y);
       frame.toggleMap ||= edge(PAD.BACK) || edge(PAD.X);
       frame.escape ||= edge(PAD.START);

@@ -9,16 +9,15 @@ import { toSaveFile, type SaveFile } from './core/save';
 import { createInitialState } from './core/state';
 import type { Actor, GameState } from './core/types';
 import { DEFAULT_DAY_LENGTH_MIN, type SeasonId } from './data/calendar';
-import { BED_CROPS_BY_SEASON } from './data/crops';
 import { DEFAULT_PLAYER } from './data/defaults';
 import { HOTBAR_SIZE } from './data/items';
-import {
-  BED_REACH, BEDS, HOUSE_DOOR, LEVELS, ORCHARD, orchardTreeId, OVERVIEW, PLAYER_START, PROPS, STALLS, TOUR_PLACES, TREE_REACH,
-} from './data/map';
+import { BED_REACH, HOUSE_DOOR, LEVELS, ORCHARD, orchardTreeId, OVERVIEW, PLAYER_START, PROPS, TOUR_PLACES, TREE_REACH } from './data/map';
+import { FishingSession } from './game/fishing';
 import { Interactions } from './game/interactions';
+import { createIslandActions } from './game/islandActions';
 import { Pet } from './game/pet';
 import { PlayerController } from './game/playerController';
-import { t } from './i18n';
+import { t, type MessageKey } from './i18n';
 import { Input } from './input/input';
 import { deleteGame, loadGame, storeGame } from './platform/saveStore';
 import { Atmosphere } from './render/atmosphere';
@@ -32,7 +31,10 @@ import { openCreator } from './ui/creator';
 import { createDevPanel } from './ui/devPanel';
 import { createHud } from './ui/hud';
 import { createInventoryPanel } from './ui/inventoryPanel';
+import { itemName } from './ui/itemText';
+import { createPanels } from './ui/panels';
 import { createTouchControls } from './ui/touchControls';
+import { BugSystem } from './world/bugs';
 import { buildColliders } from './world/collision';
 import { heightAt } from './world/terrain';
 import { buildWorld } from './world/world';
@@ -199,11 +201,16 @@ async function start(): Promise<void> {
   });
   const bag = createInventoryPanel(uiRoot, {
     getInventory: () => me().inventory,
+    getPlayer: me,
     onMove: (from, to) => game.dispatch({ type: 'inventory.move', from, to }, localActor),
+    onEat: slot => {
+      const r = game.dispatch({ type: 'item.eat', slot }, localActor);
+      if (!r.ok) hud.toast(errorText(r.error));
+    },
     onClose: () => bag.close(),
   });
   game.on(event => {
-    if (event.type === 'inventory.changed' && bag.isOpen) bag.refresh();
+    if ((event.type === 'inventory.changed' || event.type === 'player.changed') && bag.isOpen) bag.refresh();
   });
   const sleepFade = document.createElement('div');
   sleepFade.className = 'sleep-fade';
@@ -219,8 +226,11 @@ async function start(): Promise<void> {
     game.dispatch({ type: 'player.move', x: player.x, z: player.z, facing: player.facing }, localActor);
   };
 
-  const errorText = (error: CommandError | undefined): string =>
-    error === 'too_far' ? t('msg.tooFar') : error === 'inventory_full' ? t('msg.inventoryFull') : t('msg.shaken');
+  const ERROR_TEXT: Partial<Record<CommandError, MessageKey>> = {
+    too_far: 'msg.tooFar', inventory_full: 'msg.inventoryFull', tired: 'msg.tired', no_money: 'msg.noMoney', missing: 'msg.missing',
+    not_tilled: 'msg.notTilled', occupied: 'msg.occupied', wrong_season: 'msg.wrongSeason', not_ready: 'msg.nothingToHarvest', no_tool: 'msg.noTool',
+  };
+  const errorText = (error: string | undefined): string => t(ERROR_TEXT[error as CommandError] ?? 'msg.notAvailable');
   const above = (x: number, z: number, height: number) => () => new THREE.Vector3(x, heightAt(x, z) + height, z);
 
   // Things to act on with E / Ação.
@@ -254,16 +264,6 @@ async function start(): Promise<void> {
       radius: 1.6,
       label: () => t('interact.mail'),
       act: () => bubbles.show('mailbox', t('msg.mail', { island: game.state.island.name }), above(x, z, 1.5), 5),
-    });
-  }
-  for (const bed of BEDS) {
-    const [x, z] = bed.sign;
-    interactions.add({
-      id: `sign-${bed.id}`,
-      at: () => ({ x, z }),
-      radius: 1.5,
-      label: () => t('interact.sign'),
-      act: () => bubbles.show(`sign-${bed.id}`, t('msg.sign', { crop: t(`crop.${BED_CROPS_BY_SEASON[season][bed.id]}`) }), above(x, z, 1.2)),
     });
   }
   ORCHARD.forEach(([x, z], index) => {
@@ -303,17 +303,40 @@ async function start(): Promise<void> {
       act: () => bubbles.show('player', t('msg.bench'), () => avatar.position.clone().setY(avatar.position.y + 1.9), 3, me().name),
     });
   }
-  for (const stall of STALLS) {
-    const [x, z] = stall.at;
-    const kind = stall.asset.split('.')[1] as 'bread' | 'honey' | 'flowers';
-    interactions.add({
-      id: stall.asset,
-      at: () => ({ x, z: z + 1.2 }),
-      radius: 2.0,
-      label: () => t('interact.stall'),
-      act: () => bubbles.show(stall.asset, t(`msg.stall.${kind}`), above(x, z, 2.6), 4, t(`stall.${kind}`)),
-    });
-  }
+  // Stage 3: windows, bugs, fishing and the context action of E / Ação.
+  const panels = createPanels(uiRoot, game, localActor, text => hud.toast(text), errorText);
+  const bugs = new BugSystem(assets);
+  scene.add(bugs.root);
+  const fishing = new FishingSession(
+    scene, uiRoot, game, localActor,
+    () => avatar.position.clone().add(new THREE.Vector3(Math.sin(player.facing) * 0.35, 1.05, Math.cos(player.facing) * 0.35)),
+    text => hud.toast(text),
+    on => (on ? bubbles.show('bite', '❗', () => avatar.position.clone().setY(avatar.position.y + 2.0), 1.3) : bubbles.hide('bite')),
+  );
+  const actions = createIslandActions({
+    game, actor: localActor, player, world, bubbles, panels, bugs, fishing, interactions,
+    toast: text => hud.toast(text), errorText, commitMove,
+  });
+
+  // Messages for what happened (the windows show their own).
+  game.on(event => {
+    if ('playerId' in event && event.playerId !== playerId) return;
+    if (event.type === 'item.gained' && !panels.isOpen && !fishing.active && event.qty > 0) hud.toast(`+${event.qty} ${itemName({ item: event.item, q: event.q || undefined })}`);
+    if (event.type === 'skill.up') hud.toast(t('skill.levelUp', { skill: t(`skill.${event.skill}`), level: event.level }));
+    if (event.type === 'shipping.paid') hud.toast(t('msg.paid', { coins: event.coins.toLocaleString('pt-BR') }));
+    if (event.type === 'ate') {
+      hud.toast(t('msg.ate', { item: t(`item.${event.item}`), energy: event.energy }));
+      if (event.buff) hud.toast(t('msg.buff', { buff: t(`buff.${event.buff}`) }));
+    }
+    if (event.type === 'tool.upgraded') hud.toast(t('msg.upgraded', { tool: t(`item.tool.${event.tool}`), level: t(`tool.level.${event.level}` as MessageKey) }));
+    if (event.type === 'farm.rained') hud.toast(t('msg.rainWatered'));
+    if (event.type === 'farm.withered') hud.toast(t('msg.withered'));
+    if (event.type === 'world.changed' && game.state.greenhouse && !greenhouseOpen) {
+      greenhouseOpen = true;
+      player.setColliders(buildColliders({ greenhouseFixed: true }));
+    }
+  });
+  let greenhouseOpen = game.state.greenhouse;
 
   game.on(event => {
     if (event.type === 'tree.shaken') {
@@ -380,10 +403,14 @@ async function start(): Promise<void> {
     elapsed += dt;
     driver.update(dtMs);
 
-    // Input: the backpack takes over while it is open.
+    // Input: the backpack or a window takes over while open; fishing holds the character still.
     const frame = input.poll();
-    if (bag.isOpen) {
+    if (panels.isOpen) {
+      if (frame.escape || frame.toggleBag) panels.close();
+    } else if (bag.isOpen) {
       if (frame.toggleBag || frame.escape) bag.close();
+    } else if (fishing.active) {
+      rig.yaw += frame.turn * CAMERA_TURN_SPEED * dt;
     } else {
       if (frame.toggleBag) {
         bag.open();
@@ -394,14 +421,19 @@ async function start(): Promise<void> {
       if (frame.slotStep !== 0) game.dispatch({ type: 'inventory.select', slot: (me().activeSlot + frame.slotStep + HOTBAR_SIZE) % HOTBAR_SIZE }, localActor);
       rig.yaw += frame.turn * CAMERA_TURN_SPEED * dt;
     }
-    const playing = !bag.isOpen;
+    const playing = !bag.isOpen && !panels.isOpen && !fishing.active;
+    player.speedFactor = me().buff === 'speed' ? 1.2 : 1;
     player.update(dt, playing ? frame : null, rig.yaw, season);
     if (player.takeDirty()) moveDirty = true;
     pet.update(dt, { x: player.x, z: player.z, y: avatar.position.y, facing: player.facing });
 
-    const target = playing ? interactions.nearest(player.x, player.z, player.facing) : null;
-    hud.setPrompt(target ? target.label() : null);
-    if (target && frame.action && playing) target.act();
+    if (fishing.active) hud.setPrompt(fishing.update(dt, elapsed, bag.isOpen || panels.isOpen ? null : frame));
+    else {
+      const action = playing ? actions.resolve() : null;
+      hud.setPrompt(action ? action.label : null);
+      if (action && frame.action && playing) action.run();
+    }
+    bugs.update(dt, elapsed, season, game.state.time.minuteOfDay, game.state.weather);
 
     moveTimer += dt;
     if (moveTimer >= MOVE_COMMIT_S) {
@@ -435,7 +467,7 @@ async function start(): Promise<void> {
     dev?.frame(dtMs);
   });
 
-  if (import.meta.env.DEV) Object.assign(window, { __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow, __world: world });
+  if (import.meta.env.DEV) Object.assign(window, { __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow, __world: world, __fishing: fishing });
 }
 
 void start().catch(error => {

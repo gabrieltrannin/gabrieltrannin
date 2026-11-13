@@ -60,7 +60,17 @@ export function createTouchControls(root: HTMLElement, touch: TouchState): { set
   stick.addEventListener('pointerup', release);
   stick.addEventListener('pointercancel', release);
 
-  action.addEventListener('click', () => (touch.action = true));
+  action.addEventListener('pointerdown', e => {
+    touch.action = true;
+    touch.actionHeld = true;
+    action.setPointerCapture?.(e.pointerId);
+  });
+  const letGo = () => (touch.actionHeld = false);
+  action.addEventListener('pointerup', letGo);
+  action.addEventListener('pointercancel', letGo);
+  action.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') touch.action = true;
+  });
   bag.addEventListener('click', () => (touch.toggleBag = true));
   run.addEventListener('click', () => {
     touch.run = !touch.run;

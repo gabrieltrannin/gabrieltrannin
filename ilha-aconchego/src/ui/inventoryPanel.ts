@@ -1,10 +1,16 @@
 import { HOTBAR_SIZE, ITEMS } from '../data/items';
-import type { Inventory } from '../core/types';
-import { t } from '../i18n';
+import { MAX_SKILL_LEVEL, SKILL_XP, SKILLS, skillLevel } from '../data/skills';
+import { toolOfItem } from '../data/tools';
+import { eatEnergy, levelOf } from '../core/rules';
+import type { Inventory, PlayerState } from '../core/types';
+import { t, type MessageKey } from '../i18n';
+import { itemName } from './itemText';
 
 export interface InventoryPanelOptions {
   getInventory(): Inventory;
+  getPlayer(): PlayerState;
   onMove(from: number, to: number): void;
+  onEat(slot: number): void;
   onClose(): void;
 }
 
@@ -22,15 +28,24 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text 
   return node;
 }
 
-/** Fills a slot button with the item icon and count, plus an accessible label. */
-export function paintSlot(button: HTMLElement, index: number, inv: Inventory): void {
+/** Fills a slot button with the item icon and count, quality star, seed or tool-level badge, and a label. */
+export function paintSlot(button: HTMLElement, index: number, inv: Inventory, toolLevels?: PlayerState['toolLevels']): void {
   const slot = inv[index] ?? null;
   button.replaceChildren();
+  let name = t('inventory.empty');
   if (slot) {
     button.append(el('span', 'slot__icon', ITEMS[slot.item].icon));
     if (slot.qty > 1) button.append(el('span', 'slot__qty', String(slot.qty)));
+    if (slot.q) button.append(el('span', `slot__star slot__star--${slot.q}`, '★'));
+    if (ITEMS[slot.item].kind === 'seed') button.append(el('span', 'slot__badge', '🌱'));
+    name = itemName(slot);
+    const tool = toolOfItem(slot.item);
+    if (tool && toolLevels) {
+      const level = toolLevels[tool];
+      if (level > 1) button.append(el('span', `slot__lvl slot__lvl--${level}`));
+      name = `${name} ${t(`tool.level.${level}` as MessageKey)}`;
+    }
   }
-  const name = slot ? t(`item.${slot.item}`) : t('inventory.empty');
   button.setAttribute('aria-label', slot && slot.qty > 1 ? t('inventory.slotQty', { n: index + 1, item: name, qty: slot.qty }) : t('inventory.slot', { n: index + 1, item: name }));
   button.title = slot ? name : '';
 }
@@ -54,7 +69,10 @@ export function createInventoryPanel(root: HTMLElement, opts: InventoryPanelOpti
   header.append(title, close);
   const grid = el('div', 'bag__grid');
   const hint = el('p', 'bag__hint', t('inventory.hint'));
-  panel.append(header, grid, hint);
+  const details = el('div', 'bag__details');
+  const skills = el('div', 'bag__skills');
+  skills.setAttribute('aria-label', t('panel.skills'));
+  panel.append(header, grid, details, hint, el('h3', 'panel__section', t('panel.skills')), skills);
   overlay.append(panel);
   root.append(overlay);
 
@@ -73,10 +91,43 @@ export function createInventoryPanel(root: HTMLElement, opts: InventoryPanelOpti
 
   const refresh = () => {
     const inv = opts.getInventory();
+    const player = opts.getPlayer();
     slots.forEach((b, i) => {
-      paintSlot(b, i, inv);
+      paintSlot(b, i, inv, player.toolLevels);
       b.classList.toggle('slot--picked', picked === i);
     });
+    // Details of the picked item: what it is, what it sells for, and "Comer" for food.
+    details.replaceChildren();
+    const stack = picked !== null ? inv[picked] : null;
+    if (stack && picked !== null) {
+      const def = ITEMS[stack.item];
+      const energy = eatEnergy(player, stack.item);
+      const lines = [t(`kind.${def.kind}` as MessageKey)];
+      if (def.sell > 0) lines.push(t('panel.sell', { price: def.sell }));
+      if (energy > 0) lines.push(t('panel.energy', { energy }));
+      details.append(el('span', 'bag__details-icon', def.icon), el('b', '', itemName(stack)), el('span', 'bag__details-sub', lines.join(' · ')));
+      if (energy > 0) {
+        const eat = el('button', 'ui-btn ui-btn--small ui-btn--primary', t('panel.eat'));
+        eat.type = 'button';
+        const slot = picked;
+        eat.addEventListener('click', () => opts.onEat(slot));
+        details.append(eat);
+      }
+    }
+    // Skills: level and progress to the next one.
+    skills.replaceChildren(
+      ...SKILLS.map(skill => {
+        const xp = player.skills[skill], level = skillLevel(xp);
+        const item = el('div', 'skill');
+        const bar = el('div', 'meter');
+        const fill = el('i');
+        const from = SKILL_XP[level]!, to = SKILL_XP[level + 1] ?? from;
+        fill.style.width = level >= MAX_SKILL_LEVEL ? '100%' : `${((xp - from) / Math.max(1, to - from)) * 100}%`;
+        bar.append(fill);
+        item.append(el('span', 'skill__name', t(`skill.${skill}`)), el('span', 'skill__level', level >= MAX_SKILL_LEVEL ? t('skill.max') : t('skill.level', { level: levelOf(player, skill) })), bar);
+        return item;
+      }),
+    );
   };
 
   const drop = (from: number, to: number) => {

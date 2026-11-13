@@ -18,13 +18,112 @@ npm run build      # checagem de tipos + versão de produção em dist/
 - [x] **Etapa 0**: base do projeto, documento de design, cena de teste, comandos e relógio
 - [x] **Etapa 1**: mundo e visual
 - [x] **Etapa 2**: personagem, controle e interface
-- [ ] **Etapa 3**: fazenda e atividades
+- [x] **Etapa 3**: fazenda e atividades
 - [ ] **Etapa 4**: vila e moradores
 - [ ] **Etapa 5**: casa, decoração, ofícios e progressão
 - [ ] **Etapa 6**: exploração e eventos
 - [ ] **Etapa 7**: multijogador
 - [ ] **Etapa 8**: opções, som, acessibilidade e publicação
 - [ ] **Etapa 9**: expansão
+
+---
+
+## Etapa 3: fazenda e atividades (concluída)
+
+### O que foi feito
+
+- **Fazenda em grade** (`src/core/handlers/farm.ts`, `src/core/rules.ts`, `src/world/farmWorld.ts`): cada canteiro tem 4 × 3 espaços (o primeiro já vem arado). Com a enxada se ara, com sementes se planta, com o regador se rega, e com E se colhe. O cultivo cresce um estágio por dia regado: semente, broto, planta pequena, planta crescida e pronta. Morango, tomate e milho voltam a dar frutos depois da colheita.
+  - Cultivos por estação (`src/data/crops.ts`): morango, alface e cenoura na primavera; trigo, tomate e milho no verão; abóbora, repolho, trigo e milho no outono; couve no inverno. Fora de época, a semente não é aceita e o que já estava plantado ao ar livre seca quando a estação vira.
+  - A placa de cada canteiro mostra o desenho e o nome do que está plantado (ou "Livre") e, com E, quantos dias faltam.
+- **Chuva, tempestade e neve regam a horta sozinhas.** Sem água a planta só não cresce naquele dia, sem murchar (padrão das opções).
+- **Animais** (`src/data/animals.ts`): celeiro e galinheiro num cercado a sudoeste, com duas galinhas, uma vaca e uma ovelha que andam pelo pátio. Quando recebem feno e carinho, no dia seguinte dão ovo, leite ou lã (a ovelha, a cada dois dias). Uma estrelinha mostra quando há algo para pegar. Bons amigos às vezes dão dois. O feno sai do capim alto (E corta, volta em dois dias) ou da loja.
+- **Ferramentas com níveis** cobre, prata, ouro e cristal (`src/data/tools.ts`): cada nível gasta menos energia. A enxada e o regador alcançam uma fileira, depois um quadrado 3 × 3, depois o canteiro todo. Quem melhora é o **Bento**, texugo ferreiro, na forja atrás das barracas: pede moedas e 5 minérios do nível seguinte, e também vende materiais.
+- **Pesca** (`src/core/fishingGame.ts`, `src/game/fishing.ts`): no píer, na praia e no lago com riacho e cascata (novo, a sudeste). O peixe é sorteado ao lançar a linha, conforme o lugar, a estação, a hora e a chuva (12 peixes em `src/data/fish.ts`). Depois da mordida, aperte para fisgar; no minijogo, segure E (ou Ação) para puxar e mantenha a tensão na faixa verde até o peixe chegar. Tensão demais arrebenta a linha, de menos o peixe escapa. A vara melhor e o nível de pesca alargam a faixa.
+- **Cozinha** (`src/data/recipes.ts`): fogão ao lado da casa com 11 receitas que recuperam energia; várias dão um bônus até o fim do dia (andar mais rápido, pesca mais fácil, mais minério, ferramentas da horta pela metade da energia, mais sorte na qualidade). Receitas mais elaboradas aparecem com o nível de cozinha.
+- **Energia**: arar, regar, minerar, cortar lenha, lançar a linha e usar a rede gastam energia. Sem energia, as ferramentas param. Comer (E com comida na mão, ou "Comer" na mochila) e dormir recuperam.
+- **Seis habilidades** (`src/data/skills.ts`) com 10 níveis, que sobem com o uso:
+  - cultivo: plantar, regar, colher e cuidar dos animais;
+  - pesca;
+  - mineração;
+  - cozinha;
+  - ofícios: bancada, máquinas e lenha;
+  - carisma: carinho nos animais e insetos.
+  - Cada nível ajuda: mais qualidade na colheita, faixa de pesca maior, mais minério, pratos que rendem mais, máquinas mais rápidas, preços melhores na venda.
+- **Árvores frutíferas**: sacudir continua dando a fruta nativa do pomar.
+- **Clima com previsão**: o clima de amanhã é sorteado um dia antes e aparece no cartão de data ("Amanhã: Chuva").
+- **Caixa de venda** ao lado da casa: ponha itens durante o dia (dá para tirar de volta) e o pagamento chega de manhã, com aviso.
+- **Mineração e lenha**: oito pedras (no nível de cima e na praia oeste) com pedra, cobre, prata, ouro ou cristal, e quatro tocos com lenha. Os dois voltam depois de dois dias.
+- **Itens de Lançamento** que também entraram:
+  - captura de insetos com a rede: 8 insetos que aparecem perto de flores, capim, árvores, lago e colmeias, conforme estação, hora e chuva;
+  - qualidade da colheita (comum, prata e ouro, com estrela na mochila, valendo 25% e 50% a mais);
+  - adubo (mais qualidade) e adubo de crescimento;
+  - colmeias que dão mel a cada três dias (fora do inverno);
+  - estufa no nível de cima, que se reforma por 1.000 moedas, 20 madeiras e 10 pedras e depois cultiva qualquer coisa o ano todo;
+  - irrigadores, que regam os 8 espaços em volta todas as manhãs;
+  - barril de suco, prensa de queijo e roca de fiar, postos em três tablados ao norte da fazenda, que levam de 3 horas a um dia.
+- **Bancada de ofícios** ao lado da casa: adubo, irrigador, barril, adubo de crescimento, prensa e roca.
+- **Lojas nas barracas**:
+  - Flores: sementes da estação, feno, adubo e irrigador;
+  - Pães: pão, torta de amora, trigo e ovos;
+  - Mel: mel, leite e bolo de mel.
+- **Interface**:
+  - janelas de loja, caixa de venda, cozinha, bancada e forja;
+  - minijogo de pesca;
+  - previsão do tempo e bônus do dia no topo;
+  - estrela de qualidade, selo de semente e nível da ferramenta nos espaços;
+  - detalhes do item escolhido na mochila (preço, energia, botão "Comer") e as seis habilidades com barras.
+- **Ação do E**: depende do item na mão e do que está à frente. Na ordem: colher o que estiver pronto, trabalhar o canteiro com a ferramenta ou semente na mão, pegar um inseto com a rede, usar o que estiver perto (animais, pedras, tocos, máquinas, lojas), lançar a linha na água ou comer a comida na mão. O aviso mostra o que vai acontecer ("E · Dar feno para Malhada", "E · Quebrar a pedra").
+- **Salvamento**: versão 3 do arquivo. Jogos da etapa 2 são convertidos sozinhos (ganham a fazenda, os animais, as habilidades e os níveis das ferramentas).
+
+### Como testar
+
+1. `npm test`: 104 testes passam, incluindo:
+   - fazenda: arar, plantar, regar, crescer, colher, rebrotar, chuva, estação, estufa, irrigador, enxada melhor e cansaço;
+   - animais;
+   - mineração, lenha, capim e pesca (com o minijogo jogado por um "jogador" automático);
+   - cozinha, bancada, máquina, loja, venda e ferreiro;
+   - uma semana simulada e a conversão de saves antigos.
+2. `npm run dev`, crie a personagem e:
+   - escolha a semente de alface (tecla 4), fique na beira do canteiro de cima à esquerda, olhando para ele, e aperte E; troque para o regador (2) e regue;
+   - pegue feno na mochila e entre no cercado pela porteira do lado leste: dê feno e carinho; no dia seguinte há ovo, leite ou lã;
+   - com a vara (5), vá para a ponta do píer olhando para o mar, aperte E, espere morder, aperte de novo e segure E para puxar;
+   - com a picareta, quebre as pedras no nível de cima, perto do silo; com o machado, corte lenha nos tocos;
+   - compre na barraca de flores, cozinhe no fogão à esquerda da casa, faça adubo na bancada atrás da casa, fale com o Bento atrás das barracas;
+   - ponha itens na caixa de venda à direita da porta e durma: de manhã chega o pagamento.
+3. No painel de testes, "Dormir" passa os dias e "Estação" troca a época para ver outros cultivos e insetos.
+
+Verificado nesta etapa:
+- **Comandos básicos**: testes, checagem de tipos e build passando.
+- **Fluxos pelo teclado** (1100×720): plantar, regar, arar, alimentar e acariciar a vaca, minerar, comprar, fazer adubo, abrir cozinha e forja, vender, dormir (pagou o pão vendido) e recarregar sem perder nada.
+- **Pesca inteira** com o minijogo, jogada por um ajudante dentro da página: três lançamentos, dois peixes pegos e experiência de pesca subindo.
+- **Uma semana inteira** de jogo no navegador: plantar, regar, colher, animais, pesca, cozinha e venda. As moedas foram de 500 para 2.263, cultivo e pesca chegaram ao nível 2, cozinha e carisma ao nível 1. Depois de recarregar, estava tudo igual.
+- **Celular** (390×844): loja aberta pelo botão Ação, mochila com detalhes e habilidades, sem rolagem lateral, insetos aparecendo.
+- **Sem erros no console**, com cerca de 174 chamadas de desenho e 337 mil triângulos por quadro.
+
+Não verificado: a meta de qps num aparelho real (aqui não há placa de vídeo) e a pesca jogada com o dedo num celular de verdade.
+
+### Decisões técnicas
+
+- Os comandos novos ficam em `src/core/handlers/` (fazenda, coleta, economia e animais). As peças comuns estão em `commandKit.ts`. A virada do dia (`src/core/day.ts`) faz tudo de uma vez: paga a venda, vira o calendário, aplica a previsão, cresce e rega a horta, gera os produtos dos animais e devolve pedras, tocos e capim.
+- O peixe é sorteado pelo comando (com o gerador do estado), mas o minijogo roda no aparelho e só diz se pegou. No multijogador, o servidor confere o lugar e o peixe.
+- Os canteiros continuam sólidos (não se pisa nas plantas). Trabalha-se da beira, com alcance de até 2,4 m na direção em que a personagem olha.
+- A casa ainda não tem interior (etapa 5): o fogão e a bancada ficam do lado de fora.
+- Como a ilha não tinha rio, entrou um lago com riacho que cai em cascata na praia. Pesca-se no lago, no riacho e na parte dele que corta a areia.
+- O capim alto mudou de lugar para dar espaço ao cercado. Os arbustos, o pinheiro e as colmeias perto do lago e da estufa também foram mudados de lugar.
+- O mundo da fazenda (`src/world/farmWorld.ts`) é redesenhado a partir do estado só quando algo muda, não a cada quadro.
+
+### Pendências e notas
+
+- **Pegar insetos e cortar lenha** não estão entre as seis habilidades. Os insetos dão experiência de carisma e a lenha, de ofícios.
+- **Opções ainda sem menu** (etapa 8): a "barra de energia ligada" e as "plantas murcham sem água" ainda não podem ser trocadas. O "minijogos assistidos" já existe no código (faixa verde maior), mas também espera o menu.
+- **O Bento fica parado na forja**: a rotina, a fala e a amizade dos moradores chegam na etapa 4. As barracas ainda se atendem sozinhas.
+- **Compras e qualidade**: ainda não dá para comprar mais animais. A qualidade só vale para a colheita; os produtos dos animais e o suco têm preço fixo.
+- **Máquinas e irrigadores** não podem ser recolhidos depois de colocados.
+- **Ícones**: os itens novos também usam emoji (o feno usa 🍂 para não se confundir com o selo de semente).
+
+### Próximo passo
+
+Etapa 4: vila e moradores.
 
 ---
 
