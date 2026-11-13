@@ -151,8 +151,8 @@ export function paintMap(map: THREE.Texture, opts: { rough?: number; transparent
 export function liquid(kind: 'water' | 'lava' | 'stream'): THREE.MeshStandardMaterial {
   if (kind === 'lava') {
     return lowPoly(new THREE.MeshStandardMaterial({
-      color: '#3a1206', emissive: '#ff5a14', emissiveIntensity: 1.5, roughness: 0.6, flatShading: true,
-    }), { facet: 0.2, pulse: 0.9, wave: { amp: 0.35, speed: 0.5, scale: 1 } });
+      color: '#2a0d05', emissive: '#d9420e', emissiveIntensity: 0.6, roughness: 0.6, flatShading: true,
+    }), { facet: 0.25, pulse: 1.1, wave: { amp: 0.35, speed: 0.5, scale: 1 } });
   }
   if (kind === 'stream') {
     return lowPoly(new THREE.MeshStandardMaterial({

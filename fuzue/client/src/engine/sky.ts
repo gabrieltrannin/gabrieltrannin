@@ -29,8 +29,8 @@ export const SKIES = {
   },
   gelo: { ...base, name: 'gelo', top: '#6d9cc8', horizon: '#e6eef2', bottom: '#8fa3b0', sun: '#f4f8ff', sunIntensity: 2.4, env: 0.7 },
   vulcao: {
-    ...base, name: 'vulcao', top: '#241823', horizon: '#b4522c', bottom: '#5a1c0c', sun: '#ffc08a',
-    sunDir: [0.4, 0.6, 0.55], sunIntensity: 1.9, hemi: 0.75, env: 0.55, fogNear: 35, fogFar: 110,
+    ...base, name: 'vulcao', top: '#2a1f30', horizon: '#b4522c', bottom: '#5a1c0c', sun: '#ffe0c0',
+    sunDir: [0.4, 0.7, 0.55], sunIntensity: 2.5, hemi: 0.95, env: 0.55, fogNear: 35, fogFar: 110,
   },
   brasa: { ...base, name: 'brasa', top: '#3d3550', horizon: '#e39a5c', bottom: '#5c4033', sun: '#ffcf94', sunDir: [0.5, 0.5, 0.5], sunIntensity: 2.4 },
 } satisfies Record<string, Sky>;

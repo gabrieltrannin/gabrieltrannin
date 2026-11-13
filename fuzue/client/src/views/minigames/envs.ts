@@ -3,7 +3,7 @@ import {
   BOMBA, CHUVA, HEX, HEX_PER_LAYER, HEX_TILES, RACE, RING, SOCCER, TILE_CRACK, TILE_GONE,
   seeded, type MinigameId,
 } from '@fuzue/shared';
-import { canvasTexture, chunk, glow, liquid, metal, paint } from '../../engine/materials';
+import { canvasTexture, chunk, liquid, metal, paint } from '../../engine/materials';
 import {
   addHorizon, addMotes, addSea, bannerPole, flicker, rock, scatterGrass, setupWorld, SKIES, stoneFloor, torch, type Sky,
 } from '../../engine/scenery';
@@ -47,22 +47,22 @@ const GROUT = '#4e4840';
 function ringue(scene: THREE.Scene): Env {
   const rand = seeded(21);
   // bloco de gelo brilhante; as rachaduras são um decalque por cima
-  const ice = paint('#cfe4ee', { rough: 0.12, facet: 0.08 });
+  const ice = paint('#b9d5e3', { rough: 0.28, facet: 0.1 });
   const platform = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.92, 3, 22), ice);
   platform.position.y = -1.5;
   platform.userData.noCast = true;
   scene.add(platform);
   const cracks = canvasTexture(512, 512, (g, w) => {
-    g.strokeStyle = 'rgba(120, 165, 190, 0.9)';
-    g.lineWidth = 3;
-    for (let i = 0; i < 16; i++) {
+    g.strokeStyle = 'rgba(235, 245, 250, 0.55)';
+    g.lineWidth = 2;
+    for (let i = 0; i < 9; i++) {
       let x = w / 2 + (rand() - 0.5) * 140;
       let y = w / 2 + (rand() - 0.5) * 140;
       g.beginPath(); g.moveTo(x, y);
-      for (let k = 0; k < 6; k++) { x += (rand() - 0.5) * 100; y += (rand() - 0.5) * 100; g.lineTo(x, y); }
+      for (let k = 0; k < 4; k++) { x += (rand() - 0.5) * 120; y += (rand() - 0.5) * 120; g.lineTo(x, y); }
       g.stroke();
     }
-    g.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    g.fillStyle = 'rgba(255, 255, 255, 0.22)';
     for (let i = 0; i < 14; i++) { g.beginPath(); g.ellipse(rand() * w, rand() * w, 20 + rand() * 40, 8 + rand() * 18, rand() * 3, 0, Math.PI * 2); g.fill(); }
   });
   const decal = new THREE.Mesh(new THREE.CircleGeometry(1, 22), new THREE.MeshStandardMaterial({ map: cracks, transparent: true, roughness: 0.1, depthWrite: false }));
@@ -98,7 +98,7 @@ function ringue(scene: THREE.Scene): Env {
 function hexa(scene: THREE.Scene): Env {
   const geo = new THREE.CylinderGeometry(HEX.size * 0.94, HEX.size * 0.86, 0.6, 6);
   geo.rotateY(Math.PI / 6);
-  const colors = ['#a39b8e', '#8a8378', '#6f7d55'];
+  const colors = ['#b3aa9b', '#9a9286', '#7f8c62'];
   // pedra rachando esquenta: brilho de brasa por dentro
   const hot = ['#cdc4b6', '#b3ac9f', '#97a37c'].map(c => new THREE.MeshStandardMaterial({
     color: c, emissive: '#ff5a14', emissiveIntensity: 0.9, roughness: 0.8, flatShading: true,
@@ -335,7 +335,7 @@ function chuva(scene: THREE.Scene): Env {
       lid.rotation.set(0, 0, Math.PI / 2);
       lid.position.set(0, 0.5, -0.28);
       lid.rotation.x = -0.9;
-      const shine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.5), glow('#f2c75c', 1.8));
+      const shine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.5), metal('#e0b33a', 0.2));
       shine.position.y = 0.48;
       chest.add(box, lid, shine);
       chest.position.set(x * 0.92 + 0.8, 0, z * 0.92);

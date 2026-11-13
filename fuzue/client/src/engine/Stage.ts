@@ -108,6 +108,9 @@ export class Stage {
     this.composer?.dispose();
     this.composer = null;
     this.renderPass = null;
+    // sem cor em ponto flutuante não dá para fazer o brilho: modo simples
+    const ext = this.renderer.extensions;
+    if (!ext.has('EXT_color_buffer_float') && !ext.has('EXT_color_buffer_half_float')) quality.tier = 'baixa';
     const tier = quality.tier;
     const ratio = Math.min(window.devicePixelRatio || 1, tier === 'alta' ? 2 : tier === 'media' ? 1.5 : 1);
     this.renderer.setPixelRatio(ratio);
