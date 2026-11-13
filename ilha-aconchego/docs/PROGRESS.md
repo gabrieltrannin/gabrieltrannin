@@ -28,6 +28,29 @@ npm run build      # checagem de tipos + versão de produção em dist/
 
 ---
 
+## Polimento visual dos objetos (entre as etapas 2 e 3)
+
+### O que mudou
+
+- **Folhas** (`src/render/textures.ts`, `src/assets/procedural/parts.ts`): textura nova de folhinhas redondas, mais suave e sem ruído. As copas ganharam luz e sombra nas cores dos vértices (`shade`): mais escuras embaixo e por dentro, mais claras em cima. A cor de cada estação continua no material, então a troca de estação funciona igual.
+- **Árvores redondas e do pomar**: copa fofa com 12 bolotas, tronco afinando com raízes e galhos, e frutas por fora da copa, viradas para a câmera.
+- **Pinheiros**: refeitos em quatro camadas arredondadas com a borda em ondas caídas, cada camada clara na ponta e escura na borda. No inverno, a neve fica na faixa de cada camada que aparece.
+- **Coqueiros**: tronco em gomos curvando e folhas arqueadas com folíolos recortados, vistas dos dois lados, e cocos.
+- **Arbustos, flores e pedras**: arbustos mais cheios com florzinhas de miolo amarelo; flores com cinco pétalas; pedras arredondadas com pedrinha ao lado e musgo na primavera e no verão.
+- **Cercas vivas**: blocos de cantos arredondados e topo ondulado, repetidos ao longo de cada cerca (antes era uma caixa esticada).
+- **Banco** de ripas com laterais de ferro; **silo** com telhado cônico verde-azulado, faixas de metal, janela e escada; **moinho** de madeira com pás brancas de pontas vermelhas; **colmeias** com telhadinho e uma abelha; **coelhinha** com olhos brilhantes e bochechas.
+- **Rosto da personagem**: olhos maiores e mais altos, e a cabeça levemente inclinada para trás, para o rosto aparecer na câmera do alto.
+
+### Custo
+
+Medido no navegador de teste: cerca de 395 mil triângulos por quadro com a câmera seguindo (antes 351 mil) e 144 chamadas de desenho (antes 227). Detalhes pequenos usam esferas com menos faces (`dot`).
+
+### Como testar
+
+`npm run dev`: compare a ilha inteira, os pinheiros perto da cabana, a praia com o coqueiro, o nível de cima (silo, moinho e colmeias) e, no painel de testes, o inverno e o outono. `npm test`: os 87 testes continuam passando.
+
+---
+
 ## Etapa 2: personagem, controle e interface (concluída)
 
 ### O que foi feito

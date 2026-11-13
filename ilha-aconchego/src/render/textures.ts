@@ -84,19 +84,28 @@ export function grassTexture(): THREE.CanvasTexture {
   }, { repeat: true, seed: 11 });
 }
 
-/** Greyish leaf clusters; the material color tints it per season. */
+/**
+ * Soft clumps of round leaves in greys (the material color tints them per season). Each leaf has a
+ * faint shadow below and a light spot on top, so the crowns read as many small leaves without noise.
+ */
 export function leafTexture(): THREE.CanvasTexture {
   return canvasTexture(256, 256, (ctx, w, h, rnd) => {
-    ctx.fillStyle = '#C4C4C4';
+    ctx.fillStyle = '#C9C9C9';
     ctx.fillRect(0, 0, w, h);
-    const tones = ['#FFFFFF', '#EBEBEB', '#D9D9D9', '#A9A9A9', '#999999'];
-    for (let i = 0; i < 700; i++) {
-      const x = rnd() * w, y = rnd() * h, rx = 6 + rnd() * 8, ry = 3.5 + rnd() * 4, rot = rnd() * Math.PI;
-      ctx.fillStyle = pick(tones, rnd);
+    const circle = (x: number, y: number, rx: number, ry: number) => {
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    for (let i = 0; i < 300; i++) {
+      const x = rnd() * w, y = rnd() * h, r = 8 + rnd() * 7, tone = Math.round(196 + rnd() * 40);
       wrapped(w, h, (dx, dy) => {
-        ctx.beginPath();
-        ctx.ellipse(x + dx, y + dy, rx, ry, rot, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = 'rgba(40,40,40,0.13)';
+        circle(x + dx + 1.5, y + dy + 3, r, r * 0.85);
+        ctx.fillStyle = `rgb(${tone},${tone},${tone})`;
+        circle(x + dx, y + dy, r, r * 0.85);
+        ctx.fillStyle = 'rgba(255,255,255,0.32)';
+        circle(x + dx - r * 0.25, y + dy - r * 0.32, r * 0.5, r * 0.3);
       });
     }
   }, { repeat: true, seed: 3 });

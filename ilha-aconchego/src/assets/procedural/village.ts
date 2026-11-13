@@ -1,9 +1,10 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { t } from '../../i18n';
 import { materials } from '../../render/materials';
 import { paintSign } from '../../render/textures';
 import type { AssetRegistry } from '../registry';
-import { ball, box, cyl, group, meshOf, vcMesh } from './parts';
+import { bake, ball, box, cone, cyl, dot, group, merge, meshOf, shade, vcMesh } from './parts';
 
 const STONE = 0xb8b0a2;
 const DOOR = 0x7a4e2c;
@@ -120,15 +121,23 @@ function stall(kind: StallKind): THREE.Group {
   return group(`stall.${kind}`, vcMesh(parts, 'stall'), awning, fringe, sign);
 }
 
+/** Wooden wind pump: a slim tower, white blades with red tips and a red tail vane. */
 function windmill(): THREE.Group {
+  const WOOD = 0xc49a6c, BEAM = 0xa47650, RED = 0xe0534f, WHITE = 0xf7f3ea;
   const parts: THREE.BufferGeometry[] = [];
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push(cyl(0.05, 0.05, 4.7, sx * 0.45, 2.3, sz * 0.45, 0xd9d9d9, 6, -sz * 0.1, 0, sx * 0.1));
-  for (const y of [0.8, 1.9, 3.0, 4.1]) parts.push(box(1.0, 0.05, 0.05, 0, y, 0.4, 0xc9c9c9), box(0.05, 0.05, 1.0, -0.4, y, 0, 0xc9c9c9));
-  parts.push(box(0.5, 0.4, 0.5, 0, 4.65, 0, 0x8e9196), box(0.06, 0.06, 1.4, 0, 4.65, -0.7, 0x8e9196), box(0.05, 0.6, 0.8, 0, 4.65, -1.4, 0xe5484d));
-  const bladeParts = [cyl(0.18, 0.18, 0.25, 0, 0, 0, 0x8e9196, 12, Math.PI / 2)];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push(cyl(0.06, 0.08, 4.7, sx * 0.45, 2.3, sz * 0.45, WOOD, 8, -sz * 0.1, 0, sx * 0.1));
+  for (const [i, y] of [0.8, 1.9, 3.0, 4.1].entries()) {
+    const w = 1.02 - i * 0.12;
+    parts.push(box(w, 0.07, 0.07, 0, y, 0.45 - i * 0.05, BEAM), box(w, 0.07, 0.07, 0, y, -0.45 + i * 0.05, BEAM));
+    parts.push(box(0.07, 0.07, w, 0.45 - i * 0.05, y, 0, BEAM), box(0.07, 0.07, w, -0.45 + i * 0.05, y, 0, BEAM));
+  }
+  parts.push(box(0.6, 0.42, 0.62, 0, 4.66, 0, WHITE), box(0.7, 0.1, 0.72, 0, 4.92, 0, RED), box(0.06, 0.06, 1.4, 0, 4.65, -0.7, BEAM));
+  parts.push(box(0.05, 0.62, 0.82, 0, 4.66, -1.42, RED), box(0.055, 0.14, 0.82, 0, 4.66, -1.42, WHITE));
+  const bladeParts = [cyl(0.2, 0.2, 0.25, 0, 0, 0, RED, 14, Math.PI / 2), ball(0.12, 0.12, 0.12, 0, 0, 0.14, WHITE)];
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * Math.PI * 2;
-    bladeParts.push(box(0.16, 1.2, 0.03, Math.cos(a) * 0.7, Math.sin(a) * 0.7, 0, 0xf4f1ea, 0, 0, a - Math.PI / 2));
+    bladeParts.push(box(0.17, 0.95, 0.03, Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0, WHITE, 0, 0, a - Math.PI / 2));
+    bladeParts.push(box(0.19, 0.26, 0.035, Math.cos(a) * 1.18, Math.sin(a) * 1.18, 0, RED, 0, 0, a - Math.PI / 2));
   }
   const blades = group('blades', vcMesh(bladeParts, 'blade'));
   blades.position.set(0, 4.6, 0.45);
@@ -150,9 +159,19 @@ export function registerVillage(registry: AssetRegistry): void {
 
   registry.register('sack', () => group('sack', vcMesh([ball(0.3, 0.36, 0.28, 0, 0.32, 0, 0xe3d3b0), cyl(0.08, 0.12, 0.12, 0, 0.68, 0, 0xc9b78f, 8)], 'sack')));
 
-  registry.register('bench', () =>
-    group('bench', vcMesh([box(1.6, 0.08, 0.45, 0, 0.48, 0, 0xb98b5c), box(1.6, 0.4, 0.06, 0, 0.7, -0.23, 0xb98b5c), box(0.08, 0.45, 0.4, -0.7, 0.22, 0, 0x5e4330), box(0.08, 0.45, 0.4, 0.7, 0.22, 0, 0x5e4330)], 'bench')),
-  );
+  // Park bench: wooden slats on dark iron sides with armrests.
+  registry.register('bench', () => {
+    const WOOD = 0xc69058, WOOD2 = 0xb47f4a, IRON_SIDE = 0x3a3a40;
+    const p: THREE.BufferGeometry[] = [];
+    [-0.15, 0, 0.15].forEach((z, i) => p.push(box(1.6, 0.05, 0.12, 0, 0.48, z + 0.02, i % 2 ? WOOD2 : WOOD)));
+    [0.66, 0.83].forEach((y, i) => p.push(box(1.6, 0.11, 0.04, 0, y, -0.21 - (y - 0.6) * 0.14, i ? WOOD : WOOD2, -0.14)));
+    for (const s of [-1, 1]) {
+      const x = s * 0.74;
+      p.push(box(0.06, 0.48, 0.06, x, 0.24, 0.17, IRON_SIDE), box(0.06, 0.98, 0.06, x, 0.49, -0.21, IRON_SIDE, -0.14));
+      p.push(box(0.06, 0.05, 0.46, x, 0.64, -0.01, IRON_SIDE), box(0.05, 0.05, 0.42, x, 0.3, -0.02, IRON_SIDE), dot(0.05, 0.05, 0.05, x, 0.645, 0.22, IRON_SIDE));
+    }
+    return group('bench', vcMesh(p, 'bench'));
+  });
 
   for (const [name, color] of [['crate.orange', 0xf39a2b], ['crate.apple', 0xe5383b]] as const) {
     registry.register(name, () => {
@@ -168,8 +187,16 @@ export function registerVillage(registry: AssetRegistry): void {
     return group('lamp.globe', vcMesh([cyl(0.14, 0.18, 0.2, 0, 0.1, 0, IRON, 10), cyl(0.05, 0.05, 2.4, 0, 1.3, 0, IRON, 8), cyl(0.1, 0.07, 0.14, 0, 2.55, 0, IRON, 10)], 'post'), globe);
   });
 
-  // One unit of hedge; the world stretches it to fit each hedge line.
-  registry.register('hedge.block', () => group('hedge.block', meshOf(new THREE.BoxGeometry(1, 0.85, 1).translate(0, 0.425, 0), materials().hedge, 'hedge')));
+  // One unit of hedge (about 1 x 1); the world lines up copies along each hedge. Rounded edges and
+  // a lumpy top, darker near the ground.
+  registry.register('hedge.block', () => {
+    const parts = [bake(new RoundedBoxGeometry(1, 0.74, 1, 2, 0.2).translate(0, 0.37, 0), {})];
+    for (const [x, z, r] of [[-0.3, 0.08, 0.32], [0.26, -0.08, 0.34], [0, 0.02, 0.3]] as const) {
+      parts.push(bake(new THREE.SphereGeometry(1, 10, 6), { x, y: 0.7, z, sx: r, sy: 0.2, sz: 0.42 }));
+    }
+    const g = shade(merge(parts), { y0: 0, y1: 0.95, dark: 0.55, light: 1.12, center: new THREE.Vector3(0, 0.45, 0) });
+    return group('hedge.block', meshOf(g, materials().hedge, 'hedge'));
+  });
 
   registry.register('table.cafe', () => {
     const p = [
@@ -188,32 +215,56 @@ export function registerVillage(registry: AssetRegistry): void {
     group('plant.potted', vcMesh([cyl(0.3, 0.24, 0.45, 0, 0.23, 0, 0xc0704a, 14), ball(0.45, 0.55, 0.45, 0, 0.9, 0, 0x4e9a44), ball(0.3, 0.35, 0.3, 0.25, 1.25, 0.1, 0x5bae4a)], 'plant')),
   );
 
+  // Brick silo with a teal cone roof, metal bands, a door, a little window and a ladder.
   registry.register('silo', () => {
-    const tower = meshOf(new THREE.CylinderGeometry(1.1, 1.1, 3.4, 24), materials().brick, 'silo');
+    const tower = meshOf(new THREE.CylinderGeometry(1.1, 1.1, 3.4, 28), materials().brick, 'silo');
     tower.position.y = 1.7;
-    return group('silo', tower, vcMesh([ball(1.12, 0.7, 1.12, 0, 3.4, 0, 0x9fb3a8), box(0.6, 0.9, 0.1, 0, 0.6, 1.1, DOOR)], 'roof'));
+    const ROOF = 0x5f9ea0, TRIM = 0xeee6d3, METAL = 0x8a8f94;
+    const p = [
+      cone(1.34, 1.05, 0, 3.95, 0, ROOF, 28), cyl(1.22, 1.22, 0.14, 0, 3.45, 0, TRIM, 28), ball(0.16, 0.16, 0.16, 0, 4.5, 0, TRIM),
+      cyl(1.125, 1.125, 0.08, 0, 1.15, 0, METAL, 28), cyl(1.125, 1.125, 0.08, 0, 2.35, 0, METAL, 28),
+      box(0.76, 1.08, 0.06, 0, 0.6, 1.08, TRIM), box(0.62, 0.95, 0.1, 0, 0.55, 1.1, DOOR), box(0.05, 0.9, 0.11, 0, 0.55, 1.11, DOOR_DARK),
+      box(0.46, 0.46, 0.06, 0, 2.85, 1.08, TRIM), box(0.34, 0.34, 0.08, 0, 2.85, 1.1, 0x3d5a6b),
+    ];
+    for (const dz of [-0.17, 0.17]) p.push(box(0.05, 3.1, 0.05, 1.15, 1.75, dz, METAL));
+    for (let y = 0.5; y < 3.2; y += 0.35) p.push(box(0.04, 0.04, 0.34, 1.15, y, 0, METAL));
+    return group('silo', tower, vcMesh(p, 'roof'));
   });
 
-  registry.register('beehive', () =>
-    group('beehive', vcMesh([box(0.7, 0.5, 0.6, 0, 0.25, 0, 0xf4f1ea), box(0.75, 0.08, 0.65, 0, 0.52, 0, 0xe6c77a), box(0.66, 0.4, 0.56, 0, 0.76, 0, 0xf4f1ea), box(0.78, 0.1, 0.68, 0, 1.01, 0, 0xc98552), box(0.3, 0.05, 0.02, 0, 0.08, 0.31, 0x5a3b22)], 'beehive')),
-  );
+  // Beehive: two boxes, a little gable roof, a landing board and a bee.
+  registry.register('beehive', () => {
+    const BOX = 0xf6f0e2, ROOF = 0xc98552, HONEY = 0xf2b33d;
+    const p = [
+      box(0.7, 0.5, 0.6, 0, 0.27, 0, BOX), box(0.74, 0.06, 0.64, 0, 0.53, 0, HONEY), box(0.66, 0.4, 0.56, 0, 0.76, 0, BOX),
+      box(0.46, 0.06, 0.8, -0.2, 1.08, 0, ROOF, 0, 0, 0.5), box(0.46, 0.06, 0.8, 0.2, 1.08, 0, ROOF, 0, 0, -0.5),
+      box(0.4, 0.2, 0.04, 0, 1.03, 0.29, BOX), box(0.36, 0.04, 0.12, 0, 0.06, 0.35, 0x8a5a34), box(0.22, 0.05, 0.02, 0, 0.1, 0.305, 0x5a3b22),
+      box(0.03, 0.12, 0.02, 0.18, 0.5, 0.305, HONEY), dot(0.035, 0.05, 0.03, 0.18, 0.43, 0.31, HONEY),
+    ];
+    // A bee resting on the roof edge.
+    p.push(dot(0.07, 0.06, 0.09, 0.22, 1.2, 0.25, 0xffd23f), box(0.145, 0.03, 0.035, 0.22, 1.2, 0.25, 0x3a2a20), dot(0.05, 0.015, 0.035, 0.18, 1.27, 0.24, 0xffffff), dot(0.05, 0.015, 0.035, 0.27, 1.27, 0.24, 0xffffff));
+    return group('beehive', vcMesh(p, 'beehive'));
+  });
 
   // Origin at the water line.
   registry.register('boat', () =>
     group('boat', vcMesh([box(1.9, 0.5, 1.05, 0, 0.18, 0, 0xd9694f), box(1.7, 0.08, 0.82, 0, 0.4, 0, 0xf2e3cc), box(0.3, 0.1, 0.95, 0.2, 0.48, 0, 0xb8875a), cyl(0.52, 0.52, 0.5, -1.05, 0.18, 0, 0xd9694f, 3, 0, Math.PI / 2, 0)], 'boat')),
   );
 
-  // The companion pet: a round white bunny.
-  registry.register('pet.bunny', () =>
-    group(
-      'pet.bunny',
-      vcMesh([
-        ball(0.36, 0.32, 0.36, 0, 0.34, 0, 0xffffff),
-        ball(0.08, 0.26, 0.06, -0.13, 0.78, -0.02, 0xffffff, 0, 0, 0.2), ball(0.08, 0.26, 0.06, 0.13, 0.78, -0.02, 0xffffff, 0, 0, -0.2),
-        ball(0.04, 0.18, 0.03, -0.13, 0.78, 0.03, 0xf7b6c8, 0, 0, 0.2), ball(0.04, 0.18, 0.03, 0.13, 0.78, 0.03, 0xf7b6c8, 0, 0, -0.2),
-        ball(0.045, 0.05, 0.04, -0.12, 0.4, 0.31, 0x2a1e1e), ball(0.045, 0.05, 0.04, 0.12, 0.4, 0.31, 0x2a1e1e),
-        ball(0.035, 0.03, 0.03, 0, 0.34, 0.35, 0xf7b6c8), ball(0.1, 0.1, 0.1, 0, 0.3, -0.35, 0xffffff),
-      ], 'pet'),
-    ),
-  );
+  // The companion pet: a round white bunny with big shiny eyes, pink cheeks and a puff tail.
+  registry.register('pet.bunny', () => {
+    const W = 0xffffff, PINK = 0xf7b6c8, INK = 0x2a1e1e;
+    const p = [
+      ball(0.36, 0.32, 0.36, 0, 0.34, 0, W),
+      ball(0.08, 0.26, 0.06, -0.13, 0.78, -0.02, W, 0, 0, 0.2), ball(0.08, 0.26, 0.06, 0.13, 0.78, -0.02, W, 0, 0, -0.2),
+      ball(0.045, 0.18, 0.03, -0.13, 0.78, 0.03, PINK, 0, 0, 0.2), ball(0.045, 0.18, 0.03, 0.13, 0.78, 0.03, PINK, 0, 0, -0.2),
+      ball(0.1, 0.1, 0.1, 0, 0.3, -0.36, W),
+      ball(0.09, 0.05, 0.12, -0.15, 0.04, 0.2, W), ball(0.09, 0.05, 0.12, 0.15, 0.04, 0.2, W),
+      dot(0.035, 0.028, 0.03, 0, 0.36, 0.355, PINK),
+    ];
+    for (const s of [-1, 1]) {
+      p.push(dot(0.06, 0.07, 0.04, s * 0.13, 0.43, 0.3, INK), dot(0.022, 0.022, 0.015, s * 0.13 + 0.02, 0.455, 0.335, W));
+      p.push(dot(0.06, 0.035, 0.03, s * 0.21, 0.33, 0.285, PINK));
+    }
+    return group('pet.bunny', vcMesh(p, 'pet'));
+  });
 }

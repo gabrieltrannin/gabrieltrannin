@@ -59,6 +59,11 @@ export const box = (sx: number, sy: number, sz: number, x: number, y: number, z:
 export const ball = (sx: number, sy: number, sz: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rx = 0, ry = 0, rz = 0) =>
   bake(unitSphere, { x, y, z, sx, sy, sz, rx, ry, rz }, color);
 
+const smallSphere = new THREE.SphereGeometry(1, 8, 6);
+/** Like `ball`, with fewer faces: for small details (roots, flower dots, buttons). */
+export const dot = (sx: number, sy: number, sz: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rx = 0, ry = 0, rz = 0) =>
+  bake(smallSphere, { x, y, z, sx, sy, sz, rx, ry, rz }, color);
+
 /** Cylinder of height h centered at (x, y, z); rt/rb are top and bottom radii. */
 export const cyl = (rt: number, rb: number, h: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, seg = 12, rx = 0, ry = 0, rz = 0) =>
   bake(cached(`cyl${rt}|${rb}|${seg}`, () => new THREE.CylinderGeometry(rt, rb, 1, seg)), { x, y, z, sy: h, rx, ry, rz }, color);
@@ -68,6 +73,65 @@ export const cone = (r: number, h: number, x: number, y: number, z: number, colo
 
 export const torus = (radius: number, tube: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rx = 0, ry = 0, rz = 0) =>
   bake(cached(`torus${radius}|${tube}`, () => new THREE.TorusGeometry(radius, tube, 8, 22)), { x, y, z, rx, ry, rz }, color);
+
+export interface ShadeOptions {
+  /** Heights where the shading is darkest (y0) and lightest (y1). */
+  y0: number;
+  y1: number;
+  /** Multipliers at the bottom and the top. */
+  dark?: number;
+  light?: number;
+  /** Faces turned toward this point (inside a crown) get darker. */
+  center?: THREE.Vector3;
+}
+
+const _n = new THREE.Vector3();
+const _d = new THREE.Vector3();
+/**
+ * Bakes soft light into the vertex colors (multiplying the colors already there): darker low down,
+ * underneath and on faces turned inward; lighter near the top. Leaves keep a flat seasonal tint in
+ * the material and get their volume from this.
+ */
+export function shade(g: THREE.BufferGeometry, o: ShadeOptions): THREE.BufferGeometry {
+  const pos = g.attributes.position!, nor = g.attributes.normal!;
+  if (!g.attributes.color) {
+    g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(pos.count * 3).fill(1), 3));
+  }
+  const col = g.attributes.color!;
+  const dark = o.dark ?? 0.6, light = o.light ?? 1.1;
+  for (let i = 0; i < pos.count; i++) {
+    const t = THREE.MathUtils.clamp((pos.getY(i) - o.y0) / (o.y1 - o.y0), 0, 1);
+    _n.fromBufferAttribute(nor, i);
+    let k = dark + (light - dark) * t * t * (3 - 2 * t);
+    k *= 0.86 + 0.2 * Math.max(0, _n.y) + 0.14 * Math.min(0, _n.y);
+    if (o.center) {
+      _d.fromBufferAttribute(pos, i).sub(o.center).normalize();
+      k *= 0.72 + 0.28 * THREE.MathUtils.clamp(_n.dot(_d) * 0.5 + 0.5, 0, 1);
+    }
+    col.setXYZ(i, col.getX(i) * k, col.getY(i) * k, col.getZ(i) * k);
+  }
+  col.needsUpdate = true;
+  return g;
+}
+
+/** Adds the back faces (flipped copies) so thin shapes like palm fronds show from both sides. */
+export function twoSided(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const back = g.index ? g.toNonIndexed() : g.clone();
+  const front = g.index ? g.toNonIndexed() : g;
+  for (const name of Object.keys(back.attributes)) {
+    const a = back.attributes[name]!;
+    for (let i = 0; i < a.count; i += 3) {
+      for (let c = 0; c < a.itemSize; c++) {
+        const v1 = a.getComponent(i + 1, c);
+        a.setComponent(i + 1, c, a.getComponent(i + 2, c));
+        a.setComponent(i + 2, c, v1);
+      }
+    }
+  }
+  const n = back.attributes.normal!;
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  return merge([front, back]);
+}
 
 export function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const g = mergeGeometries(parts, false);

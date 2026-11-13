@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { AssetRegistry } from '../assets/registry';
 import { GLOBE_LAMPS, HEDGES, PROPS, SEA_LEVEL, STALLS } from '../data/map';
-import { instantiate } from '../render/instancing';
+import { instantiate, type Placement } from '../render/instancing';
 import { heightAt } from './terrain';
 
 export interface Props {
@@ -34,12 +34,20 @@ export function buildProps(assets: AssetRegistry): Props {
   }
 
   root.add(instantiate(assets.create('lamp.globe'), GLOBE_LAMPS.map(([x, z]) => ({ x, y: heightAt(x, z), z }))));
-  root.add(
-    instantiate(
-      assets.create('hedge.block'),
-      HEDGES.map(([x0, z0, x1, z1]) => ({ x: (x0 + x1) / 2, y: heightAt((x0 + x1) / 2, (z0 + z1) / 2), z: (z0 + z1) / 2, sx: x1 - x0, sz: z1 - z0 })),
-    ),
-  );
+  // Hedges: copies of a 1 x 1 block lined up along each hedge, slightly overlapping.
+  const hedgeBlocks: Placement[] = [];
+  for (const [x0, z0, x1, z1] of HEDGES) {
+    const alongX = x1 - x0 >= z1 - z0;
+    const length = alongX ? x1 - x0 : z1 - z0, width = alongX ? z1 - z0 : x1 - x0;
+    const count = Math.max(1, Math.round(length));
+    const step = length / count;
+    for (let i = 0; i < count; i++) {
+      const x = alongX ? x0 + step * (i + 0.5) : (x0 + x1) / 2;
+      const z = alongX ? (z0 + z1) / 2 : z0 + step * (i + 0.5);
+      hedgeBlocks.push({ x, y: heightAt(x, z), z, sx: alongX ? step * 1.08 : width, sz: alongX ? width : step * 1.08 });
+    }
+  }
+  root.add(instantiate(assets.create('hedge.block'), hedgeBlocks));
 
   const blades: THREE.Object3D[] = [];
   root.traverse(o => {

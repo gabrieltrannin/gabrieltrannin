@@ -102,16 +102,22 @@ export function paintFace(ctx: CanvasRenderingContext2D, a: Appearance): void {
   const ink = '#2A1E1E';
   if (a.blush) {
     ctx.fillStyle = 'rgba(244,128,150,.55)';
-    for (const cx of [72, 184]) {
+    for (const cx of [68, 188]) {
       ctx.beginPath();
-      ctx.ellipse(cx, 146, 17, 11, 0, 0, TAU);
+      ctx.ellipse(cx, 126, 18, 11, 0, 0, TAU);
       ctx.fill();
     }
   }
-  const ey = 112;
+  // Eyes sit a little above the middle of the face and are drawn large, so they read from the
+  // high game camera (the head is also tilted back slightly, see buildAvatar).
+  const ey = 94, EYE_SCALE = 1.22, MOUTH_Y = 130;
   ctx.lineCap = 'round';
-  for (const cx of [100, 156]) {
+  for (const cx of [96, 160]) {
     const out = cx < 128 ? -1 : 1;
+    ctx.save();
+    ctx.translate(cx, ey);
+    ctx.scale(EYE_SCALE, EYE_SCALE);
+    ctx.translate(-cx, -ey);
     const oval = (rx: number, ry: number, color: string, dy = 0) => {
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -151,32 +157,33 @@ export function paintFace(ctx: CanvasRenderingContext2D, a: Appearance): void {
       else ctx.arc(cx, ey + 6, 10, 1.15 * Math.PI, 1.85 * Math.PI);
       ctx.stroke();
     }
+    ctx.restore();
   }
   ctx.strokeStyle = ink;
   ctx.lineWidth = 4;
   ctx.beginPath();
   if (a.mouth === 'smile') {
-    ctx.arc(128, 148, 9, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.arc(128, MOUTH_Y, 9, 0.15 * Math.PI, 0.85 * Math.PI);
     ctx.stroke();
   } else if (a.mouth === 'laugh') {
     ctx.fillStyle = '#8E2B3A';
-    ctx.moveTo(117, 148);
-    ctx.quadraticCurveTo(128, 172, 139, 148);
+    ctx.moveTo(117, MOUTH_Y);
+    ctx.quadraticCurveTo(128, MOUTH_Y + 24, 139, MOUTH_Y);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#F28CA0';
     ctx.beginPath();
-    ctx.ellipse(128, 159, 5, 3.5, 0, 0, TAU);
+    ctx.ellipse(128, MOUTH_Y + 11, 5, 3.5, 0, 0, TAU);
     ctx.fill();
   } else if (a.mouth === 'cat') {
-    ctx.arc(121, 148, 7, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.arc(121, MOUTH_Y, 7, 0.1 * Math.PI, 0.9 * Math.PI);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(135, 148, 7, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.arc(135, MOUTH_Y, 7, 0.1 * Math.PI, 0.9 * Math.PI);
     ctx.stroke();
   } else {
-    ctx.moveTo(121, 153);
-    ctx.lineTo(135, 153);
+    ctx.moveTo(121, MOUTH_Y + 5);
+    ctx.lineTo(135, MOUTH_Y + 5);
     ctx.stroke();
   }
 }
@@ -333,6 +340,8 @@ export function buildAvatar(a: Appearance): THREE.Group {
 
   const head = new THREE.Group();
   head.position.set(0, 1.33, 0);
+  // Tilted back a little: the game camera looks down from above, and this turns the face toward it.
+  head.rotation.x = -0.2;
   body.add(head);
   part(SPHERE(), skin, head, [0, 0, 0], [0.48, 0.46, 0.47]);
   const canvas = document.createElement('canvas');

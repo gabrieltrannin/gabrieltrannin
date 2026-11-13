@@ -47,7 +47,7 @@ function create(): SharedMaterials {
   const leaves = leafTexture();
   leaves.repeat.set(3, 2);
   const hedgeLeaves = leaves.clone();
-  hedgeLeaves.repeat.set(5, 1.2);
+  hedgeLeaves.repeat.set(1.4, 1);
   hedgeLeaves.needsUpdate = true;
   const thatch = thatchTexture();
   thatch.repeat.set(4, 1);
@@ -65,11 +65,12 @@ function create(): SharedMaterials {
 
   return {
     vc: lambert({ vertexColors: true }),
-    leafRound: lambert({ map: leaves, color: 0x6cbb52 }),
-    leafBlossom: lambert({ map: leaves, color: 0xf6b3cb }),
-    leafPine: lambert({ map: leaves, color: 0x3b8a5e }),
-    leafBush: lambert({ map: leaves, color: 0x5bae4a }),
-    hedge: lambert({ map: hedgeLeaves, color: 0x4e9a44 }),
+    // Leaves: a flat seasonal tint here, light and shadow in each geometry's vertex colors.
+    leafRound: lambert({ map: leaves, color: 0x6cbb52, vertexColors: true }),
+    leafBlossom: lambert({ map: leaves, color: 0xf6b3cb, vertexColors: true }),
+    leafPine: lambert({ map: leaves, color: 0x3b8a5e, vertexColors: true }),
+    leafBush: lambert({ map: leaves, color: 0x5bae4a, vertexColors: true }),
+    hedge: lambert({ map: hedgeLeaves, color: 0x4e9a44, vertexColors: true }),
     lip: lambert({ color: 0x7dc35b }),
     tinted: lambert({ color: 0xffffff }),
     flowerCenter: lambert({ color: 0xf2c14e }),
