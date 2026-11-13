@@ -195,10 +195,25 @@ export const FLOWER_PATCHES: readonly (readonly [number, number, number, number,
 export const UPPER_FLOWER_ROW = { x0: -15.8, x1: 4.6, z: -7.0, step: 0.55 } as const;
 export const FLOWER_COLORS = ['#F27BA5', '#FFD166', '#FFFFFF', '#B892FF', '#FF8C69'] as const;
 
-/** Loop the camera test walker follows (the player replaces it in stage 2). */
-export const WALK_LOOP: readonly XZ[] = [
-  [-12.4, -1.2], [-12.3, 7.3], [-3, 7.6], [-3, 0.5], [-3, -5], [4, -4.9], [9.6, 2.8], [9.4, 7.4], [-1.8, 8.2], [-12.0, 7.9],
-];
-
 /** Centre of the island for the overview camera, and the area it should fit on screen. */
 export const OVERVIEW = { x: 0, z: 3.5, width: 41, depth: 38 } as const;
+
+/** Standing spot just outside the house door; going to bed works from here (the interior arrives in stage 5). */
+export const HOUSE_DOOR: XZ = [HOUSE.x, HOUSE.z + 2.75];
+/** How close a player must be to the door to go to bed. */
+export const BED_REACH = 2.2;
+
+/** Where a new player appears: on the path in front of the house, facing the camera. */
+export const PLAYER_START = { x: HOUSE.x, z: HOUSE.z + 3.6, facing: 0 } as const;
+
+/** How close a player must be to a fruit tree to shake it. */
+export const TREE_REACH = 2.2;
+export const orchardTreeId = (index: number) => `orchard-${index}`;
+
+/** Places of the first request ("Passeio pela ilha"): visit each one. */
+export const TOUR_PLACES: readonly { id: 'beach' | 'orchard' | 'market'; at: XZ; radius: number }[] = [
+  { id: 'beach', at: [10, 15.6], radius: 3.2 },
+  { id: 'orchard', at: [-6.8, -8.2], radius: 3.4 },
+  { id: 'market', at: [10.3, 3.0], radius: 3.6 },
+];
+export const TOUR_REWARD = 100;

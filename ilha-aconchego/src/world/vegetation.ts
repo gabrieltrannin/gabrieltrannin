@@ -3,13 +3,18 @@ import type { AssetRegistry } from '../assets/registry';
 import type { FruitId } from '../data/defaults';
 import { BLOSSOM_TREES, BUSHES, FLOWER_COLORS, FLOWER_PATCHES, ORCHARD, PALMS, PINES, ROCKS, ROUND_TREES, TALL_GRASS, UPPER_FLOWER_ROW } from '../data/map';
 import type { SeasonPalette } from '../data/seasonPalettes';
-import { instantiate, type Placement } from '../render/instancing';
+import { instantiate, setInstancePlacement, setInstanceVisible, type Placement } from '../render/instancing';
 import { seededRandom } from '../render/textures';
 import { heightAt } from './terrain';
 
 export interface Vegetation {
   root: THREE.Group;
   applySeason(palette: SeasonPalette): void;
+  /** Shows or hides the fruit of one orchard tree (shaken trees are bare until the next day). */
+  setOrchardFruit(index: number, visible: boolean): void;
+  /** Makes one orchard tree wobble for a moment. */
+  shakeOrchardTree(index: number): void;
+  update(dt: number): void;
 }
 
 const at = (x: number, z: number, extra: Partial<Placement> = {}): Placement => ({ x, y: heightAt(x, z), z, ...extra });
@@ -20,8 +25,11 @@ export function buildVegetation(assets: AssetRegistry, nativeFruit: FruitId): Ve
   root.name = 'vegetation';
   const rnd = seededRandom(29);
 
+  const orchardPlacements = ORCHARD.map(([x, z, s]) => at(x, z, { s }));
+  const orchard = instantiate(assets.create(`tree.${nativeFruit}`), orchardPlacements);
+  const shaking = new Map<number, number>();
   root.add(
-    instantiate(assets.create(`tree.${nativeFruit}`), ORCHARD.map(([x, z, s]) => at(x, z, { s }))),
+    orchard,
     instantiate(assets.create('tree.round'), ROUND_TREES.map(([x, z, s]) => at(x, z, { s, ry: rnd() * 6 }))),
     instantiate(assets.create('tree.blossom'), BLOSSOM_TREES.map(([x, z, s]) => at(x, z, { s, ry: rnd() * 6 }))),
     instantiate(assets.create('tree.pine'), PINES.map(([x, z, s]) => at(x, z, { s, ry: rnd() * 6 }))),
@@ -65,6 +73,21 @@ export function buildVegetation(assets: AssetRegistry, nativeFruit: FruitId): Ve
 
   return {
     root,
+    setOrchardFruit(index, visible) {
+      setInstanceVisible(orchard, index, 'fruit', visible);
+    },
+    shakeOrchardTree(index) {
+      shaking.set(index, 0.7);
+    },
+    update(dt) {
+      for (const [index, left] of shaking) {
+        const t = Math.max(0, left - dt);
+        const base = orchardPlacements[index]!;
+        setInstancePlacement(orchard, index, { ...base, ry: Math.sin(t * 40) * 0.08 * (t / 0.7) });
+        if (t <= 0) shaking.delete(index);
+        else shaking.set(index, t);
+      }
+    },
     applySeason(p) {
       const shown = p.flowers >= 1 ? flowers.length : p.flowers > 0 ? autumnCount : 0;
       for (const m of flowerMeshes) {

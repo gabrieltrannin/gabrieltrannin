@@ -14,7 +14,7 @@ describe('procedural assets', () => {
   });
 
   it('has an asset for every prop, stall and crop the map uses', () => {
-    const used = [...PROPS.map(p => p.asset), ...STALLS.map(s => s.asset), ...CROPS.map(c => `crop.${c}`), 'lamp.globe', 'hedge.block', 'lantern.ground', 'light.pole', 'light.bulb', 'flower', 'grass.tuft', 'rock', 'debug.walker'];
+    const used = [...PROPS.map(p => p.asset), ...STALLS.map(s => s.asset), ...CROPS.map(c => `crop.${c}`), 'lamp.globe', 'hedge.block', 'lantern.ground', 'light.pole', 'light.bulb', 'flower', 'grass.tuft', 'rock', 'pet.bunny'];
     expect(used.filter(n => !registry.has(n))).toEqual([]);
   });
 });

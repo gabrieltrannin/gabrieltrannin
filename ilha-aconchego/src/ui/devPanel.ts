@@ -1,12 +1,12 @@
 import { SEASONS } from '../data/calendar';
 import { WEATHERS, type WeatherId } from '../data/weather';
 import { type Game, SYSTEM } from '../core/game';
-import type { Actor } from '../core/types';
 import { t, type MessageKey } from '../i18n';
 import type { CameraMode } from '../render/camera';
 
 export interface DevPanelOptions {
-  localActor: Actor;
+  /** Erases the save and starts over from the character creator. */
+  onNewIsland(): void;
   getCameraMode(): CameraMode;
   setCameraMode(mode: CameraMode): void;
   isClockPaused(): boolean;
@@ -89,11 +89,13 @@ export function createDevPanel(root: HTMLElement, game: Game, opts: DevPanelOpti
   row('dev.camera', [t('dev.follow'), t('dev.overview')], i => opts.setCameraMode(modes[i]!), i => opts.getCameraMode() === modes[i]);
   row(
     'dev.clock',
-    [t('dev.pause'), t('dev.plusHour'), t('dev.sleep')],
+    [t('dev.pause'), t('dev.plusHour'), t('dev.sleep'), t('dev.newIsland')],
     i => {
       if (i === 0) opts.setClockPaused(!opts.isClockPaused());
       if (i === 1) game.dispatch({ type: 'time.advance', steps: 6 }, SYSTEM);
-      if (i === 2) game.dispatch({ type: 'sleep' }, opts.localActor);
+      // The test panel skips the walk to the bed: the system can always end the day.
+      if (i === 2) game.dispatch({ type: 'sleep' }, SYSTEM);
+      if (i === 3) opts.onNewIsland();
     },
     () => false,
   );

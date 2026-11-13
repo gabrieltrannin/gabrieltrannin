@@ -13,7 +13,6 @@ import { buildProps } from './props';
 import { buildSea } from './sea';
 import { heightAt } from './terrain';
 import { buildVegetation } from './vegetation';
-import { buildWalker, type Walker } from './walker';
 
 export interface WorldOptions {
   season: SeasonId;
@@ -24,8 +23,9 @@ export interface WorldOptions {
 export interface World {
   root: THREE.Group;
   sea: ReturnType<typeof buildSea>;
-  walker: Walker;
   setSeason(season: SeasonId): void;
+  setOrchardFruit(index: number, visible: boolean): void;
+  shakeOrchardTree(index: number): void;
   /** Repaints signs once the web fonts are ready. */
   repaintSigns(): void;
   update(dt: number, elapsed: number, reducedMotion: boolean): void;
@@ -40,8 +40,7 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
   const vegetation = buildVegetation(assets, opts.nativeFruit);
   const farm = buildFarmDecor(assets);
   const props = buildProps(assets);
-  const walker = buildWalker(assets);
-  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root, walker.object);
+  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root);
 
   // Season visibility by mesh name, so glTF models can follow the same rule.
   const onlyIn: Record<string, THREE.Object3D[]> = { 'only:winter': [], 'only:autumn': [], 'only:warm': [], fruit: [] };
@@ -80,15 +79,16 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
   return {
     root,
     sea,
-    walker,
     setSeason,
+    setOrchardFruit: vegetation.setOrchardFruit,
+    shakeOrchardTree: vegetation.shakeOrchardTree,
     repaintSigns() {
       farm.repaintSigns();
       repaintStallSigns();
     },
     update(dt, elapsed, reducedMotion) {
       sea.update(elapsed, reducedMotion);
-      walker.update(dt, elapsed);
+      vegetation.update(dt);
       if (!reducedMotion) for (const b of props.blades) b.rotation.z = elapsed * 0.8;
       if (props.boat) {
         props.boat.position.y = boatBase + Math.sin(elapsed * 1.3) * 0.06;

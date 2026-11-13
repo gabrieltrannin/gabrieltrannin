@@ -17,7 +17,7 @@ npm run build      # checagem de tipos + versão de produção em dist/
 
 - [x] **Etapa 0**: base do projeto, documento de design, cena de teste, comandos e relógio
 - [x] **Etapa 1**: mundo e visual
-- [ ] **Etapa 2**: personagem, controle e interface
+- [x] **Etapa 2**: personagem, controle e interface
 - [ ] **Etapa 3**: fazenda e atividades
 - [ ] **Etapa 4**: vila e moradores
 - [ ] **Etapa 5**: casa, decoração, ofícios e progressão
@@ -25,6 +25,71 @@ npm run build      # checagem de tipos + versão de produção em dist/
 - [ ] **Etapa 7**: multijogador
 - [ ] **Etapa 8**: opções, som, acessibilidade e publicação
 - [ ] **Etapa 9**: expansão
+
+---
+
+## Etapa 2: personagem, controle e interface (concluída)
+
+### O que foi feito
+
+- **Criador de personagem** (`src/ui/creator.ts`, `src/render/avatar.ts`, `src/data/appearance.ts`): é a primeira tela quando não há jogo salvo e começa com a Ana. A prévia 3D tem renderizador próprio, gira sozinha e ao arrastar. Abas: Corpo (humano, elfo, povo-gato, povo-coelho; 6 tons de pele), Rosto (5 olhos, cor dos olhos, 4 bocas, bochechas coradas ou não), Cabelo (6 estilos e cor), Roupa (camiseta, vestido, jardineira, moletom; cores de cima, de baixo e dos sapatos), Acessório (chapéu de palha, gorro, laço, coroa de flores, broto) e Ilha (seu nome, nome da ilha e fruta nativa). Botões "Sortear visual", "Voltar ao padrão" e "Começar a jogar". O rosto é uma textura de canvas redesenhada a cada mudança.
+- **Controle** (`src/input/input.ts`, `src/game/playerController.ts`, `src/ui/touchControls.ts`): uma só entrada para os três jeitos de jogar.
+  - Teclado: WASD ou setas andam, Shift corre, E faz a ação, 1 a 8 escolhem o item, Tab abre a mochila, M mostra a ilha toda, Q e R giram a câmera, Esc fecha.
+  - Toque: direcional virtual, botão Ação, Correr (liga e desliga) e Mochila; tocar no minimapa mostra a ilha toda. Aparecem em telas de toque ou no primeiro toque.
+  - Controle de videogame: analógico esquerdo anda, o direito gira a câmera, A faz a ação, B corre, Y abre a mochila, X ou Back mostra a ilha toda, LB e RB trocam o item.
+  - O movimento é relativo à câmera, com giro suave e animações de parada (respiração), andar e correr.
+- **Colisão** (`src/world/collision.ts`, `src/data/footprints.ts`): círculos e caixas montados a partir dos dados do mapa e da pegada de cada objeto (casa, cercas, árvores, barracas, cercas vivas, postes, móveis, pedras, barris). A personagem desliza ao encostar. Os níveis só se ligam pela rampa e pela escada (degrau máximo de 0,36); ela guarda distância da beira, do mar e dos paredões e anda no píer. Boneco de neve e abóboras de enfeite só bloqueiam na estação em que aparecem.
+- **Câmera**: segue a personagem. O minimapa (ou M) alterna para a ilha toda.
+- **Bichinho** (`src/game/pet.ts`): a coelhinha Bolinha segue a jogadora aos pulinhos, um pouco atrás e de lado. Se ficar muito longe, reaparece perto. Recebe carinho e pula de alegria.
+- **Interface** (`src/ui/hud.ts`, `minimap.ts`, `bubbles.ts`, `inventoryPanel.ts`):
+  - cartão de data, hora e clima;
+  - moedas e barra de energia;
+  - pedido ativo: "Passeio pela ilha" (conhecer a praia, o pomar e a feira; vale 100 moedas, contado sozinho ao chegar em cada lugar);
+  - minimapa redondo com a jogadora (seta), o bichinho e estrelas nos lugares que faltam;
+  - barra de 8 itens (clique, 1 a 8 ou LB/RB);
+  - aviso de interação ("E · Sacudir a árvore"; "Ação · …" no toque);
+  - mensagens rápidas, balões de fala presos a objetos do mundo e aviso das 2h.
+  - Mochila (Tab): 24 espaços em 8×3, com a primeira linha sendo a barra de itens. Arraste para organizar (itens iguais se juntam) ou toque num espaço e depois em outro.
+- **Itens** (`src/data/items.ts`, `src/core/inventory.ts`): enxada, regador, machado, picareta, vara de pesca, rede, 12 sementes de morango e as cinco frutas. Começa com 500 moedas.
+- **Interações** (`src/game/interactions.ts`): cada objeto se registra com posição, raio e texto da ação; o mais próximo, na frente da personagem, recebe o aviso. Por enquanto: porta da casa (dormir), caixa de correio (carta de boas-vindas), placas dos canteiros, as cinco árvores do pomar (sacudir dá de 1 a 3 frutas nativas, uma vez por dia por árvore, menos no inverno), banco, barracas e o bichinho.
+- **Comandos novos**: `player.move`, `inventory.select`, `inventory.move`, `tree.shake` e `place.visit`. `sleep` agora exige estar perto da porta da casa (o painel de testes dorme como sistema).
+- **Salvamento** (`src/core/save.ts`, `src/platform/saveStore.ts`): IndexedDB, um espaço. Guarda personagem, posição, inventário, moedas, energia, dia, hora, clima, pedido e árvores sacudidas. Salva ao dormir (aviso "Jogo salvo."), a cada 10 s quando algo mudou e ao esconder ou fechar a aba. Ao carregar, o arquivo inteiro é conferido; se a versão for outra ou algo estiver estranho, começa uma ilha nova. O painel de testes ganhou "Nova ilha", que apaga o jogo salvo.
+- **Desempenho**: as peças da personagem são fundidas por parte que se mexe (corpo, cabeça, braços, pernas), com as cores nos vértices: 7 chamadas de desenho em vez de cerca de 45. O bichinho é uma só malha.
+
+### Como testar
+
+1. `npm test`: 87 testes passam (relógio, inventário, colisão, comandos e permissões, salvamento, interações, terreno, clima e textos).
+2. `npm run dev`: o criador aparece. Mude o visual, dê um nome e toque em "Começar a jogar". A personagem aparece na frente da cabana com a Bolinha.
+3. Ande com WASD ou setas (Shift corre). Suba a rampa de terra (ao norte da praça) até o pomar e desça a escada de madeira (ao sul, perto do píer) até a praia. Tente atravessar a casa, cercas, árvores ou entrar no mar: não dá. Ande até a ponta do píer.
+4. Aperte E perto da caixa de correio, das placas dos canteiros, das árvores do pomar, do bichinho, do banco e das barracas.
+5. Tab abre a mochila; arraste um item para outro espaço.
+6. Na porta da cabana, "E · Dormir" passa o dia e salva. Ande um pouco, espere uns segundos e recarregue a página: o jogo continua do mesmo ponto, sem passar pelo criador.
+7. No celular (`npm run dev:host`): direcional virtual à esquerda, Ação à direita.
+
+Verificado nesta etapa: testes, checagem de tipos e build passando; o painel de testes e os atalhos de depuração não entram na versão de produção. Num navegador automático em 1280×800: criador → ilha; andar pelo teclado; subir a rampa (chegou ao pomar, altura 2,8); paredão sem rampa (parou a um raio da parede); escada até a praia e píer até a ponta; mar (parou na areia); parede da casa; correr; avisos e balões; sacudir árvore (+3 pêssegos); escolher item com 1 a 8; mochila (arrastar a enxada do espaço 1 para o 13); passeio (praia e pomar contados); dormir (dia 1 → 2, chuva sorteada, "Jogo salvo."); recarregar: mesmo nome, posição, dia, hora e itens. Em 390×844 com toque: criador sem rolagem lateral, direcional virtual anda, Ação abre a carta, Mochila abre. Sem erros no console.
+
+Não verificado: controle de videogame de verdade (não há aparelho aqui; o mapeamento segue o padrão "standard" dos navegadores) e a meta de 60 qps. A máquina de teste desta etapa é mais lenta que a da anterior: cerca de 1 qps aqui, enquanto a versão da etapa 1 mede cerca de 0,5 qps na mesma máquina, então não houve perda.
+
+### Decisões técnicas
+
+- O movimento é calculado no aparelho a cada quadro; a posição entra no estado por `player.move` a cada 0,5 s e antes de qualquer ação, pronta para o servidor da etapa 7 conferir.
+- A colisão é pura (sem Three.js), para o servidor usar as mesmas funções. Só o ponto à frente do corpo conta como parede, então dá para se afastar ou andar ao longo de um paredão sem travar.
+- A casa ainda não tem interior (etapa 5): "Dormir" fica na porta da cabana e a personagem acorda na frente dela.
+- O minimapa é um canvas 2D desenhado 10 vezes por segundo a partir dos dados do mapa.
+- O jogo salvo é a cópia inteira do `GameState` com número de versão (`SAVE_VERSION` = 2).
+
+### Pendências e notas
+
+- A energia ainda não é gasta (as ferramentas funcionam na etapa 3) e o item escolhido ainda não aparece na mão (o ponto `AvatarParts.hand` já existe).
+- Placas, banco e barracas só mostram balões; colher, vender e comprar chegam nas etapas 3 e 4.
+- Não há tela de título: com jogo salvo, abre direto na ilha; sem, no criador. "Nova ilha" está só no painel de testes até o menu da etapa 8.
+- Mudar o visual depois de criada fica para o guarda-roupa da casa (etapa 5).
+- Um só espaço de jogo salvo; jogos na nuvem na etapa 7.
+- Os ícones de itens são emoji e dependem do aparelho; trocar por ícones desenhados quando houver arte.
+
+### Próximo passo
+
+Etapa 3: fazenda e atividades.
 
 ---
 

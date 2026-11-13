@@ -203,16 +203,17 @@ export function registerVillage(registry: AssetRegistry): void {
     group('boat', vcMesh([box(1.9, 0.5, 1.05, 0, 0.18, 0, 0xd9694f), box(1.7, 0.08, 0.82, 0, 0.4, 0, 0xf2e3cc), box(0.3, 0.1, 0.95, 0.2, 0.48, 0, 0xb8875a), cyl(0.52, 0.52, 0.5, -1.05, 0.18, 0, 0xd9694f, 3, 0, Math.PI / 2, 0)], 'boat')),
   );
 
-  // Placeholder figure the camera follows in stage 1. The player replaces it in stage 2.
-  registry.register('debug.walker', () =>
+  // The companion pet: a round white bunny.
+  registry.register('pet.bunny', () =>
     group(
-      'debug.walker',
+      'pet.bunny',
       vcMesh([
-        cyl(0.07, 0.07, 0.3, -0.1, 0.15, 0, 0x6b4b3a, 8), cyl(0.07, 0.07, 0.3, 0.1, 0.15, 0, 0x6b4b3a, 8),
-        cyl(0.22, 0.27, 0.5, 0, 0.55, 0, 0x7c4da6, 14), ball(0.38, 0.36, 0.37, 0, 1.08, 0, 0xf6d2b8),
-        ball(0.4, 0.22, 0.39, 0, 1.24, -0.05, 0xe8708f), ball(0.17, 0.16, 0.17, 0, 1.5, -0.12, 0xe8708f),
-        ball(0.05, 0.065, 0.04, -0.13, 1.1, 0.33, 0x2a1e1e), ball(0.05, 0.065, 0.04, 0.13, 1.1, 0.33, 0x2a1e1e),
-      ], 'walker'),
+        ball(0.36, 0.32, 0.36, 0, 0.34, 0, 0xffffff),
+        ball(0.08, 0.26, 0.06, -0.13, 0.78, -0.02, 0xffffff, 0, 0, 0.2), ball(0.08, 0.26, 0.06, 0.13, 0.78, -0.02, 0xffffff, 0, 0, -0.2),
+        ball(0.04, 0.18, 0.03, -0.13, 0.78, 0.03, 0xf7b6c8, 0, 0, 0.2), ball(0.04, 0.18, 0.03, 0.13, 0.78, 0.03, 0xf7b6c8, 0, 0, -0.2),
+        ball(0.045, 0.05, 0.04, -0.12, 0.4, 0.31, 0x2a1e1e), ball(0.045, 0.05, 0.04, 0.12, 0.4, 0.31, 0x2a1e1e),
+        ball(0.035, 0.03, 0.03, 0, 0.34, 0.35, 0xf7b6c8), ball(0.1, 0.1, 0.1, 0, 0.3, -0.35, 0xffffff),
+      ], 'pet'),
     ),
   );
 }

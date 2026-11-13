@@ -39,11 +39,42 @@ export function instantiate(template: THREE.Object3D, placements: readonly Place
     const im = new THREE.InstancedMesh(mesh.geometry, mesh.material, placements.length);
     placements.forEach((p, i) => im.setMatrixAt(i, placementMatrix(p, _m).multiply(mesh.matrixWorld)));
     im.instanceMatrix.needsUpdate = true;
+    im.userData.local = mesh.matrixWorld.clone();
     im.castShadow = mesh.castShadow;
     im.receiveShadow = mesh.receiveShadow;
     im.name = mesh.name;
     im.computeBoundingSphere();
     group.add(im);
   });
+  group.userData.placements = placements.map(p => ({ ...p }));
   return group;
+}
+
+const _hidden = new THREE.Matrix4().makeScale(0, 0, 0);
+
+/**
+ * Moves one copy (for example, to wobble a tree that was shaken). `only` limits the change to meshes
+ * with that name. Hidden copies stay hidden unless `only` targets them.
+ */
+export function setInstancePlacement(group: THREE.Group, index: number, placement: Placement, only?: string): void {
+  for (const child of group.children) {
+    const im = child as THREE.InstancedMesh;
+    if (!im.isInstancedMesh || (only && im.name !== only) || im.userData.hidden?.[index]) continue;
+    im.setMatrixAt(index, placementMatrix(placement, _m).multiply(im.userData.local as THREE.Matrix4));
+    im.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/** Shows or hides one copy of the meshes named `name` (for example, the fruit of one tree). */
+export function setInstanceVisible(group: THREE.Group, index: number, name: string, visible: boolean): void {
+  const placement = (group.userData.placements as Placement[])[index];
+  if (!placement) return;
+  for (const child of group.children) {
+    const im = child as THREE.InstancedMesh;
+    if (!im.isInstancedMesh || im.name !== name) continue;
+    const hidden = ((im.userData.hidden ??= {}) as Record<number, boolean>);
+    hidden[index] = !visible;
+    im.setMatrixAt(index, visible ? placementMatrix(placement, _m).multiply(im.userData.local as THREE.Matrix4) : _hidden);
+    im.instanceMatrix.needsUpdate = true;
+  }
 }

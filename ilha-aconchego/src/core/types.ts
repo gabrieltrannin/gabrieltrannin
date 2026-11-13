@@ -1,4 +1,6 @@
+import type { Appearance } from '../data/appearance';
 import type { FruitId } from '../data/defaults';
+import type { ItemId } from '../data/items';
 import type { WeatherId } from '../data/weather';
 
 /** Position in the calendar plus the time of day. Plain data, safe to save and send over the network. */
@@ -28,9 +30,38 @@ export interface Actor {
   role: Role;
 }
 
+/** Position on the ground plane plus the direction the character faces (radians around the vertical axis). */
+export interface Placement2D {
+  x: number;
+  z: number;
+  facing: number;
+}
+
+export interface ItemStack {
+  item: ItemId;
+  qty: number;
+}
+
+/** 24 slots; null is an empty slot. The first 8 are the item bar. */
+export type Inventory = (ItemStack | null)[];
+
 export interface PlayerState {
   id: string;
   name: string;
+  appearance: Appearance;
+  position: Placement2D;
+  coins: number;
+  energy: number;
+  inventory: Inventory;
+  /** Selected slot of the item bar (0 to 7). */
+  activeSlot: number;
+}
+
+/** First request: visit the beach, the orchard and the market. Stage 4 brings the villagers' requests. */
+export interface QuestState {
+  id: 'tour';
+  visited: string[];
+  done: boolean;
 }
 
 export interface IslandState {
@@ -51,4 +82,7 @@ export interface GameState {
   weather: WeatherId;
   island: IslandState;
   players: Record<string, PlayerState>;
+  quests: QuestState[];
+  /** Fruit trees that were shaken, by tree id: the day number (absoluteDay) of the last shake. */
+  trees: Record<string, { shakenDay: number }>;
 }
