@@ -139,7 +139,7 @@ Quando o código for para o branch `main`, troque o final do link por `/tree/mai
 1. Mude o código e teste com `npm run dev`.
 2. Rode `npm test -w @fuzue/server` e `npm run typecheck`.
 3. Se mudou **mensagens ou estado** entre site e servidor, suba `PROTOCOL_VERSION` em `shared/src/constants.ts`. Quem estiver com a página antiga aberta é avisado para recarregar.
-4. **Servidor:** faça push no GitHub. Com o serviço criado pelo `render.yaml`, o Render publica sozinho (`autoDeploy`). Também dá para clicar em *Manual Deploy* no painel do Render.
+4. **Servidor:** faça push no GitHub. O Render só publica sozinho (`autoDeploy`) se a conta do Render estiver ligada ao GitHub (*Account Settings → Git Providers → GitHub*). Se não estiver, abra o serviço `fuzue-servidor` no painel do Render e clique em *Manual Deploy → Deploy latest commit*.
 5. **Site:** `npm run deploy:site -w @fuzue/client`. Precisa do Vercel CLI logado (`npx vercel login`) ou de `VERCEL_TOKEN`. Quem estiver com o jogo aberto vê o aviso **"Saiu uma atualização!"**.
 
 Também dá para pedir ao Claude: "publica o site" / "publica o servidor".
