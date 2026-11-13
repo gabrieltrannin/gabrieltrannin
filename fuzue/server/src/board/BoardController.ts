@@ -175,7 +175,7 @@ export class BoardController {
     if (bombOwner && bombOwner !== p.id) {
       this.b.bombs.delete(tileKey);
       const owner = this.room.state.players.get(bombOwner);
-      this.room.note(`BUM! ${p.name} pisou na bomba${owner ? ` de ${owner.name}` : ''}!`, 'bad', p.id);
+      this.room.note(`BUM! ${p.name} pisou na pólvora${owner ? ` de ${owner.name}` : ''}!`, 'bad', p.id);
       this.lose(p, 8, true);
       await this.room.sleep(1600);
     }
@@ -191,7 +191,7 @@ export class BoardController {
         await this.room.sleep(700);
         break;
       case 'armadilha':
-        this.room.note(`${p.name} grudou no chiclete e perdeu moedas!`, 'bad', p.id);
+        this.room.note(`${p.name} caiu numa armadilha de caçador e perdeu moedas!`, 'bad', p.id);
         this.lose(p, 5, true);
         await this.room.sleep(1200);
         break;
@@ -210,32 +210,32 @@ export class BoardController {
   private async event(p: PlayerState): Promise<void> {
     const roll = Math.random();
     if (roll < 0.25) {
-      this.room.note(`Chuva de confeitos! ${p.name} ganhou 6 moedas.`, 'good', p.id);
+      this.room.note(`Os aldeões pagaram tributo! ${p.name} ganhou 6 moedas.`, 'good', p.id);
       this.gain(p, 6);
     } else if (roll < 0.43) {
-      this.room.note(`Furacão de algodão-doce levou moedas de ${p.name}!`, 'bad', p.id);
+      this.room.note(`Ladrões da floresta levaram moedas de ${p.name}!`, 'bad', p.id);
       this.lose(p, 5, true);
     } else if (roll < 0.6) {
       const free = ITEM_IDS.filter(i => !ITEMS[i].passive);
       if (p.items.length < MAX_ITEMS) {
         const item = pick(free);
         p.items.push(item);
-        this.room.note(`Presente misterioso: ${p.name} ganhou ${ITEMS[item].icon} ${ITEMS[item].name}!`, 'good', p.id);
+        this.room.note(`Presente do rei: ${p.name} ganhou ${ITEMS[item].icon} ${ITEMS[item].name}!`, 'good', p.id);
       } else {
-        this.room.note(`Presente misterioso: ${p.name} ganhou 4 moedas!`, 'good', p.id);
+        this.room.note(`Presente do rei: ${p.name} ganhou 4 moedas!`, 'good', p.id);
         this.gain(p, 4);
       }
     } else if (roll < 0.72) {
-      this.room.note('A coroa fugiu para outra casa!', 'info', p.id);
+      this.room.note('A coroa foi levada para outro canto do reino!', 'info', p.id);
       await this.room.sleep(800);
       await this.moveCrown();
     } else if (roll < 0.86) {
       const dest = pick(BOARD.filter(t => t.id !== p.tile).map(t => t.id));
       p.tile = dest;
-      this.room.note(`Teletransporte de bala! ${p.name} foi parar em outra casa.`, 'info', p.id);
+      this.room.note(`Um feitiço mandou ${p.name} para outra casa!`, 'info', p.id);
       this.room.broadcast(MSG.boardTeleport, { pid: p.id, tile: dest });
     } else {
-      this.room.note('Festa na ilha: todo mundo ganha 3 moedas!', 'good');
+      this.room.note('Banquete no castelo: todo mundo ganha 3 moedas!', 'good');
       for (const o of this.room.participants()) this.gain(o, 3);
     }
     await this.room.sleep(1800);
@@ -247,12 +247,12 @@ export class BoardController {
     const cheapest = Math.min(...offer.map(i => ITEMS[i].price));
     const full = p.items.length >= MAX_ITEMS;
     if (p.coins < cheapest) {
-      this.room.note(`${p.name} visitou a loja, mas está sem moedas.`, 'info', p.id);
+      this.room.note(`${p.name} visitou o mercador, mas está sem moedas.`, 'info', p.id);
       await this.room.sleep(1200);
       return;
     }
     if (full && !offer.includes('escudo')) {
-      this.room.note(`${p.name} visitou a loja, mas a mochila está cheia.`, 'info', p.id);
+      this.room.note(`${p.name} visitou o mercador, mas a bolsa está cheia.`, 'info', p.id);
       await this.room.sleep(1200);
       return;
     }
@@ -276,7 +276,7 @@ export class BoardController {
     this.b.shopOffer.clear();
     this.b.step = 'busy';
     if (!choice.item) {
-      this.room.note(`${p.name} saiu da loja sem comprar.`, 'info', p.id);
+      this.room.note(`${p.name} saiu do mercador sem comprar.`, 'info', p.id);
       await this.room.sleep(700);
       return;
     }
@@ -326,22 +326,22 @@ export class BoardController {
         break;
       case 'ima':
         flags.magnet = true;
-        this.room.note(`${p.name} ligou o ${def.icon} ${def.name}: cada casa andada vale 1 moeda!`, 'info', p.id);
+        this.room.note(`${p.name} abriu a ${def.icon} ${def.name}: cada casa andada vale 1 moeda!`, 'info', p.id);
         break;
       case 'luva': {
         const victim = this.others(p).filter(o => o.coins > 0).sort((a, c) => c.coins - a.coins)[0];
         if (!victim) {
-          this.room.note(`${p.name} deu um soco no ar: ninguém tinha moedas.`, 'info', p.id);
+          this.room.note(`${p.name} golpeou o ar: ninguém tinha moedas.`, 'info', p.id);
           break;
         }
-        this.room.note(`POW! ${p.name} socou ${victim.name}!`, 'bad', victim.id);
+        this.room.note(`${p.name} acertou ${victim.name} com a Manopla!`, 'bad', victim.id);
         const taken = this.lose(victim, 5);
         this.gain(p, taken);
         break;
       }
       case 'bomba':
         this.b.bombs.set(String(p.tile), p.id);
-        this.room.note(`${p.name} escondeu uma bomba nesta casa...`, 'info', p.id);
+        this.room.note(`${p.name} escondeu pólvora nesta casa...`, 'info', p.id);
         break;
       case 'troca': {
         const target = this.others(p).sort((a, c) => stepsBetween(a.tile, this.b.crownTile) - stepsBetween(c.tile, this.b.crownTile))[0];
@@ -349,7 +349,7 @@ export class BoardController {
         const mine = p.tile;
         p.tile = target.tile;
         target.tile = mine;
-        this.room.note(`${p.name} trocou de lugar com ${target.name}!`, 'info', p.id);
+        this.room.note(`${p.name} leu o pergaminho e trocou de lugar com ${target.name}!`, 'info', p.id);
         this.room.broadcast(MSG.boardTeleport, { pid: p.id, tile: p.tile });
         this.room.broadcast(MSG.boardTeleport, { pid: target.id, tile: target.tile });
         break;

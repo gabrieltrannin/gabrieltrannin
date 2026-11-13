@@ -1,5 +1,5 @@
 /**
- * Tabuleiro "Ilha Confeito": casas, ligações e tipos.
+ * Tabuleiro "Vale da Coroa": casas, ligações e tipos.
  * O servidor usa para as regras; o cliente, para desenhar.
  */
 
@@ -15,12 +15,12 @@ export interface Tile {
 }
 
 export const TILE_INFO: Record<TileType, { label: string; color: string; short: string }> = {
-  azul: { label: '+3 moedas', color: '#4aa3ff', short: '+3' },
-  vermelha: { label: '−3 moedas', color: '#ff4d5a', short: '−3' },
-  evento: { label: 'Evento surpresa', color: '#a77bff', short: '?' },
-  loja: { label: 'Loja', color: '#ffc93c', short: 'loja' },
-  armadilha: { label: 'Armadilha: −5 moedas', color: '#ff8a3d', short: '!' },
-  duelo: { label: 'Duelo de dados', color: '#ff5fa2', short: 'VS' },
+  azul: { label: '+3 moedas', color: '#2f5a8f', short: '+3' },
+  vermelha: { label: '−3 moedas', color: '#8e2430', short: '−3' },
+  evento: { label: 'Evento do reino', color: '#5c3d7a', short: '?' },
+  loja: { label: 'Mercador', color: '#c9a227', short: 'loja' },
+  armadilha: { label: 'Armadilha: −5 moedas', color: '#a8561c', short: '!' },
+  duelo: { label: 'Duelo de dados', color: '#3d3d45', short: 'VS' },
 };
 
 const MAIN_TYPES: TileType[] = [

@@ -1,6 +1,8 @@
 # Fuzuê
 
-Party game 3D para jogar **online com os amigos, direto no navegador**, no PC, celular ou tablet. Sem instalar nada e sem criar conta.
+Party game 3D medieval para jogar **online com os amigos, direto no navegador**, no PC, celular ou tablet. Sem instalar nada e sem criar conta.
+
+Seis bichinhos vestidos para a corte disputam a coroa: **Bolota** o cavaleiro (urso), **Pipoca** a bruxa (coelha), **Tufo** o arqueiro (gato), **Brisa** a boba da corte (axolote), **Pingo** o viking (pinguim) e **Nuvem** o frade (ovelha).
 
 Tabuleiro com coroas, moedas, itens e loja; 6 minijogos com física caótica; bots que completam a mesa ou assumem quem cair da internet.
 
@@ -13,34 +15,34 @@ Tabuleiro com coroas, moedas, itens e loja; 6 minijogos com física caótica; bo
 
 Cada rodada: todo mundo joga um turno no tabuleiro e depois vem um minijogo. Quem tiver mais **coroas** no fim vence (desempate: moedas).
 
-### O tabuleiro (Ilha Confeito)
+### O tabuleiro (Vale da Coroa)
 
 | Casa | O que faz |
 | --- | --- |
 | Azul | +3 moedas |
 | Vermelha | −3 moedas |
-| Evento (?) | surpresa: chuva de confeitos, furacão, presente, coroa foge, teletransporte, festa |
-| Loja | compra itens |
-| Armadilha (!) | −5 moedas |
+| Evento do reino (?) | surpresa: tributo dos aldeões, ladrões da floresta, presente do rei, coroa muda de lugar, feitiço de teletransporte, banquete no castelo |
+| Mercador | compra itens |
+| Armadilha de caçador (!) | −5 moedas |
 | Duelo (VS) | dados contra alguém: quem tirar mais leva até 5 moedas |
 
 - **Coroa:** custa 20 moedas. Passou pela casa da coroa com dinheiro, compra na hora, e ela muda de lugar.
 - **Bifurcações:** em duas casas você escolhe entre o caminho normal e o atalho.
-- **Itens** (até 3 na mochila): 🎲 dado duplo, 🥊 luva de boxe (rouba 5 moedas de quem tem mais), 💣 bomba-armadilha, 🛡️ escudo, 🧲 ímã de moedas, 🔀 troca de lugar.
-- **Final:** dois prêmios surpresa, cada um valendo +1 coroa (rei dos minijogos, maratonista, colecionador ou azarado).
+- **Itens** (até 3 na bolsa): 🎲 dados viciados (dado duplo), 🤛 manopla (rouba 5 moedas de quem tem mais), 💣 armadilha de pólvora, 🛡️ escudo, 💰 bolsa do mercador (ímã de moedas), 📜 pergaminho de troca (troca de lugar).
+- **Final:** dois prêmios surpresa, cada um valendo +1 coroa (campeão dos torneios, andarilho do reino, alquimista ou azarado do reino).
 
 ### Minijogos
 
 | Minijogo | Objetivo |
 | --- | --- |
-| Ringue Escorregadio | chão de gelo que encolhe: empurre todos para fora |
-| Chão que Some | três andares de pisos que caem depois de pisados |
-| Corrida Doce | pule buracos, aguente a esteira e desvie dos martelos |
-| Chuva de Moedas | pegue moedas que caem e fuja das bombas |
-| Bomba-Relógio | passe a bomba encostando nos outros antes de explodir |
-| Futebol Caótico | 2 contra 2 com bola gigante (times equilibrados pela colocação) |
+| Lago Congelado | o gelo racha e encolhe: empurre todos para a água |
+| Torre em Ruínas | três andares de pedras que desabam depois de pisadas, com lava embaixo |
+| Ponte do Castelo | pule buracos, vença a correnteza e desvie das toras giratórias até o portão |
+| Tesouro do Dragão | pegue moedas que caem e fuja das bolas de fogo |
+| Barril de Pólvora | passe o barril aceso encostando nos outros antes de explodir |
+| Torneio da Bola | 2 contra 2, Casa do Leão contra Casa do Lobo (times equilibrados pela colocação) |
 
-Prêmios: 1º +10, 2º +6, 3º +3 moedas. No futebol, cada jogador do time vencedor ganha +8.
+Prêmios: 1º +10, 2º +6, 3º +3 moedas. No Torneio da Bola, cada jogador do time vencedor ganha +8.
 
 ### Controles
 

@@ -88,8 +88,9 @@ class Sound {
       case 'dice': for (let i = 0; i < 5; i++) this.noise(0.04, 0.18, 3000, i * 0.07); break;
       case 'hop': this.tone(300, 0.09, 'sine', 0.15, 520); break;
       case 'jump': this.tone(280, 0.14, 'square', 0.1, 640); break;
-      case 'dash': this.noise(0.12, 0.2, 2200); break;
-      case 'hit': this.noise(0.1, 0.35, 900); this.tone(180, 0.12, 'square', 0.18, 90); break;
+      case 'dash': this.noise(0.14, 0.18, 1600); break;
+      case 'hit': // espada batendo em metal
+        this.tone(1480, 0.25, 'square', 0.07, 1320); this.tone(2210, 0.18, 'square', 0.05, 2000); this.noise(0.08, 0.3, 5000); break;
       case 'explode': this.noise(0.6, 0.5, 600); this.tone(110, 0.5, 'sawtooth', 0.2, 40); break;
       case 'splash': this.noise(0.4, 0.25, 1800); this.tone(500, 0.2, 'sine', 0.08, 200); break;
       case 'tick': this.tone(880, 0.08, 'square', 0.12); break;
@@ -98,9 +99,10 @@ class Sound {
       case 'buy': this.tone(784, 0.08, 'triangle', 0.15); this.tone(1046, 0.12, 'triangle', 0.15, undefined, 0.08); break;
       case 'turn': this.tone(523, 0.08, 'triangle', 0.14); this.tone(784, 0.12, 'triangle', 0.14, undefined, 0.09); break;
       case 'crown':
-      case 'win':
-        [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.18, 'square', 0.13, undefined, i * 0.1));
-        this.tone(1318, 0.5, 'triangle', 0.14, undefined, 0.42);
+      case 'win': // fanfarra de corneta
+        [392, 523, 659, 784].forEach((f, i) => this.tone(f, 0.2, 'sawtooth', 0.07, undefined, i * 0.12));
+        this.tone(784, 0.6, 'sawtooth', 0.08, undefined, 0.5);
+        this.tone(523, 0.6, 'triangle', 0.1, undefined, 0.5);
         break;
       case 'goal':
         [784, 784, 1046].forEach((f, i) => this.tone(f, 0.2, 'square', 0.15, undefined, i * 0.14));
@@ -118,9 +120,9 @@ class Sound {
     if (!mode) return;
     const bpm = mode === 'fast' ? 150 : 108;
     const stepMs = 60000 / bpm / 2;
-    // progressão I–vi–IV–V em Dó maior
-    const chords = [[262, 330, 392], [220, 262, 330], [175, 220, 262], [196, 247, 294]];
-    const bass = [131, 110, 87, 98];
+    // Ré dórico (Dm – C – Bb – C): som de taverna medieval
+    const chords = [[294, 349, 440], [262, 330, 392], [233, 294, 349], [262, 330, 392]];
+    const bass = [73.4, 65.4, 58.3, 65.4];
     this.musicTimer = window.setInterval(() => {
       if (!this.ctx || this.muted || !this.musicGain) return;
       const bar = Math.floor(this.musicStep / 8) % 4;
@@ -137,9 +139,26 @@ class Sound {
         osc.start(t);
         osc.stop(t + dur + 0.02);
       };
-      if (s % 4 === 0) note(bass[bar], 0.3, 'triangle', 0.22);
-      const arp = chords[bar][s % 3] * (s >= 4 ? 2 : 1);
-      note(arp, 0.12, mode === 'fast' ? 'square' : 'triangle', mode === 'fast' ? 0.05 : 0.07);
+      if (s % 4 === 0) note(bass[bar] * 2, 0.4, 'triangle', 0.22);
+      // alaúde: nota curta e beliscada
+      const arp = chords[bar][[0, 1, 2, 1][s % 4]] * (s >= 4 ? 2 : 1);
+      note(arp, mode === 'fast' ? 0.1 : 0.18, 'triangle', mode === 'fast' ? 0.08 : 0.09);
+      // tambor nos tempos fortes dos minijogos
+      if (mode === 'fast' && s % 2 === 0) {
+        const len = Math.floor(this.ctx.sampleRate * 0.05);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        const f = this.ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = s % 4 === 0 ? 300 : 900;
+        const g = this.ctx.createGain();
+        g.gain.value = 0.25;
+        src.connect(f).connect(g).connect(this.musicGain);
+        src.start(t);
+      }
       this.musicStep++;
     }, stepMs);
   }

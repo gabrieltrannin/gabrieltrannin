@@ -7,7 +7,7 @@ import {
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
 import { canvasTexture, outline, toon, toonMap } from '../engine/materials';
-import { makeBomb, makeCoin, makeShadowMarker } from '../engine/scenery';
+import { makeBomb, makeCoin, makeFireball, makeShadowMarker } from '../engine/scenery';
 import { isTouch, type Tag } from '../engine/Stage';
 import type { NetEntity, NetMgPlayer, NetState } from '../net/types';
 import { $, avatar, escapeHtml, fmtTime, setHtml } from '../ui/dom';
@@ -218,11 +218,15 @@ export class MinigameView implements RoomView {
     let shadow: THREE.Mesh | null = null;
     switch (e.kind) {
       case 'coin': obj = makeCoin(e.s); shadow = makeShadowMarker('#ffc93c', 0.45); break;
-      case 'bomb': obj = makeBomb(1); shadow = makeShadowMarker('#ff4d5a', 1.2); break;
+      case 'bomb': obj = makeFireball(); shadow = makeShadowMarker('#c0391b', 1.2); break;
       case 'ball': {
+        // bola de couro costurada
         const tex = canvasTexture(512, 256, (g, w, h) => {
-          const cols = ['#ff5fa2', '#ffffff', '#ffc93c', '#ffffff', '#4aa3ff', '#ffffff', '#3fd6b0', '#ffffff'];
-          cols.forEach((c, i) => { g.fillStyle = c; g.fillRect((i * w) / cols.length, 0, w / cols.length + 1, h); });
+          for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#8a5a32' : '#9c6a3c'; g.fillRect((i * w) / 6, 0, w / 6 + 1, h); }
+          g.strokeStyle = '#efe3c6';
+          g.lineWidth = 4;
+          g.setLineDash([10, 8]);
+          for (let i = 0; i <= 6; i++) { g.beginPath(); g.moveTo((i * w) / 6, 0); g.lineTo((i * w) / 6, h); g.stroke(); }
         });
         const m = new THREE.Mesh(new THREE.SphereGeometry(SOCCER.ballR, 32, 20), toonMap(tex));
         m.castShadow = true;
@@ -232,16 +236,26 @@ export class MinigameView implements RoomView {
       }
       case 'sweeper': {
         const g = new THREE.Group();
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(RACE.sweeperLength * 2, 0.5, 0.5), toon('#ff5fa2'));
-        bar.castShadow = true;
-        outline(bar, 1.04, 1.1);
-        g.add(bar);
+        // tora giratória com cravos de ferro
+        const log = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, RACE.sweeperLength * 2, 12), toon('#6a4628'));
+        log.rotation.z = Math.PI / 2;
+        log.castShadow = true;
+        outline(log, 1.05, 1.02);
+        g.add(log);
+        const spike = new THREE.ConeGeometry(0.1, 0.32, 6);
+        for (let k = 0; k < 10; k++) {
+          const x = -RACE.sweeperLength + 0.4 + (k * (RACE.sweeperLength * 2 - 0.8)) / 9;
+          const sp = new THREE.Mesh(spike, toon('#8a9097'));
+          const a = k * 1.7;
+          sp.position.set(x, Math.cos(a) * 0.38, Math.sin(a) * 0.38);
+          sp.rotation.x = a;
+          g.add(sp);
+        }
         for (const sx of [-1, 1]) {
-          const head = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.9, 16), toon('#ffc93c'));
-          head.rotation.x = Math.PI / 2;
-          head.position.x = sx * RACE.sweeperLength;
-          outline(head, 1.06);
-          g.add(head);
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.2, 12), toon('#4a4d52'));
+          cap.rotation.z = Math.PI / 2;
+          cap.position.x = sx * RACE.sweeperLength;
+          g.add(cap);
         }
         obj = g;
         break;

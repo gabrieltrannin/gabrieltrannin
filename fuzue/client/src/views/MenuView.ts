@@ -1,11 +1,10 @@
 import * as THREE from 'three';
-import { RING } from '@fuzue/shared';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { canvasTexture, outline, stripeTexture, toon, toonMap } from '../engine/materials';
-import { addHorizon, addLights, addSea } from '../engine/scenery';
+import { outline, toon, toonMap } from '../engine/materials';
+import { addHorizon, addLights, addSea, bannerPole, cobbleTexture, flicker, pineTree, torch } from '../engine/scenery';
 import type { View } from '../engine/Stage';
 
-/** Tela inicial: o personagem escolhido acenando na beira do ringue. */
+/** Tela inicial: o personagem escolhido acenando num pátio do castelo. */
 export class MenuView implements View {
   readonly scene = new THREE.Scene();
   private critter: Critter | null = null;
@@ -13,27 +12,32 @@ export class MenuView implements View {
   private readonly spot = new THREE.Vector3(0, 0, 6.2);
 
   constructor(private camera: THREE.PerspectiveCamera) {
-    addLights(this.scene, 12);
+    addLights(this.scene, 12, { color: '#b98f6a', near: 25, far: 90 });
     this.sea = addSea(this.scene);
     addHorizon(this.scene);
-    const R = RING.startRadius;
-    const ringTex = canvasTexture(512, 512, (g, w) => {
-      g.fillStyle = '#d4f1ff';
-      g.fillRect(0, 0, w, w);
-      for (let i = 8; i > 0; i--) {
-        g.beginPath();
-        g.arc(w / 2, w / 2, i * 30, 0, Math.PI * 2);
-        g.fillStyle = i % 2 ? '#c2eaff' : '#e4f7ff';
-        g.fill();
-      }
+    const cobble = cobbleTexture();
+    cobble.repeat.set(6, 6);
+    const yard = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 1, 48), [toon('#6f685e'), toonMap(cobble), toon('#6f685e')]);
+    yard.position.y = -0.5;
+    yard.receiveShadow = true;
+    outline(yard, 1.006, 1.04);
+    this.scene.add(yard);
+    const colors = ['#8e2430', '#2f5a8f', '#c9a227'];
+    [-3, 0, 3].forEach((x, i) => {
+      const b = bannerPole(colors[i], 3.4);
+      b.position.set(x, 0, 2.2);
+      this.scene.add(b);
     });
-    const side = stripeTexture('#ffffff', '#ff5fa2');
-    side.repeat.set(12, 1);
-    const platform = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 1, 72), [toonMap(side), toonMap(ringTex), toon('#9fd8f5')]);
-    platform.position.y = -0.5;
-    platform.receiveShadow = true;
-    outline(platform, 1.006, 1.04);
-    this.scene.add(platform);
+    for (const x of [-2.2, 2.2]) {
+      const t = torch();
+      t.position.set(x, 0, 4.6);
+      this.scene.add(t);
+    }
+    for (const [x, z] of [[-6.5, 3], [6.8, 2.5], [-5.5, -2], [5.8, -3]]) {
+      const tree = pineTree(1.2);
+      tree.position.set(x, 0, z);
+      this.scene.add(tree);
+    }
   }
 
   setCharacter(i: number): void {
@@ -49,12 +53,13 @@ export class MenuView implements View {
 
   update(dt: number, t: number): void {
     this.sea(dt, t);
+    flicker(this.scene, t);
     if (this.critter) {
       this.critter.root.rotation.y = Math.sin(t * 0.6) * 0.45;
       animateCritter(this.critter, t, { speed: 0, punching: false, stunned: false, falling: false, waving: true });
     }
     const sway = Math.sin(t * 0.25) * 0.3;
-    this.camera.position.set(this.spot.x + sway, 2.1, this.spot.z + 6.4);
-    this.camera.lookAt(this.spot.x, 0.95, this.spot.z);
+    this.camera.position.set(this.spot.x + sway, 2.3, this.spot.z + 6.6);
+    this.camera.lookAt(this.spot.x, 1.05, this.spot.z);
   }
 }

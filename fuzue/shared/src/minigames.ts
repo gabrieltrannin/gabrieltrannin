@@ -23,12 +23,12 @@ export interface MinigameDef {
 }
 
 export const MINIGAMES: Record<MinigameId, MinigameDef> = {
-  ringue: { id: 'ringue', name: 'Ringue Escorregadio', rule: 'O chão é de gelo e vai encolhendo. Empurre todo mundo para fora e seja o último de pé!', mode: 'ffa', duration: 50, camera: 'arena' },
-  hexa: { id: 'hexa', name: 'Chão que Some', rule: 'Cada piso cai logo depois que alguém pisa nele. Não pare de andar e seja o último a cair!', mode: 'ffa', duration: 70, camera: 'arena' },
-  corrida: { id: 'corrida', name: 'Corrida Doce', rule: 'Chegue primeiro na linha de chegada: pule os buracos e cuidado com os martelos!', mode: 'ffa', duration: 75, camera: 'follow' },
-  chuva: { id: 'chuva', name: 'Chuva de Moedas', rule: 'Pegue o máximo de moedas que caem do céu e fuja das bombas!', mode: 'ffa', duration: 40, scoreLabel: 'moedas', camera: 'arena' },
-  bomba: { id: 'bomba', name: 'Bomba-Relógio', rule: 'Está com a bomba? Encoste em alguém para passar antes que ela exploda!', mode: 'ffa', duration: 90, camera: 'arena' },
-  futebol: { id: 'futebol', name: 'Futebol Caótico', rule: 'Dois contra dois: leve a bola gigante até o gol do outro time!', mode: 'team', duration: 60, scoreLabel: 'gols', camera: 'field' },
+  ringue: { id: 'ringue', name: 'Lago Congelado', rule: 'O gelo está rachando e o lago vai encolhendo. Empurre todo mundo para a água gelada e seja o último de pé!', mode: 'ffa', duration: 50, camera: 'arena' },
+  hexa: { id: 'hexa', name: 'Torre em Ruínas', rule: 'Cada pedra desaba logo depois que alguém pisa nela. Não pare de andar e seja o último a cair na lava!', mode: 'ffa', duration: 70, camera: 'arena' },
+  corrida: { id: 'corrida', name: 'Ponte do Castelo', rule: 'Chegue primeiro ao portão do castelo: pule os buracos da ponte, vença a correnteza e desvie das toras giratórias!', mode: 'ffa', duration: 75, camera: 'follow' },
+  chuva: { id: 'chuva', name: 'Tesouro do Dragão', rule: 'O dragão espalhou o tesouro! Pegue o máximo de moedas e fuja das bolas de fogo!', mode: 'ffa', duration: 40, scoreLabel: 'moedas', camera: 'arena' },
+  bomba: { id: 'bomba', name: 'Barril de Pólvora', rule: 'Está com o barril aceso? Encoste em alguém para passar antes que ele exploda!', mode: 'ffa', duration: 90, camera: 'arena' },
+  futebol: { id: 'futebol', name: 'Torneio da Bola', rule: 'Dois contra dois: leve a bola de couro até o gol da casa rival!', mode: 'team', duration: 60, scoreLabel: 'gols', camera: 'field' },
 };
 
 export const MINIGAME_IDS = Object.keys(MINIGAMES) as MinigameId[];
@@ -112,7 +112,7 @@ export function hexWorld(tiles: ArrayLike<number>): WorldDef {
   };
 }
 
-/* ---------------- Corrida Doce ---------------- */
+/* ---------------- Ponte do Castelo (corrida) ---------------- */
 
 export const RACE = {
   halfWidth: 4,
@@ -200,8 +200,8 @@ export const SOCCER = {
   goalDepth: 2.2,
   ballR: 1.1,
   /** Time 0 defende o gol da esquerda (x negativo). */
-  teamColors: ['#ff5fa2', '#4aa3ff'],
-  teamNames: ['Time Morango', 'Time Mirtilo'],
+  teamColors: ['#a3242f', '#2f5a8f'],
+  teamNames: ['Casa do Leão', 'Casa do Lobo'],
 };
 
 export function soccerWorld(): WorldDef {

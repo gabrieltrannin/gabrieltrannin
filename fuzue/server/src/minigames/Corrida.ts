@@ -4,7 +4,7 @@ import {
 } from '@fuzue/shared';
 import { Minigame, type Runtime, type Spawn } from './Minigame.js';
 
-/** Corrida Doce: até a linha de chegada, com buracos, esteira e martelos. */
+/** Ponte do Castelo: até o portão, com buracos, correnteza e toras giratórias. */
 export class Corrida extends Minigame {
   readonly id = 'corrida' as const;
   private readonly w = raceWorld();

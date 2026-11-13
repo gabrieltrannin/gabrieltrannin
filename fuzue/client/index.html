@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <meta name="theme-color" content="#ff9b7a">
-  <meta name="description" content="Fuzuê: party game 3D para jogar online com os amigos, direto no navegador. Tabuleiro, minijogos e muita bagunça.">
+  <meta name="theme-color" content="#3b4766">
+  <meta name="description" content="Fuzuê: party game medieval em 3D para jogar online com os amigos, direto no navegador. Tabuleiro, minijogos e a disputa pela coroa.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Fuzuê">
@@ -16,7 +16,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@500;700;800;900&family=Cinzel+Decorative:wght@900&family=Cinzel:wght@700;900&display=swap">
 </head>
 <body>
   <canvas id="scene" aria-label="Cena do jogo"></canvas>
@@ -31,7 +31,8 @@
   <!-- ================= Menu ================= -->
   <main id="menu" class="menu" hidden>
     <section class="menu-card card">
-      <h1 class="logo" aria-label="Fuzuê"><span style="--c:#ffc93c;--r:-5deg">F</span><span style="--c:#ff5fa2;--r:4deg">u</span><span style="--c:#3fd6b0;--r:-3deg">z</span><span style="--c:#4aa3ff;--r:5deg">u</span><span style="--c:#ff8a3d;--r:-4deg">ê</span></h1>
+      <h1 class="logo">Fuzuê</h1>
+      <p class="tagline">Uma disputa pela coroa</p>
       <h2 id="menuTitle" class="menu-title">Jogar com os amigos</h2>
       <form id="menuForm" class="menu-form" novalidate>
         <label class="lbl" for="nameInput">Seu apelido</label>
@@ -133,7 +134,7 @@
   <div id="reconnect" class="overlay" hidden><div class="card msg-card"><b>Reconectando…</b><span>A internet piscou. Um bot está jogando por você até voltar.</span></div></div>
   <div id="confirm" class="overlay" hidden>
     <div class="card msg-card">
-      <b>Sair da partida?</b>
+      <b>Abandonar a partida?</b>
       <span>Um bot assume o seu lugar e a partida continua para os outros.</span>
       <div class="row"><button id="confirmYes" class="btn" type="button">Sair</button><button id="confirmNo" class="btn ghost" type="button">Continuar</button></div>
     </div>

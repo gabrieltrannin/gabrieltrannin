@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { BOT_LEVELS, CHARACTERS, MAX_PLAYERS, MSG, ROUND_OPTIONS, seeded } from '@fuzue/shared';
+import { BOT_LEVELS, CHARACTERS, MAX_PLAYERS, MSG, ROUND_OPTIONS } from '@fuzue/shared';
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { ball, outline, toon } from '../engine/materials';
-import { addLights } from '../engine/scenery';
-import { reduceMotion, type Tag } from '../engine/Stage';
+import { outline, toon, toonMap } from '../engine/materials';
+import { addHorizon, addLights, bannerPole, cobbleTexture, flicker, torch } from '../engine/scenery';
+import { type Tag } from '../engine/Stage';
 import { playersBySeat, type NetPlayer, type NetState } from '../net/types';
 import { $, avatar, copyText, escapeHtml, setHtml } from '../ui/dom';
 import { toast } from '../ui/toast';
@@ -13,57 +13,59 @@ import { Bubbles, type Ctx, type RoomView } from './types';
 const SEAT_X = [-2.55, -0.85, 0.85, 2.55];
 const SEAT_Z = [-0.25, 0.2, 0.2, -0.25];
 
-interface Seat { critter: Critter | null; character: number; id: string; tag: Tag; pedestal: THREE.Mesh }
+interface Seat { critter: Critter | null; character: number; id: string; tag: Tag; band: THREE.Mesh }
 
 /** Lobby: pedestais com os bonecos + painel da sala. */
 export class LobbyView implements RoomView {
   readonly scene = new THREE.Scene();
   private seats: Seat[] = [];
-  private balloons: { g: THREE.Group; y: number; ph: number }[] = [];
   private bubbles: Bubbles;
   private state: NetState | null = null;
   private panel = $('lobby');
 
   constructor(private ctx: Ctx) {
     this.bubbles = new Bubbles(ctx.stage);
-    addLights(this.scene, 9);
-    const stage = new THREE.Mesh(new THREE.CylinderGeometry(5.4, 5.7, 0.5, 56), toon('#ffd3e8'));
-    stage.position.y = -0.25;
-    stage.receiveShadow = true;
-    outline(stage, 1.012, 1.1);
-    this.scene.add(stage);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(5.45, 0.09, 8, 90), toon('#ffc93c'));
+    addLights(this.scene, 9, { color: '#5a4a52', near: 18, far: 60 });
+    addHorizon(this.scene, 22, 9);
+    const cobble = cobbleTexture('#8c857a', '#9e968a', '#5f594f', 7);
+    cobble.repeat.set(4, 4);
+    const dais = new THREE.Mesh(new THREE.CylinderGeometry(5.4, 5.7, 0.5, 56), [toon('#6f685e'), toonMap(cobble), toon('#6f685e')]);
+    dais.position.y = -0.25;
+    dais.receiveShadow = true;
+    outline(dais, 1.012, 1.1);
+    this.scene.add(dais);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(5.45, 0.09, 8, 90), toon('#4a3322'));
     rim.rotation.x = Math.PI / 2;
     this.scene.add(rim);
 
     for (let i = 0; i < MAX_PLAYERS; i++) {
-      const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.82, 0.42, 28), toon('#e9e1fb'));
+      const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.82, 0.42, 10), toon('#8c857a'));
       ped.position.set(SEAT_X[i], 0.21, SEAT_Z[i]);
       ped.castShadow = true;
       ped.receiveShadow = true;
       outline(ped, 1.05);
       this.scene.add(ped);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.79, 0.79, 0.1, 10), toon('#6f685e'));
+      band.position.set(SEAT_X[i], 0.3, SEAT_Z[i]);
+      this.scene.add(band);
       const anchor = new THREE.Object3D();
       anchor.position.set(SEAT_X[i], 0.42, SEAT_Z[i]);
       this.scene.add(anchor);
       const tag = ctx.stage.addTag(anchor, 2.15, '', 'tag');
-      this.seats.push({ critter: null, character: -1, id: '', tag, pedestal: ped });
+      this.seats.push({ critter: null, character: -1, id: '', tag, band });
     }
 
-    const rand = seeded(3);
-    const colors = ['#ff5fa2', '#ffc93c', '#3fd6b0', '#4aa3ff', '#a77bff', '#ff8a3d'];
-    const lineMat = new THREE.LineBasicMaterial({ color: '#2a1d45' });
-    for (let i = 0; i < 11; i++) {
-      const g = new THREE.Group();
-      const col = colors[i % colors.length];
-      const b = ball(0.38, toon(col), 1, 1.18, 1);
-      outline(b, 1.05);
-      g.add(b);
-      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -0.45, 0), new THREE.Vector3(0.05, -1, 0), new THREE.Vector3(-0.04, -1.6, 0)]), lineMat));
-      const y = 2.7 + rand() * 1.8;
-      g.position.set(-6 + i * 1.2 + (rand() - 0.5) * 0.6, y, -2.2 - rand() * 2.2);
-      this.scene.add(g);
-      this.balloons.push({ g, y, ph: rand() * Math.PI * 2 });
+    // estandartes e tochas ao fundo
+    const colors = ['#8e2430', '#2f5a8f', '#3f6b3a', '#5c3d7a', '#b5651d'];
+    for (let i = 0; i < 5; i++) {
+      const b = bannerPole(colors[i], 3.2);
+      b.position.set(-4 + i * 2, 0, -2.8 - (i % 2) * 0.4);
+      this.scene.add(b);
+    }
+    for (const x of [-4.8, 4.8]) {
+      const t = torch();
+      t.position.set(x, 0, -1.2);
+      this.scene.add(t);
     }
 
     // painel: botões que não dependem do estado
@@ -142,7 +144,7 @@ export class LobbyView implements RoomView {
         seat.id = '';
         seat.character = -1;
         seat.tag.el.innerHTML = s.fillBots ? '<small>vaga para bot</small>' : '<small>vaga livre</small>';
-        seat.pedestal.material = toon('#e9e1fb');
+        seat.band.material = toon('#6f685e');
         return;
       }
       if (seat.character !== p.character || seat.id !== p.id) {
@@ -153,7 +155,7 @@ export class LobbyView implements RoomView {
         this.scene.add(seat.critter.root);
         seat.character = p.character;
         seat.id = p.id;
-        seat.pedestal.material = toon(CHARACTERS[p.character].color);
+        seat.band.material = toon(CHARACTERS[p.character].color);
       }
       seat.tag.el.innerHTML = `${escapeHtml(p.name)}${p.id === me ? ' <small>você</small>' : ''}${p.ready || p.id === s.hostId ? ' <small>✓</small>' : ''}`;
     });
@@ -171,7 +173,7 @@ export class LobbyView implements RoomView {
       if (!p) return `<li class="empty">${s.fillBots ? 'Vaga livre (entra um bot)' : 'Vaga livre: mande o link!'}</li>`;
       const ch = CHARACTERS[p.character];
       const badge = p.id === s.hostId ? '<span class="badge ok">anfitrião</span>' : p.ready ? '<span class="badge ok">pronto</span>' : '<span class="badge wait">esperando</span>';
-      return `<li>${avatar(p.name, p.character)}<span class="who"><b>${escapeHtml(p.name)}${p.id === me ? ' (você)' : ''}</b><small>${ch.name} · ${p.ping} ms</small></span>${badge}</li>`;
+      return `<li>${avatar(p.name, p.character)}<span class="who"><b>${escapeHtml(p.name)}${p.id === me ? ' (você)' : ''}</b><small>${ch.name}, ${ch.title} · ${p.ping} ms</small></span>${badge}</li>`;
     }).join('');
     setHtml($('lobbySeats'), seatsHtml);
 
@@ -217,9 +219,7 @@ export class LobbyView implements RoomView {
     for (const seat of this.seats) {
       if (seat.critter) animateCritter(seat.critter, t, { speed: 0, punching: false, stunned: false, falling: false, waving: seat.id === this.ctx.net.me });
     }
-    for (const b of this.balloons) {
-      b.g.position.y = b.y + (reduceMotion ? 0 : Math.sin(t * 1.2 + b.ph) * 0.15);
-    }
+    flicker(this.scene, t);
     const cam = this.ctx.stage.camera;
     const portrait = this.ctx.stage.portrait;
     cam.position.set(Math.sin(t * 0.2) * 0.3, portrait ? 3.2 : 2.5, portrait ? 13 : 7.8);

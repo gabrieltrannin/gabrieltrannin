@@ -96,7 +96,7 @@ class App {
     } catch (err) {
       this.menu.setBusy(false);
       this.menu.showError(friendlyError(err, code));
-      if (isVersionError(err)) window.setTimeout(() => location.reload(), 1800);
+      if (isVersionError(err)) reloadOnce();
     }
   }
 
@@ -228,6 +228,19 @@ class App {
     window.setInterval(() => void check(), 120000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) void check(); });
   }
+}
+
+/**
+ * Versão nova no servidor: recarrega a página uma vez para pegar o site novo.
+ * Se ainda assim não bater (site ainda publicando), não fica em loop.
+ */
+function reloadOnce(): void {
+  const KEY = 'fuzue:recarregou';
+  let last = 0;
+  try { last = Number(sessionStorage.getItem(KEY) ?? 0); } catch { /* ignora */ }
+  if (Date.now() - last < 60000) return;
+  try { sessionStorage.setItem(KEY, String(Date.now())); } catch { /* ignora */ }
+  window.setTimeout(() => location.reload(), 1800);
 }
 
 function slowText(seconds: number): string {

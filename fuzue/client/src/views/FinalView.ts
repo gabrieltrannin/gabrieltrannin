@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { MSG, type BonusMsg } from '@fuzue/shared';
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { canvasTexture, outline, toon } from '../engine/materials';
-import { addHorizon, addLights, addSea, makeCrown } from '../engine/scenery';
+import { canvasTexture, outline, toon, toonMap } from '../engine/materials';
+import { addHorizon, addLights, addSea, bannerPole, cobbleTexture, flicker, makeCrown, torch } from '../engine/scenery';
 import { reduceMotion } from '../engine/Stage';
 import { playersBySeat, type NetState } from '../net/types';
 import { $, avatar, escapeHtml, setHtml } from '../ui/dom';
@@ -27,22 +27,28 @@ export class FinalView implements RoomView {
     addLights(this.scene, 8);
     this.sea = addSea(this.scene, 21);
     addHorizon(this.scene, 30);
-    const floor = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.3, 0.5, 48), toon('#ffd3e8'));
+    const cobble = cobbleTexture('#8c857a', '#9e968a', '#5f594f', 12);
+    cobble.repeat.set(4, 4);
+    const floor = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.3, 0.5, 48), [toon('#6f685e'), toonMap(cobble), toon('#6f685e')]);
     floor.position.y = -0.25;
     floor.receiveShadow = true;
     outline(floor, 1.01, 1.1);
     this.scene.add(floor);
     for (const [place, spot] of Object.entries(SPOTS)) {
+      const stone = toon('#9a9286');
       const block = new THREE.Mesh(new THREE.BoxGeometry(1.8, spot.h, 1.6), [
-        toon('#ffffff'), toon('#ffffff'), toon('#ffffff'), toon('#ffffff'),
+        stone, stone, stone, stone,
         new THREE.MeshToonMaterial({ map: canvasTexture(128, 128, g => {
-          g.fillStyle = place === '1' ? '#ffc93c' : place === '2' ? '#d9e2f2' : '#f0b47a';
+          g.fillStyle = '#9a9286';
           g.fillRect(0, 0, 128, 128);
-          g.font = '84px "Lilita One","Arial Rounded MT Bold",sans-serif';
-          g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#2a1d45';
-          g.fillText(place, 64, 70);
+          g.fillStyle = place === '1' ? '#d4af37' : place === '2' ? '#b9bec4' : '#b07a45';
+          g.beginPath(); g.arc(64, 64, 44, 0, Math.PI * 2); g.fill();
+          g.lineWidth = 6; g.strokeStyle = '#22170e'; g.stroke();
+          g.font = '700 64px "Cinzel","Times New Roman",serif';
+          g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#22170e';
+          g.fillText(['I', 'II', 'III'][Number(place) - 1], 64, 68);
         }) }),
-        toon('#ffffff'),
+        stone,
       ]);
       block.position.set(spot.x, spot.h / 2, 0);
       block.castShadow = true;
@@ -50,8 +56,17 @@ export class FinalView implements RoomView {
       outline(block, 1.03);
       this.scene.add(block);
     }
-    const colors = ['#ff5fa2', '#ffc93c', '#3fd6b0', '#4aa3ff', '#a77bff'];
-    const geo = new THREE.PlaneGeometry(0.12, 0.2);
+    for (const [x, c] of [[-4.2, '#8e2430'], [4.2, '#2f5a8f']] as const) {
+      const b = bannerPole(c, 3.6);
+      b.position.set(x, 0, -1.5);
+      this.scene.add(b);
+      const t = torch();
+      t.position.set(x * 0.75, 0, 1.6);
+      this.scene.add(t);
+    }
+    // moedas de ouro e pétalas caindo
+    const colors = ['#d4af37', '#d4af37', '#8e2430', '#efe3c6', '#c98f97'];
+    const geo = new THREE.PlaneGeometry(0.13, 0.13);
     for (let i = 0; i < (reduceMotion ? 0 : 110); i++) {
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colors[i % colors.length], side: THREE.DoubleSide }));
       mesh.position.set((Math.random() - 0.5) * 12, Math.random() * 9, (Math.random() - 0.5) * 6 - 1);
@@ -157,6 +172,7 @@ export class FinalView implements RoomView {
 
   update(dt: number, t: number): void {
     this.sea(dt, t);
+    flicker(this.scene, t);
     for (const [, c] of this.critters) {
       animateCritter(c.critter, t, { speed: 0, punching: false, stunned: false, falling: false, celebrate: c.place === 1, sad: c.place >= 4, waving: c.place === 2 || c.place === 3 });
     }

@@ -89,7 +89,7 @@ export function clearToken(): void {
 /** Traduz erros do servidor para uma frase que o jogador entende. */
 export function friendlyError(err: unknown, code?: string): string {
   const msg = String((err as { message?: string })?.message ?? err ?? '');
-  if (/versao-antiga/.test(msg)) return 'Saiu uma versão nova do jogo. Recarregando a página…';
+  if (/versao-antiga/.test(msg)) return 'Saiu uma versão nova do jogo. Recarregue a página (se continuar, espere um minuto: ela ainda está sendo publicada).';
   if (/partida-em-andamento/.test(msg)) return 'Essa partida já começou. Espere ela acabar ou peça para alguém criar outra sala.';
   if (/sala-cheia|locked|full/i.test(msg)) return 'Essa sala já está cheia (4 jogadores).';
   if (/not found/i.test(msg)) return `Não achei a sala ${code ?? ''}. Confira o código ou peça um link novo.`.replace('  ', ' ');

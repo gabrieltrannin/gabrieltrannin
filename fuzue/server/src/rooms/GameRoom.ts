@@ -450,10 +450,10 @@ export class GameRoom extends Room<GameState> {
     await this.sleep(1500);
     const ids = this.participants().map(p => p.id);
     const categories = [
-      { title: 'Rei dos minijogos', desc: 'ganhou mais moedas nos minijogos', key: 'mgCoins' as const },
-      { title: 'Maratonista', desc: 'andou mais casas no tabuleiro', key: 'steps' as const },
-      { title: 'Colecionador', desc: 'usou mais itens', key: 'itemsUsed' as const },
-      { title: 'Azarado do dia', desc: 'mais perdeu moedas em casas ruins', key: 'unlucky' as const },
+      { title: 'Campeão dos torneios', desc: 'ganhou mais moedas nos minijogos', key: 'mgCoins' as const },
+      { title: 'Andarilho do reino', desc: 'andou mais casas no tabuleiro', key: 'steps' as const },
+      { title: 'Alquimista', desc: 'usou mais itens', key: 'itemsUsed' as const },
+      { title: 'Azarado do reino', desc: 'mais perdeu moedas em casas ruins', key: 'unlucky' as const },
     ];
     const chosen = shuffle(categories).slice(0, 2);
     const bonuses: BonusMsg['bonuses'] = [];

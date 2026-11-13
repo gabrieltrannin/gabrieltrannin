@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /** Cor dos contornos e detalhes escuros. */
-export const INK = '#2a1d45';
+export const INK = '#22170e';
 
 /** Degradê de 3 faixas que dá o visual de desenho (toon shading). */
 const gradientMap = (() => {

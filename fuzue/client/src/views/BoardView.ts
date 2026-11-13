@@ -6,8 +6,11 @@ import {
 } from '@fuzue/shared';
 import { sound } from '../audio/sound';
 import { animateCritter, makeCritter, type Critter } from '../engine/critter';
-import { canvasTexture, outline, toon } from '../engine/materials';
-import { addHorizon, addLights, addSea, cottonTree, gumdrop, lollipop, makeBomb, makeCrown } from '../engine/scenery';
+import { canvasTexture, outline, toon, toonMap } from '../engine/materials';
+import {
+  addHorizon, addLights, addSea, bannerPole, bush, castle, grassTexture, house,
+  makeBomb, makeCrown, marketTent, oakTree, pineTree, rock, signpost,
+} from '../engine/scenery';
 import { reduceMotion, type Tag } from '../engine/Stage';
 import { playersBySeat, ranking, type NetPlayer, type NetState } from '../net/types';
 import { $, avatar, escapeHtml, setHtml } from '../ui/dom';
@@ -33,7 +36,7 @@ interface Piece {
   character: number;
 }
 
-/** Tabuleiro "Ilha Confeito": ilha 3D, peões, dados, coroa e o HUD do turno. */
+/** Tabuleiro "Vale da Coroa": vale 3D, peões, dados, coroa e o HUD do turno. */
 export class BoardView implements RoomView {
   readonly scene = new THREE.Scene();
   private pieces = new Map<string, Piece>();
@@ -68,7 +71,7 @@ export class BoardView implements RoomView {
     this.buildProps();
     this.crownGroup.add(this.crown);
     this.crown.scale.setScalar(1.35);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.06, 8, 36), toon('#ffc93c'));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.06, 8, 36), toon('#d4af37'));
     ring.rotation.x = Math.PI / 2;
     ring.position.y = TILE_TOP + 0.04;
     ring.name = 'ring';
@@ -91,48 +94,52 @@ export class BoardView implements RoomView {
 
   private buildIsland(): void {
     const R = ISLAND_RADIUS;
-    const MINT = '#9cefc6';
-    const frost = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.6, 64), toon(MINT));
-    frost.position.y = -0.3;
-    frost.receiveShadow = true;
-    outline(frost, 1.008, 1.06);
-    this.scene.add(frost);
-    const choco = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.25, R - 0.45, 0.8, 64), toon('#6e3f35'));
-    choco.position.y = -1;
-    this.scene.add(choco);
-    const rockGeo = new THREE.CylinderGeometry(R - 0.5, 1.4, 5.4, 18, 4).toNonIndexed();
-    rockGeo.computeVertexNormals();
-    const rock = new THREE.Mesh(rockGeo, toon('#e0a46a'));
-    rock.position.y = -4.1;
-    this.scene.add(rock);
+    const grass = grassTexture();
+    grass.repeat.set(5, 5);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.6, 64), [toon('#5f7d42'), toonMap(grass), toon('#5f7d42')]);
+    top.position.y = -0.3;
+    top.receiveShadow = true;
+    outline(top, 1.008, 1.06);
+    this.scene.add(top);
+    const dirt = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.2, R - 0.45, 0.8, 64), toon('#6b4a2f'));
+    dirt.position.y = -1;
+    this.scene.add(dirt);
+    const cliffGeo = new THREE.CylinderGeometry(R - 0.5, 1.6, 5.4, 18, 4).toNonIndexed();
+    cliffGeo.computeVertexNormals();
+    const cliff = new THREE.Mesh(cliffGeo, toon('#7d7468'));
+    cliff.position.y = -4.1;
+    this.scene.add(cliff);
     const rand = seeded(4);
-    for (let i = 0; i < 40; i++) {
-      const a = (i / 40) * Math.PI * 2 + rand() * 0.08;
-      const len = 0.6 + rand() * 1.0;
-      const drip = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), toon(MINT));
-      drip.scale.set(0.32, 0.32 * len, 0.26);
-      drip.position.set(Math.cos(a) * (R - 0.15), -0.45 - len * 0.2, Math.sin(a) * (R - 0.15));
-      drip.rotation.y = -a;
-      this.scene.add(drip);
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2 + rand() * 0.1;
+      const r = rock(0.9 + rand() * 1.2, rand() < 0.5 ? '#7d7468' : '#8c857a');
+      r.position.set(Math.cos(a) * (R - 0.1), -0.55 - rand() * 0.4, Math.sin(a) * (R - 0.1));
+      r.rotation.y = rand() * 3;
+      this.scene.add(r);
     }
   }
 
   private buildTiles(): void {
-    const tileGeo = new THREE.CylinderGeometry(0.62, 0.68, 0.22, 24);
+    const baseGeo = new THREE.CylinderGeometry(0.66, 0.72, 0.2, 10);
+    const inlayGeo = new THREE.CylinderGeometry(0.54, 0.54, 0.06, 24);
     const iconGeo = new THREE.CircleGeometry(0.46, 24);
-    const dotGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.06, 10);
+    const stoneGeo = new THREE.DodecahedronGeometry(0.11, 0);
+    const stone = toon('#8c857a');
     const iconMats = new Map<TileType, THREE.MeshBasicMaterial>();
     for (const type of Object.keys(TILE_INFO) as TileType[]) {
       iconMats.set(type, new THREE.MeshBasicMaterial({ map: iconTexture(type), transparent: true, depthWrite: false }));
     }
     for (const tile of BOARD) {
-      const m = new THREE.Mesh(tileGeo, toon(TILE_INFO[tile.type].color));
-      m.position.set(tile.x, 0.11, tile.z);
-      m.receiveShadow = true;
-      outline(m, 1.06, 1.25);
-      this.scene.add(m);
+      const base = new THREE.Mesh(baseGeo, stone);
+      base.position.set(tile.x, 0.1, tile.z);
+      base.receiveShadow = true;
+      outline(base, 1.05, 1.2);
+      this.scene.add(base);
+      const inlay = new THREE.Mesh(inlayGeo, toon(TILE_INFO[tile.type].color));
+      inlay.position.set(tile.x, 0.21, tile.z);
+      this.scene.add(inlay);
       const g = new THREE.Group();
-      g.position.set(tile.x, 0.226, tile.z);
+      g.position.set(tile.x, 0.245, tile.z);
       const icon = new THREE.Mesh(iconGeo, iconMats.get(tile.type)!);
       icon.rotation.x = -Math.PI / 2;
       g.add(icon);
@@ -140,14 +147,15 @@ export class BoardView implements RoomView {
       this.iconGroups.push(g);
       for (const n of tile.next) {
         const to = BOARD[n];
-        const d = new THREE.Mesh(dotGeo, toon('#ffffff'));
-        d.position.set((tile.x + to.x) / 2, 0.03, (tile.z + to.z) / 2);
+        const d = new THREE.Mesh(stoneGeo, toon('#a39b8e'));
+        d.position.set((tile.x + to.x) / 2, 0.04, (tile.z + to.z) / 2);
+        d.scale.y = 0.5;
         this.scene.add(d);
       }
       if (tile.next.length > 1) {
-        const sign = lollipop('#ff5fa2');
-        sign.scale.setScalar(0.7);
-        sign.position.set(tile.x * 0.8, 0, tile.z * 0.8);
+        const sign = signpost();
+        sign.position.set(tile.x * 0.82, 0, tile.z * 0.82);
+        sign.rotation.y = Math.atan2(tile.x, tile.z);
         this.scene.add(sign);
       }
     }
@@ -156,6 +164,12 @@ export class BoardView implements RoomView {
   private buildProps(): void {
     const rand = seeded(9);
     const avoid = BOARD.map(t => ({ x: t.x, z: t.z, r: 1.0 }));
+    // castelo no meio do vale
+    const keep = castle();
+    keep.position.set(0.2, 0, -0.1);
+    keep.scale.setScalar(0.85);
+    this.scene.add(keep);
+    avoid.push({ x: 0.2, z: -0.1, r: 2.0 });
     const free = (rMin: number, rMax: number, clear: number) => {
       for (let k = 0; k < 80; k++) {
         const a = rand() * Math.PI * 2;
@@ -169,37 +183,50 @@ export class BoardView implements RoomView {
       }
       return null;
     };
-    // lojas: cupcakes ao lado das casas de loja
+    // tendas do mercador ao lado das casas de loja
     for (const t of BOARD.filter(b => b.type === 'loja')) {
       const d = Math.hypot(t.x, t.z) || 1;
-      const shop = cupcake();
-      shop.position.set(t.x + (t.x / d) * 1.7, 0, t.z + (t.z / d) * 1.7);
-      shop.lookAt(t.x, 0, t.z);
-      this.scene.add(shop);
-      avoid.push({ x: shop.position.x, z: shop.position.z, r: 1.3 });
+      const tent = marketTent('#8e2430');
+      tent.position.set(t.x + (t.x / d) * 1.7, 0, t.z + (t.z / d) * 1.7);
+      tent.lookAt(t.x, 0, t.z);
+      tent.scale.setScalar(0.8);
+      this.scene.add(tent);
+      avoid.push({ x: tent.position.x, z: tent.position.z, r: 1.2 });
     }
-    const candy = ['#ff5fa2', '#4aa3ff', '#ffc93c', '#a77bff', '#ff8a3d', '#3fd6b0'];
-    for (let i = 0; i < 9; i++) {
-      const s = free(i < 6 ? 8.4 : 1.2, i < 6 ? 9.6 : 3.2, 0.6);
-      if (!s) continue;
-      const l = lollipop(candy[i % candy.length]);
-      l.position.set(s.x, 0, s.z);
-      l.rotation.y = rand() * Math.PI;
-      this.scene.add(l);
+    // estandartes na largada
+    const start = BOARD[0];
+    for (const sx of [-1, 1]) {
+      const b = bannerPole(sx < 0 ? '#8e2430' : '#2f5a8f');
+      b.position.set(start.x + sx * 1.1, 0, start.z + 0.9);
+      this.scene.add(b);
+      avoid.push({ x: b.position.x, z: b.position.z, r: 0.4 });
     }
+    // vila
+    const roofs = ['#8a6a3a', '#7a5333', '#6f5a3a', '#8e2430'];
     for (let i = 0; i < 7; i++) {
-      const s = free(8.2, 9.6, 0.8);
+      const s = free(8.2, 9.4, 1.0);
       if (!s) continue;
-      const tr = cottonTree(i % 2 ? '#ffb3d9' : '#aee0ff');
+      const h = house(i % 3 === 0 ? '#cdbb95' : '#d9c9a3', roofs[i % roofs.length]);
+      h.position.set(s.x, 0, s.z);
+      h.lookAt(0, 0, 0);
+      h.scale.setScalar(0.75);
+      this.scene.add(h);
+    }
+    for (let i = 0; i < 14; i++) {
+      const s = free(i < 10 ? 8.0 : 1.4, i < 10 ? 9.7 : 3.2, 0.55);
+      if (!s) continue;
+      const tr = i % 3 === 0 ? oakTree(0.75 + rand() * 0.3) : pineTree(0.8 + rand() * 0.4);
       tr.position.set(s.x, 0, s.z);
       this.scene.add(tr);
     }
     for (let i = 0; i < 18; i++) {
-      const s = free(1, 9.6, 0.35);
+      const s = free(1.2, 9.6, 0.3);
       if (!s) continue;
-      const g = gumdrop(candy[(i + 2) % candy.length]);
-      g.position.set(s.x, 0, s.z);
-      this.scene.add(g);
+      const piece = i % 2 ? bush() : rock(0.6 + rand() * 0.6);
+      piece.position.x = s.x;
+      piece.position.z = s.z;
+      piece.rotation.y = rand() * 3;
+      this.scene.add(piece);
     }
   }
 
@@ -498,8 +525,8 @@ export class BoardView implements RoomView {
           <span class="ico">${def.icon}</span><span><b>${def.name}</b><br>${def.desc}<br>
           <span class="price"><i class="coin-i"></i>${def.price}</span></span></button>`;
       }).join('');
-      setHtml(this.hud.shop, `<div class="card shop-card"><h3>Loja da Confeitaria</h3>
-        <p class="hint">Você tem ${p.coins} moedas${full ? ' e a mochila está cheia' : ''}.</p>
+      setHtml(this.hud.shop, `<div class="card shop-card"><h3>Tenda do Mercador</h3>
+        <p class="hint">Você tem ${p.coins} moedas${full ? ' e a bolsa está cheia' : ''}.</p>
         <div class="shop-items">${cards}</div>
         <button type="button" class="btn ghost" data-buy="">Agora não</button></div>`);
       this.hud.shop.onclick = e => {
@@ -650,32 +677,57 @@ export class BoardView implements RoomView {
 
 /* =============== texturas =============== */
 
+const ICON_FONT = '"Cinzel","Trajan Pro","Times New Roman",serif';
+
 function iconTexture(type: TileType) {
   return canvasTexture(128, 128, g => {
     g.lineJoin = 'round';
     g.lineCap = 'round';
+    g.strokeStyle = '#22170e';
+    g.fillStyle = '#f4e6c3';
     const label = TILE_INFO[type].short;
     if (label === 'loja') {
-      g.lineWidth = 10;
-      g.strokeStyle = '#2a1d45';
-      g.fillStyle = '#ffffff';
+      // bolsa de moedas
+      g.lineWidth = 9;
       g.beginPath();
-      g.arc(64, 52, 15, Math.PI, 0);
-      g.stroke();
-      g.beginPath();
-      g.roundRect?.(34, 50, 60, 48, 12);
+      g.ellipse(64, 78, 28, 26, 0, 0, Math.PI * 2);
       g.fill();
       g.stroke();
+      g.beginPath();
+      g.moveTo(48, 50); g.lineTo(80, 50); g.lineTo(72, 40); g.lineTo(56, 40); g.closePath();
+      g.fill();
+      g.stroke();
+      g.font = `700 34px ${ICON_FONT}`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillStyle = '#22170e';
+      g.fillText('$', 64, 82);
       return;
     }
-    g.font = `${label.length === 1 ? 80 : 58}px "Lilita One","Arial Rounded MT Bold",sans-serif`;
+    if (label === 'VS') {
+      // espadas cruzadas
+      for (const s of [-1, 1]) {
+        g.save();
+        g.translate(64, 64);
+        g.rotate(s * Math.PI / 4);
+        g.lineWidth = 9;
+        g.beginPath(); g.moveTo(0, -40); g.lineTo(0, 30); g.stroke();
+        g.lineWidth = 5;
+        g.strokeStyle = '#f4e6c3';
+        g.beginPath(); g.moveTo(0, -40); g.lineTo(0, 30); g.stroke();
+        g.strokeStyle = '#22170e';
+        g.lineWidth = 9;
+        g.beginPath(); g.moveTo(-14, 26); g.lineTo(14, 26); g.stroke();
+        g.restore();
+      }
+      return;
+    }
+    g.font = `700 ${label.length === 1 ? 82 : 58}px ${ICON_FONT}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.lineWidth = 12;
-    g.strokeStyle = '#2a1d45';
-    g.strokeText(label, 64, 70);
-    g.fillStyle = '#ffffff';
-    g.fillText(label, 64, 70);
+    g.lineWidth = 10;
+    g.strokeText(label, 64, 68);
+    g.fillText(label, 64, 68);
   });
 }
 
@@ -686,51 +738,9 @@ function pipTexture(n: number) {
     6: [[36, 32], [92, 32], [36, 64], [92, 64], [36, 96], [92, 96]],
   };
   return canvasTexture(128, 128, g => {
-    g.fillStyle = '#fffdf8';
+    g.fillStyle = '#efe3c6';
     g.fillRect(0, 0, 128, 128);
-    g.fillStyle = '#2a1d45';
-    for (const [x, y] of P[n]) { g.beginPath(); g.arc(x, y, 12, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = '#4a2a1a';
+    for (const [x, y] of P[n]) { g.beginPath(); g.arc(x, y, 11, 0, Math.PI * 2); g.fill(); }
   });
-}
-
-function cupcake(): THREE.Group {
-  const shop = new THREE.Group();
-  const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.62, 0.85, 14), toon('#ff8fc0'));
-  wrap.position.y = 0.42;
-  wrap.castShadow = true;
-  outline(wrap, 1.05);
-  shop.add(wrap);
-  const cream = toon('#fff6ea');
-  [[0.86, 0.62, 0.95], [0.6, 0.7, 1.35], [0.32, 1, 1.66]].forEach(([r, sy, y]) => {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), cream);
-    b.scale.set(r, r * sy, r);
-    b.position.y = y;
-    b.castShadow = true;
-    outline(b, 1.04);
-    shop.add(b);
-  });
-  const cherry = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), toon('#ff3355'));
-  cherry.position.y = 2.0;
-  outline(cherry);
-  shop.add(cherry);
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.4), new THREE.MeshBasicMaterial({
-    map: canvasTexture(256, 128, g => {
-      g.fillStyle = '#ffc93c';
-      g.beginPath();
-      g.roundRect?.(6, 6, 244, 116, 26);
-      g.fill();
-      g.lineWidth = 10;
-      g.strokeStyle = '#2a1d45';
-      g.stroke();
-      g.font = '72px "Lilita One","Arial Rounded MT Bold",sans-serif';
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillStyle = '#2a1d45';
-      g.fillText('LOJA', 128, 70);
-    }),
-    transparent: true,
-  }));
-  sign.position.set(0, 0.7, 0.8);
-  shop.add(sign);
-  return shop;
 }

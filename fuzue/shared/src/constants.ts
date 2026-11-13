@@ -8,7 +8,7 @@
  * mudar mensagens ou estado de um jeito incompatível: quem estiver com a
  * página antiga aberta é avisado para recarregar.
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** Ticks de simulação por segundo. */
 export const TICK_RATE = 30;
@@ -22,26 +22,37 @@ export const ROOM_NAME = 'fuzue';
 /* ---------------- personagens ---------------- */
 
 export type CritterKind = 'urso' | 'coelho' | 'gato' | 'axolote' | 'pinguim' | 'ovelha';
+/** Papel medieval: define a roupa e os acessórios do bichinho. */
+export type CritterRole = 'cavaleiro' | 'bruxa' | 'arqueiro' | 'bobo' | 'viking' | 'frade';
 
 export interface CharacterDef {
   name: string;
+  /** "o cavaleiro", "a bruxa"… */
+  title: string;
   kind: CritterKind;
+  role: CritterRole;
+  /** Cor da roupa: é a cor do personagem na interface. */
   color: string;
+  /** Detalhes da roupa (bordas, emblema, cordão). */
+  trim: string;
+  /** Pelo/pele do bichinho. */
+  fur: string;
+  /** Barriga, focinho e partes claras. */
   belly: string;
 }
 
 export const CHARACTERS: CharacterDef[] = [
-  { name: 'Bolota', kind: 'urso', color: '#ff8a3d', belly: '#ffe2c2' },
-  { name: 'Pipoca', kind: 'coelho', color: '#ff9cc8', belly: '#fff0f6' },
-  { name: 'Tufo', kind: 'gato', color: '#35c9b9', belly: '#dcfff8' },
-  { name: 'Brisa', kind: 'axolote', color: '#a8e063', belly: '#f3ffdf' },
-  { name: 'Pingo', kind: 'pinguim', color: '#4a8dff', belly: '#f4f8ff' },
-  { name: 'Nuvem', kind: 'ovelha', color: '#b49cff', belly: '#fff8ee' },
+  { name: 'Bolota', title: 'o cavaleiro', kind: 'urso', role: 'cavaleiro', color: '#2f5a8f', trim: '#c9a227', fur: '#8b5e3c', belly: '#d9b48a' },
+  { name: 'Pipoca', title: 'a bruxa', kind: 'coelho', role: 'bruxa', color: '#5c3d7a', trim: '#c9a227', fur: '#d4c6b2', belly: '#f1e9dc' },
+  { name: 'Tufo', title: 'o arqueiro', kind: 'gato', role: 'arqueiro', color: '#3f6b3a', trim: '#6b4a2f', fur: '#7d7f86', belly: '#d6d2c8' },
+  { name: 'Brisa', title: 'a boba da corte', kind: 'axolote', role: 'bobo', color: '#b5651d', trim: '#2f5a8f', fur: '#c98f97', belly: '#efd9d4' },
+  { name: 'Pingo', title: 'o viking', kind: 'pinguim', role: 'viking', color: '#8e2430', trim: '#7a5a3a', fur: '#3d4654', belly: '#ece6da' },
+  { name: 'Nuvem', title: 'o frade', kind: 'ovelha', role: 'frade', color: '#6b4a2f', trim: '#d8c08a', fur: '#5f4f46', belly: '#ece4d2' },
 ];
 
 /* ---------------- bots ---------------- */
 
-export const BOT_NAMES = ['Paçoca', 'Brigadeiro', 'Cocada', 'Quindim', 'Cajuzinho', 'Jujuba'];
+export const BOT_NAMES = ['Sir Rufus', 'Dama Brígida', 'Mestre Odo', 'Irmão Bento', 'Lady Elvira', 'Barão Tibério'];
 export const BOT_LEVELS = ['Fácil', 'Médio', 'Difícil'] as const;
 
 /* ---------------- partida ---------------- */
@@ -67,27 +78,27 @@ export interface ItemDef {
   name: string;
   price: number;
   icon: string;
-  /** Frase curta mostrada na loja e na mochila. */
+  /** Frase curta mostrada no mercador e na bolsa. */
   desc: string;
   /** Itens passivos não têm botão de usar (funcionam sozinhos). */
   passive?: boolean;
 }
 
 export const ITEMS: Record<ItemId, ItemDef> = {
-  dado2: { name: 'Dado duplo', price: 5, icon: '🎲', desc: 'Rola dois dados neste turno.' },
-  luva: { name: 'Luva de boxe', price: 6, icon: '🥊', desc: 'Rouba 5 moedas de quem tem mais.' },
-  bomba: { name: 'Bomba-armadilha', price: 4, icon: '💣', desc: 'Deixa uma bomba na sua casa: quem parar nela perde 8 moedas.' },
+  dado2: { name: 'Dados viciados', price: 5, icon: '🎲', desc: 'Rola dois dados neste turno.' },
+  luva: { name: 'Manopla', price: 6, icon: '🤛', desc: 'Toma 5 moedas de quem tem mais.' },
+  bomba: { name: 'Armadilha de pólvora', price: 4, icon: '💣', desc: 'Esconde pólvora na sua casa: quem parar nela perde 8 moedas.' },
   escudo: { name: 'Escudo', price: 5, icon: '🛡️', desc: 'Bloqueia a próxima perda de moedas.', passive: true },
-  ima: { name: 'Ímã de moedas', price: 6, icon: '🧲', desc: 'Ganha 1 moeda por casa andada neste turno.' },
-  troca: { name: 'Troca de lugar', price: 8, icon: '🔀', desc: 'Troca de lugar com quem está mais perto da coroa.' },
+  ima: { name: 'Bolsa do mercador', price: 6, icon: '💰', desc: 'Ganha 1 moeda por casa andada neste turno.' },
+  troca: { name: 'Pergaminho de troca', price: 8, icon: '📜', desc: 'Troca de lugar com quem está mais perto da coroa.' },
 };
 export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
 export const MAX_ITEMS = 3;
 
 /* ---------------- conversa ---------------- */
 
-export const QUICK_CHAT = ['Boa!', 'Nãooo', 'kkkkk', 'Vem pro x1', 'Me ajuda!', 'GG'];
-export const EMOTES = ['😂', '😭', '🔥', '👑', '😈', '👏'];
+export const QUICK_CHAT = ['Pela coroa!', 'Nãooo', 'kkkkk', 'Te desafio!', 'Socorro!', 'GG'];
+export const EMOTES = ['😂', '😭', '⚔️', '👑', '🍺', '🛡️'];
 
 /* ---------------- salas ---------------- */
 
