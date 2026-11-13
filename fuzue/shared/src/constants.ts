@@ -8,7 +8,7 @@
  * mudar mensagens ou estado de um jeito incompatível: quem estiver com a
  * página antiga aberta é avisado para recarregar.
  */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 2;
 
 /** Ticks de simulação por segundo. */
 export const TICK_RATE = 30;
