@@ -17,12 +17,14 @@ export class PostFx {
   private readonly composer: EffectComposer;
   private readonly hBlur: ShaderPass;
   private readonly vBlur: ShaderPass;
+  private readonly scenePass: RenderPass;
 
   constructor(private readonly renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, samples = 4) {
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
     const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples });
     this.composer = new EffectComposer(renderer, target);
-    this.composer.addPass(new RenderPass(scene, camera));
+    this.scenePass = new RenderPass(scene, camera);
+    this.composer.addPass(this.scenePass);
     this.hBlur = new ShaderPass(createTiltShiftShader());
     this.vBlur = new ShaderPass(createTiltShiftShader());
     const vignette = new ShaderPass(VignetteShader);
@@ -47,6 +49,11 @@ export class PostFx {
   setTiltShift(enabled: boolean): void {
     this.hBlur.enabled = enabled;
     this.vBlur.enabled = enabled;
+  }
+
+  /** Draws another scene (the inside of the house). */
+  setScene(scene: THREE.Scene): void {
+    this.scenePass.scene = scene;
   }
 
   render(dt: number): void {

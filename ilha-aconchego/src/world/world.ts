@@ -19,6 +19,11 @@ import { buildProps } from './props';
 import { buildSea } from './sea';
 import { heightAt } from './terrain';
 import { buildVegetation } from './vegetation';
+import { DecorLayer } from './decorLayer';
+import { PLAYER_STALL } from '../data/rating';
+import { TENTS } from '../data/village';
+import { HOUSE_GROWTH } from '../data/house';
+import type { HiddenItem } from '../core/types';
 
 export interface WorldOptions {
   season: SeasonId;
@@ -40,6 +45,12 @@ export interface World {
   villagers: VillagerAgents;
   /** Redraws what follows the game state (call after farm or world events). */
   syncState(state: Readonly<GameState>): void;
+  /** Stage 5: decorations outside on the island. */
+  decor: DecorLayer;
+  /** The player's house grows outside too (side room, loft, cellar door). */
+  setHomeLevel(level: number): void;
+  /** Little mounds where the pet found something (only the ones it already sniffed out). */
+  syncHidden(list: readonly HiddenItem[], revealed: ReadonlySet<number>): void;
   update(dt: number, elapsed: number, reducedMotion: boolean): void;
 }
 
@@ -55,7 +66,30 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
   const farmWorld = buildFarmWorld(assets);
   const town = buildTown(assets);
   const villagers = new VillagerAgents();
-  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root, farmWorld.root, town.root, villagers.root);
+  const decor = new DecorLayer(assets, heightAt);
+  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root, farmWorld.root, town.root, villagers.root, decor.root);
+
+  // Stage 5: the player's market cart, the newcomers' tents, the house's new rooms, the pet's finds.
+  const stall = assets.create('stall.player');
+  stall.position.set(PLAYER_STALL.x, heightAt(PLAYER_STALL.x, PLAYER_STALL.z), PLAYER_STALL.z);
+  stall.rotation.y = Math.PI;
+  root.add(stall);
+  const tents = new Map(TENTS.map(t => {
+    const tent = assets.create('tent');
+    tent.position.set(t.x, heightAt(t.x, t.z), t.z);
+    tent.visible = false;
+    root.add(tent);
+    return [t.npc, tent] as const;
+  }));
+  const growth = HOUSE_GROWTH.map(g => {
+    const o = assets.create(g.asset);
+    o.position.set(HOUSE.x + g.dx, heightAt(HOUSE.x + g.dx, HOUSE.z + g.dz) + g.dy, HOUSE.z + g.dz);
+    o.rotation.y = g.ry;
+    o.visible = false;
+    root.add(o);
+    return { object: o, level: g.level };
+  });
+  const mounds = new Map<number, THREE.Object3D>();
 
   // Season visibility by mesh name, so glTF models can follow the same rule.
   const onlyIn: Record<string, THREE.Object3D[]> = { 'only:winter': [], 'only:autumn': [], 'only:warm': [], fruit: [] };
@@ -103,9 +137,32 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
     },
     farm: farmWorld,
     villagers,
+    decor,
+    setHomeLevel(level) {
+      for (const g of growth) g.object.visible = level >= g.level;
+    },
+    syncHidden(list, revealed) {
+      const keep = new Set<number>();
+      for (const h of list) {
+        if (!revealed.has(h.id)) continue;
+        keep.add(h.id);
+        if (mounds.has(h.id)) continue;
+        const m = assets.create('dig.mound');
+        m.position.set(h.x, heightAt(h.x, h.z), h.z);
+        root.add(m);
+        mounds.set(h.id, m);
+      }
+      for (const [id, m] of mounds) {
+        if (keep.has(id)) continue;
+        root.remove(m);
+        mounds.delete(id);
+      }
+    },
     syncState(state) {
       farmWorld.sync(state);
       town.sync(state);
+      decor.sync(state.decor);
+      for (const [npc, tent] of tents) tent.visible = state.arrived.includes(npc as never);
       vegetation.setGrassCut(new Set(Object.keys(state.grass).map(Number)));
       // Each sign shows the crop planted most in its bed.
       const signs: Record<string, FarmCropId | null> = {};

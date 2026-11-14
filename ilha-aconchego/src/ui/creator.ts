@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  ACCESSORIES, APPEARANCE_OPTIONS, cleanName, DEFAULT_APPEARANCE, EYES, HAIR_STYLES, MOUTHS, NAME_MAX_LENGTH, OUTFITS, randomAppearance, SPECIES,
+  ACCESSORIES, APPEARANCE_OPTIONS, cleanName, type AppearanceOptions, DEFAULT_APPEARANCE, EYES, HAIR_STYLES, MOUTHS, NAME_MAX_LENGTH, OUTFITS, randomAppearance, SPECIES,
   type Appearance,
 } from '../data/appearance';
 import { DEFAULT_ISLAND, DEFAULT_PLAYER, FRUITS, type FruitId } from '../data/defaults';
@@ -157,8 +157,29 @@ function createPreview(canvas: HTMLCanvasElement) {
  * Starts from Ana (the default) and resolves when the player presses "Começar a jogar".
  */
 export function openCreator(root: HTMLElement): Promise<CreatorResult> {
+  return creatorScreen(root, null) as Promise<CreatorResult>;
+}
+
+/** Stage 5: the same screen changes the look later (mirror, wardrobe, salon), with fewer tabs and options. */
+export interface LookEditorOptions {
+  title: string;
+  subtitle: string;
+  confirm: string;
+  start: Appearance;
+  tabs: readonly ('body' | 'face' | 'hair' | 'clothes' | 'accessory')[];
+  options: AppearanceOptions;
+}
+
+/** Resolves with the new look, or null when cancelled. */
+export function openLookEditor(root: HTMLElement, opts: LookEditorOptions): Promise<Appearance | null> {
+  return creatorScreen(root, opts) as Promise<Appearance | null>;
+}
+
+function creatorScreen(root: HTMLElement, edit: LookEditorOptions | null): Promise<CreatorResult | Appearance | null> {
+  const tabsShown = edit ? TABS.filter(tab => (edit.tabs as readonly string[]).includes(tab.id)) : TABS;
+  const optionsOf = (key: keyof AppearanceOptions): readonly string[] => (edit ? edit.options[key] : APPEARANCE_OPTIONS[key]);
   return new Promise(resolve => {
-    let appearance: Appearance = { ...DEFAULT_APPEARANCE };
+    let appearance: Appearance = edit ? { ...edit.start } : { ...DEFAULT_APPEARANCE };
     let name = DEFAULT_PLAYER.name;
     let islandName = DEFAULT_ISLAND.name;
     let nativeFruit: FruitId = DEFAULT_ISLAND.nativeFruit;
@@ -176,7 +197,7 @@ export function openCreator(root: HTMLElement): Promise<CreatorResult> {
     stage.append(canvas, el('p', 'creator__hint', t('creator.dragHint')), nameTag);
 
     const panel = el('div', 'creator__panel');
-    const title = el('h1', 'creator__title', t('creator.title'));
+    const title = el('h1', 'creator__title', edit ? edit.title : t('creator.title'));
     title.id = 'creator-title';
     const tabs = el('div', 'creator__tabs');
     tabs.setAttribute('role', 'tablist');
@@ -185,10 +206,15 @@ export function openCreator(root: HTMLElement): Promise<CreatorResult> {
     const actions = el('div', 'creator__actions');
     const randomBtn = el('button', 'ui-btn', t('creator.random'));
     const resetBtn = el('button', 'ui-btn', t('creator.reset'));
-    const startBtn = el('button', 'ui-btn ui-btn--primary', t('creator.start'));
-    for (const b of [randomBtn, resetBtn, startBtn]) b.type = 'button';
-    actions.append(randomBtn, resetBtn, startBtn);
-    panel.append(title, el('p', 'creator__subtitle', t('creator.subtitle')), tabs, body, actions);
+    const startBtn = el('button', 'ui-btn ui-btn--primary', edit ? edit.confirm : t('creator.start'));
+    const cancelBtn = el('button', 'ui-btn', t('panel.close'));
+    for (const b of [randomBtn, resetBtn, startBtn, cancelBtn]) b.type = 'button';
+    if (edit) {
+      resetBtn.textContent = t('look.undo');
+      actions.append(cancelBtn, resetBtn, startBtn);
+      screen.classList.add('creator-screen--edit');
+    } else actions.append(randomBtn, resetBtn, startBtn);
+    panel.append(title, el('p', 'creator__subtitle', edit ? edit.subtitle : t('creator.subtitle')), tabs, body, actions);
     card.append(stage, panel);
     screen.append(card);
     root.append(screen);
@@ -198,7 +224,7 @@ export function openCreator(root: HTMLElement): Promise<CreatorResult> {
 
     const renderTabs = () => {
       tabs.replaceChildren(
-        ...TABS.map((tab, i) => {
+        ...tabsShown.map((tab, i) => {
           const b = el('button', 'creator__tab', t(tab.label));
           b.type = 'button';
           b.id = `creator-tab-${tab.id}`;
@@ -209,7 +235,7 @@ export function openCreator(root: HTMLElement): Promise<CreatorResult> {
           return b;
         }),
       );
-      body.setAttribute('aria-labelledby', `creator-tab-${TABS[active]!.id}`);
+      body.setAttribute('aria-labelledby', `creator-tab-${tabsShown[active]!.id}`);
     };
 
     const group = (labelKey: MessageKey, control: HTMLElement) => {
@@ -233,16 +259,16 @@ export function openCreator(root: HTMLElement): Promise<CreatorResult> {
     const renderBody = () => {
       // Re-rendering replaces the buttons; keep keyboard focus on the same one.
       const focused = Array.from(body.querySelectorAll('button')).indexOf(document.activeElement as HTMLButtonElement);
-      const fields = TABS[active]!.fields.map(field => {
+      const fields = tabsShown[active]!.fields.map(field => {
         if (field.kind === 'choice') {
           const row = el('div', 'chips');
-          for (const option of field.options) row.append(chip(field.label(option), appearance[field.key] === option, () => update({ [field.key]: option })));
+          for (const option of optionsOf(field.key)) row.append(chip(field.label(option), appearance[field.key] === option, () => update({ [field.key]: option })));
           return group(`creator.field.${field.key}`, row);
         }
         if (field.kind === 'color') {
           const row = el('div', 'swatches');
           const label = t(`creator.field.${field.key}`);
-          APPEARANCE_OPTIONS[field.key].forEach((color, i) => {
+          optionsOf(field.key).forEach((color, i) => {
             const b = el('button', 'swatch');
             b.type = 'button';
             b.style.background = color;
@@ -299,7 +325,7 @@ export function openCreator(root: HTMLElement): Promise<CreatorResult> {
     };
 
     const selectTab = (i: number, focus = false) => {
-      active = (i + TABS.length) % TABS.length;
+      active = (i + tabsShown.length) % tabsShown.length;
       renderTabs();
       renderBody();
       if (focus) (tabs.children[active] as HTMLElement | undefined)?.focus();
@@ -312,11 +338,19 @@ export function openCreator(root: HTMLElement): Promise<CreatorResult> {
     });
 
     randomBtn.addEventListener('click', () => update(randomAppearance(Math.random)));
-    resetBtn.addEventListener('click', () => update({ ...DEFAULT_APPEARANCE }));
-    startBtn.addEventListener('click', () => {
+    resetBtn.addEventListener('click', () => update(edit ? { ...edit.start } : { ...DEFAULT_APPEARANCE }));
+    const finish = (value: CreatorResult | Appearance | null) => {
       preview.dispose();
       screen.remove();
-      resolve({ name: cleanName(name, DEFAULT_PLAYER.name), islandName: cleanName(islandName, DEFAULT_ISLAND.name), nativeFruit, appearance });
+      resolve(value);
+    };
+    startBtn.addEventListener('click', () => {
+      if (edit) finish(appearance);
+      else finish({ name: cleanName(name, DEFAULT_PLAYER.name), islandName: cleanName(islandName, DEFAULT_ISLAND.name), nativeFruit, appearance });
+    });
+    cancelBtn.addEventListener('click', () => finish(null));
+    screen.addEventListener('keydown', e => {
+      if (edit && e.key === 'Escape') finish(null);
     });
 
     renderTabs();

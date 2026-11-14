@@ -10,7 +10,7 @@ import { heightAt } from './terrain';
 
 const SPEED = 1.7;
 /** Places where the villager stands behind a counter, facing the customers (south). */
-const COUNTERS = new Set<PlaceId>(['stall.bread', 'stall.honey', 'stall.flowers', 'seeds', 'forge']);
+const COUNTERS = new Set<PlaceId>(['stall.bread', 'stall.honey', 'stall.flowers', 'seeds', 'forge', 'salon']);
 
 interface Agent {
   id: NpcId;

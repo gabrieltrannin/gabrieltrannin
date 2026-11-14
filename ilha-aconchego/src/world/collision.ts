@@ -1,7 +1,7 @@
 import type { SeasonId } from '../data/calendar';
 import { FOOTPRINTS, type Footprint } from '../data/footprints';
 import {
-  BARN, BEDS, BENTO_SPOT, BLOSSOM_TREES, BUSHES, COOP, CREEK, FENCE_GATE_POSTS, FENCE_LINES, GLOBE_LAMPS, GREENHOUSE, GREENHOUSE_BED, GROUND_LANTERNS, HEDGES,
+  BARN, BEDS, BENTO_SPOT, BLOSSOM_TREES, HOUSE, BUSHES, COOP, CREEK, FENCE_GATE_POSTS, FENCE_LINES, GLOBE_LAMPS, GREENHOUSE, GREENHOUSE_BED, GROUND_LANTERNS, HEDGES,
   KITCHEN, LEVELS, LIGHT_POLES, MACHINE_PADS, MINE_NODES, ORCHARD, PALMS, PEN, PIER, PINES, POND, PROPS, ROCKS, ROUND_TREES, SHIPPING_BIN, SMITHY, STAIRS, STALLS,
   STUMPS, WORKBENCH,
 } from '../data/map';
@@ -11,6 +11,7 @@ import {
   TENT_SIZE, TENTS,
 } from '../data/village';
 import { PLAYER_STALL } from '../data/rating';
+import { HOUSE_GROWTH } from '../data/house';
 
 /**
  * Walking rules, as pure functions (no Three.js): where the ground can be walked on, what blocks the way,
@@ -117,11 +118,18 @@ function villageColliders(bridgeFixed: boolean): Collider[] {
   return list;
 }
 
-export function buildColliders(opts: { greenhouseFixed?: boolean; bridgeFixed?: boolean; tents?: readonly string[] } = {}): Collider[] {
+export function buildColliders(opts: { greenhouseFixed?: boolean; bridgeFixed?: boolean; tents?: readonly string[]; homeLevel?: number } = {}): Collider[] {
   const list: Collider[] = [...workColliders(opts.greenhouseFixed ?? false), ...villageColliders(opts.bridgeFixed ?? false)];
   // Stage 5: the player's market stall, and the newcomers' tents once they arrived.
   list.push(rect(PLAYER_STALL.x, PLAYER_STALL.z, PLAYER_STALL.w, PLAYER_STALL.d));
   for (const t of TENTS) if (opts.tents?.includes(t.npc)) list.push(rect(t.x, t.z, TENT_SIZE.w, TENT_SIZE.d));
+  // The house's side room and cellar door, once built.
+  const level = opts.homeLevel ?? 0;
+  for (const g of HOUSE_GROWTH) {
+    if (level < g.level || g.asset === 'house.loft') continue;
+    const x = HOUSE.x + g.dx, z = HOUSE.z + g.dz;
+    list.push(g.asset === 'house.annex' ? { kind: 'circle', x, z, r: 1.35 } : rect(x, z, 1.2, 0.9));
+  }
   for (const p of PROPS) {
     const c = footprintCollider(fp(p.asset), p.at[0], p.at[1], p.ry, p.scale);
     if (p.asset === 'boat') continue;
@@ -188,16 +196,18 @@ export function resolve(x: number, z: number, colliders: readonly Collider[], se
  * One step of movement from (x, z) toward (tx, tz). Tries the full step, then sliding along x or z
  * (so the character glides along walls). Never ends in the sea, on a cliff edge, or up a cliff.
  */
-export function step(x: number, z: number, tx: number, tz: number, colliders: readonly Collider[], season: SeasonId): { x: number; z: number; moved: boolean } {
-  const from = walkableHeight(x, z);
+export type GroundFn = (x: number, z: number) => number | null;
+
+export function step(x: number, z: number, tx: number, tz: number, colliders: readonly Collider[], season: SeasonId, walkable: GroundFn = walkableHeight, ground: GroundFn = groundHeight): { x: number; z: number; moved: boolean } {
+  const from = walkable(x, z);
   const ok = (nx: number, nz: number) => {
-    const h = walkableHeight(nx, nz);
+    const h = walkable(nx, nz);
     if (h === null || (from !== null && Math.abs(h - from) > MAX_STEP)) return false;
     // Keep the body out of cliff walls: the ground one radius ahead must not rise like a wall.
     // Only the point ahead counts, so walking away from (or along) a wall is always allowed.
     const dx = nx - x, dz = nz - z, d = Math.hypot(dx, dz);
     if (d < 1e-6) return true;
-    const ahead = groundHeight(nx + (dx / d) * PLAYER_RADIUS, nz + (dz / d) * PLAYER_RADIUS);
+    const ahead = ground(nx + (dx / d) * PLAYER_RADIUS, nz + (dz / d) * PLAYER_RADIUS);
     return ahead === null || ahead - h <= MAX_STEP;
   };
   for (const [ax, az] of [[tx, tz], [tx, z], [x, tz]] as const) {

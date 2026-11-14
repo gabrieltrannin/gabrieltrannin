@@ -12,8 +12,10 @@ export interface InventoryPanelOptions {
   onMove(from: number, to: number): void;
   onEat(slot: number): void;
   onClose(): void;
-  onFriends?(): void;
-  onCalendar?(): void;
+  /** Buttons at the top (friends, calendar, profile, talents, catalog, island rating, decorate). */
+  tabs?: readonly { label: string; run(): void }[];
+  /** Extra buttons for the picked item (place furniture, read a book, dress the pet...). */
+  uses?(slot: number): { label: string; run(): void }[];
 }
 
 export interface InventoryPanel {
@@ -69,11 +71,10 @@ export function createInventoryPanel(root: HTMLElement, opts: InventoryPanelOpti
   const close = el('button', 'ui-btn ui-btn--small', t('inventory.close'));
   close.type = 'button';
   const tabs = el('div', 'bag__tabs');
-  for (const [label, run] of [[t('bag.friends'), opts.onFriends], [t('bag.calendar'), opts.onCalendar]] as const) {
-    if (!run) continue;
-    const b = el('button', 'ui-btn ui-btn--small', label);
+  for (const tab of opts.tabs ?? []) {
+    const b = el('button', 'ui-btn ui-btn--small', tab.label);
     b.type = 'button';
-    b.addEventListener('click', () => run());
+    b.addEventListener('click', () => tab.run());
     tabs.append(b);
   }
   header.append(title, tabs, close);
@@ -122,6 +123,12 @@ export function createInventoryPanel(root: HTMLElement, opts: InventoryPanelOpti
         const slot = picked;
         eat.addEventListener('click', () => opts.onEat(slot));
         details.append(eat);
+      }
+      for (const use of opts.uses?.(picked) ?? []) {
+        const b = el('button', 'ui-btn ui-btn--small ui-btn--primary', use.label);
+        b.type = 'button';
+        b.addEventListener('click', () => use.run());
+        details.append(b);
       }
     }
     // Skills: level and progress to the next one.

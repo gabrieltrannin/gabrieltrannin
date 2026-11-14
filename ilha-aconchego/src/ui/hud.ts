@@ -12,6 +12,9 @@ export interface HudOptions {
   playerId: string;
   onSelectSlot(slot: number): void;
   onToggleMap(): void;
+  /** Stage 5: the island rating (the stars on the date card), decorating, emotes and the photo mode. */
+  onRating?(): void;
+  tools?: readonly { icon: string; label: string; run(): void }[];
 }
 
 export interface Hud {
@@ -21,6 +24,7 @@ export interface Hud {
   setPrompt(label: string | null): void;
   toast(text: string): void;
   setMapOpen(open: boolean): void;
+  setInside(floor: string | null): void;
   drawMinimap(frame: Omit<MinimapFrame, 'pendingPlaces'>): void;
 }
 
@@ -53,7 +57,10 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
   const island = el('div', 'hud-date__island');
   const forecast = el('div', 'hud-date__forecast');
   row.append(clock, weather);
-  card.append(date, row, forecast, island);
+  const starsButton = el('button', 'hud-stars');
+  starsButton.type = 'button';
+  starsButton.addEventListener('click', () => opts.onRating?.());
+  card.append(date, row, forecast, island, starsButton);
   const quest = el('div', 'hud-card hud-quest');
   const questHead = el('div', 'hud-quest__head');
   const questProgress = el('span', 'hud-quest__progress');
@@ -91,7 +98,17 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
   const mapLabel = el('span', 'hud-map__label', t('hud.mapOpen'));
   mapButton.append(mapCanvas, mapLabel);
   mapButton.addEventListener('click', () => opts.onToggleMap());
-  right.append(coins, energy, buff, mapButton);
+  const tools = el('div', 'hud-tools');
+  for (const tool of opts.tools ?? []) {
+    const b = el('button', 'hud-tool');
+    b.type = 'button';
+    b.setAttribute('aria-label', tool.label);
+    b.title = tool.label;
+    b.append(el('span', 'hud-tool__icon', tool.icon), el('span', 'hud-tool__label', tool.label));
+    b.addEventListener('click', () => tool.run());
+    tools.append(b);
+  }
+  right.append(coins, energy, buff, mapButton, tools);
 
   // Bottom: messages, prompt, item bar.
   const bottom = el('div', 'hud-bottom');
@@ -132,6 +149,11 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
     buff.hidden = !p.buff;
     if (p.buff) buff.textContent = `✨ ${t(`buff.${p.buff}`)}`;
     island.textContent = `${t('hud.island', { name: s.island.name })} · ${t('hud.year', { year: s.time.year })}`;
+    const stars = '★'.repeat(s.stars) + '☆'.repeat(5 - s.stars);
+    if (starsButton.textContent !== stars) {
+      starsButton.textContent = stars;
+      starsButton.setAttribute('aria-label', t('hud.rating', { stars: s.stars }));
+    }
     coinValue.textContent = p.coins.toLocaleString('pt-BR');
     coins.setAttribute('aria-label', t('hud.coins', { coins: p.coins.toLocaleString('pt-BR') }));
     energyFill.style.width = `${(p.energy / MAX_ENERGY) * 100}%`;
@@ -185,6 +207,11 @@ export function createHud(root: HTMLElement, game: Game, opts: HudOptions): Hud 
       if (promptKey.textContent !== key) promptKey.textContent = key;
     },
     toast,
+    /** Inside the house the minimap shows which floor you are on instead. */
+    setInside(floor: string | null) {
+      mapButton.classList.toggle('hud-map--inside', floor !== null);
+      if (floor !== null) mapLabel.textContent = t('hud.home', { floor });
+    },
     setMapOpen(open) {
       mapLabel.textContent = open ? t('hud.mapClose') : t('hud.mapOpen');
       mapButton.setAttribute('aria-pressed', String(open));

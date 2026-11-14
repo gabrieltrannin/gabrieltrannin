@@ -97,6 +97,26 @@ function addSpecies(def: VillagerDef, k: AvatarKit): void {
       snout(0.16, 0.11);
       tailChain([[0, 0.45, -0.32, 0.14], [0, 0.66, -0.46, 0.18], [0, 0.92, -0.44, 0.19], [0, 1.12, -0.32, 0.15]]);
       break;
+    // Stage 5 newcomers.
+    case 'hedgehog': {
+      // A cap of little spikes over the back of the head and down the back.
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2;
+        part(k.cone(), fur, head, [Math.cos(a) * 0.36, 0.26 + Math.sin(i * 1.7) * 0.05, -0.12 + Math.sin(a) * 0.3 - 0.1], [0.08, 0.2, 0.08], [-0.9 + Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.7]);
+      }
+      for (let i = 0; i < 6; i++) part(k.cone(), fur, body, [(i % 3 - 1) * 0.12, 0.6 + Math.floor(i / 3) * 0.2, -0.24], [0.07, 0.18, 0.07], [-1.9, 0, 0]);
+      roundEars(0.06, 0.36, 0.3, muzzle);
+      snout(0.16, 0.11);
+      break;
+    }
+    case 'raccoon':
+      pointyEars(k.mat('#3B393E'), 0.22, 0.28);
+      // The mask and a striped tail.
+      part(k.sphere(), k.mat('#3B393E'), head, [0, 0.02, 0.36], [0.36, 0.1, 0.12]);
+      snout(0.17, 0.11);
+      tailChain([[0, 0.5, -0.3, 0.12], [0, 0.66, -0.44, 0.14], [0, 0.84, -0.5, 0.14]]);
+      for (const [y, z] of [[0.58, -0.38], [0.76, -0.48]] as const) part(k.sphere(), k.mat('#3B393E'), body, [0, y, z], [0.145, 0.04, 0.145]);
+      break;
   }
 
   switch (def.extra) {

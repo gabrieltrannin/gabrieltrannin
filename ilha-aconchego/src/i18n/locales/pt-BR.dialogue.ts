@@ -210,4 +210,15 @@ export const ptBRDialogue: Record<string, readonly string[]> = {
   'scene.6': ['Tenho um segredo, mas é só entre nós: {secret}.', 'Prometa que não conta, hein? {{Obrigado}} por me ouvir.'],
   'scene.8': ['Posso te contar o meu maior sonho? Eu queria {dream}.', 'Com você do meu lado, parece que dá para conseguir.'],
   'scene.10': ['{player}, você virou uma das pessoas mais importantes da minha vida aqui na ilha.', '{{Obrigado}} por cada conversa, cada presente, cada dia. Que essa amizade dure para sempre!'],
+  // Stage 5: tourists visiting the island, and villagers answering an emote.
+  'visitor.hello': [
+    'Vim de barco só para ver esta ilha. Que lugar lindo!',
+    'Dizem que aqui tem os enfeites mais bonitos do mar. É verdade!',
+    'Estou de férias! Já comprei uma lembrancinha na sua barraca?',
+    'Que cheirinho bom de flor... posso ficar mais um pouco?',
+    'Tirei mil fotos da praça. Vou mostrar para todo mundo!',
+    'Ouvi falar desta ilha numa carta. Não me arrependi de vir!',
+  ],
+  'emote.reply': ['Hihi, que fofura!', 'Oiê! Também te vi!', 'Ah, que gracinha!', 'Isso me deixou feliz!'],
+  'emote.again': ['Hihi!', 'Oi de novo!'],
 };

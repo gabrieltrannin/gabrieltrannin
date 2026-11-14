@@ -46,7 +46,7 @@ export const visitorsFor = (stars: number): number => Math.max(0, stars - 1);
 export const VISITOR_SPOTS: readonly XZ[] = [
   [9.0, 3.0], [11.8, 2.6], [8.6, 6.4], [3.0, 14.8], [-1.0, 9.0], [29.6, -1.0], [33.0, 3.4], [12.0, 6.6],
 ];
-export const VISITOR_SPECIES = ['hedgehog', 'raccoon', 'mouse', 'duck', 'deer', 'panda'] as const;
+export const VISITOR_SPECIES = ['rabbit', 'fox', 'bear', 'dog', 'cat', 'sheep', 'squirrel', 'otter'] as const;
 
 /** The player's market stall (docs/GAME_DESIGN.md, "Barraca própria na feira"). */
 export const PLAYER_STALL = { x: 13.9, z: 6.9, w: 1.7, d: 1.0 } as const;

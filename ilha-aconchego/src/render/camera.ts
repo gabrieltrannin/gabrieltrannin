@@ -36,6 +36,8 @@ export class CameraRig {
   /** Seconds since the last drag, for the "rotate when idle" option. */
   idleTime = 0;
   autoRotate = false;
+  /** Follow distance multiplier: closer inside the house, adjustable in the photo mode. */
+  followScale = 1;
 
   get currentDistance(): number {
     return this.distance;
@@ -98,7 +100,7 @@ export class CameraRig {
       const p = this.followTarget.position;
       this.goalLook.set(p.x, p.y + 0.6, p.z);
       const fovFactor = Math.tan(THREE.MathUtils.degToRad(CAMERA_FOV_DEG) / 2) / tanHalf;
-      this.goalDistance = FOLLOW_DISTANCE * fovFactor * Math.max(1, 1.1 / this.camera.aspect) ** 0.6;
+      this.goalDistance = FOLLOW_DISTANCE * fovFactor * Math.max(1, 1.1 / this.camera.aspect) ** 0.6 * this.followScale;
     } else {
       const o = this.overview;
       this.goalLook.set(o.x, o.y, o.z);

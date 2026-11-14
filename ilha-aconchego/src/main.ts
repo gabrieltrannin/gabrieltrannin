@@ -11,7 +11,7 @@ import type { Actor, GameState } from './core/types';
 import { DEFAULT_DAY_LENGTH_MIN, type SeasonId } from './data/calendar';
 import { DEFAULT_PLAYER } from './data/defaults';
 import { HOTBAR_SIZE } from './data/items';
-import { BED_REACH, HOUSE_DOOR, LEVELS, MAILBOX, ORCHARD, orchardTreeId, OVERVIEW, PLAYER_START, PROPS, TOUR_PLACES, TREE_REACH } from './data/map';
+import { LEVELS, MAILBOX, ORCHARD, orchardTreeId, OVERVIEW, PLAYER_START, PROPS, TOUR_PLACES, TREE_REACH } from './data/map';
 import { FishingSession } from './game/fishing';
 import { Interactions } from './game/interactions';
 import { createIslandActions } from './game/islandActions';
@@ -42,6 +42,15 @@ import { BugSystem } from './world/bugs';
 import { buildColliders } from './world/collision';
 import { heightAt } from './world/terrain';
 import { buildWorld } from './world/world';
+import { createHomeLife } from './game/homeLife';
+import { outdoorTileFree, placementError } from './core/decor';
+import { PhotoMode } from './ui/photoMode';
+import { EmoteWheel } from './ui/emoteWheel';
+import { isDecorItem } from './data/decor';
+import { WEARABLE, DYES } from './data/clothing';
+import { BOOKS, recipeById } from './data/recipes';
+import { ITEMS } from './data/items';
+import { formatDate } from './ui/format';
 
 /** How often the walked position is written into the game state, and how often it is saved. */
 const MOVE_COMMIT_S = 0.5;
@@ -201,7 +210,15 @@ async function start(): Promise<void> {
   const hud = createHud(uiRoot, game, {
     playerId,
     onSelectSlot: slot => game.dispatch({ type: 'inventory.select', slot }, localActor),
-    onToggleMap: () => setMap(rig.mode !== 'overview'),
+    onToggleMap: () => {
+      if (!home.inside) setMap(rig.mode !== 'overview');
+    },
+    onRating: () => panels.openRating(),
+    tools: [
+      { icon: '🛋️', label: t('hud.decorate'), run: () => openDecor() },
+      { icon: '😊', label: t('hud.emote'), run: () => emotes.toggle() },
+      { icon: '📷', label: t('hud.photo'), run: () => photo.open() },
+    ],
   });
   const bag = createInventoryPanel(uiRoot, {
     getInventory: () => me().inventory,
@@ -212,13 +229,29 @@ async function start(): Promise<void> {
       if (!r.ok) hud.toast(errorText(r.error));
     },
     onClose: () => bag.close(),
-    onFriends: () => {
-      bag.close();
-      panels.openFriends();
-    },
-    onCalendar: () => {
-      bag.close();
-      panels.openCalendar();
+    tabs: [
+      { label: `💗 ${t('bag.friends')}`, run: () => (bag.close(), panels.openFriends()) },
+      { label: `📅 ${t('bag.calendar')}`, run: () => (bag.close(), panels.openCalendar()) },
+      { label: `🏅 ${t('bag.profile')}`, run: () => (bag.close(), panels.openProfile()) },
+      { label: `🌳 ${t('bag.talents')}`, run: () => (bag.close(), panels.openTalents()) },
+      { label: `📖 ${t('bag.catalog')}`, run: () => (bag.close(), panels.openCatalog()) },
+      { label: `⭐ ${t('bag.rating')}`, run: () => (bag.close(), panels.openRating()) },
+      { label: `🛋️ ${t('bag.decorate')}`, run: () => (bag.close(), openDecor()) },
+    ],
+    uses: slot => {
+      const item = me().inventory[slot]?.item;
+      if (!item) return [];
+      const act = (cmd: Parameters<typeof game.dispatch>[0], ok?: string) => () => {
+        const r = game.dispatch(cmd, localActor);
+        hud.toast(r.ok ? ok ?? '' : errorText(r.error));
+        bag.refresh();
+      };
+      if (isDecorItem(item)) return [{ label: t('use.place'), run: () => (bag.close(), openDecor(slot)) }];
+      if (WEARABLE[item]) return [{ label: t('use.wardrobe'), run: act({ type: 'wardrobe.store', slot }, t('msg.stored', { item: t(`item.${item}`) })) }];
+      if (DYES[item]) return [{ label: t('use.dye'), run: act({ type: 'wardrobe.dye', slot }, t('msg.dyed')) }];
+      if (BOOKS[item]) return [{ label: t('use.read'), run: act({ type: 'book.read', slot }) }];
+      if (ITEMS[item].kind === 'petwear') return [{ label: t('use.pet'), run: act({ type: 'pet.dress', slot }, t('msg.petDressed')) }];
+      return [];
     },
   });
   game.on(event => {
@@ -246,26 +279,23 @@ async function start(): Promise<void> {
 
   // Things to act on with E / Ação.
   const interactions = new Interactions();
-  interactions.add({
-    id: 'house',
-    at: () => ({ x: HOUSE_DOOR[0], z: HOUSE_DOOR[1] }),
-    radius: BED_REACH,
-    label: () => t('interact.sleep'),
-    act: () => {
-      commitMove();
-      const r = game.dispatch({ type: 'sleep' }, localActor);
-      if (!r.ok) return hud.toast(errorText(r.error));
-      sleepFade.hidden = false;
-      sleepFade.classList.remove('sleep-fade--out');
+  /** Goes to bed: a new day starts and the game is saved. Inside, you wake up in the house. */
+  const sleep = () => {
+    commitMove();
+    const r = game.dispatch({ type: 'sleep' }, localActor);
+    if (!r.ok) return hud.toast(errorText(r.error));
+    sleepFade.hidden = false;
+    sleepFade.classList.remove('sleep-fade--out');
+    if (!me().inside) {
       player.teleport(PLAYER_START.x, PLAYER_START.z, PLAYER_START.facing);
       moveDirty = true;
       commitMove();
-      rig.snap();
-      void save('sleep').then(ok => hud.toast(ok ? t('msg.saved') : t('msg.saveFailed')));
-      window.setTimeout(() => sleepFade.classList.add('sleep-fade--out'), 900);
-      window.setTimeout(() => (sleepFade.hidden = true), 1700);
-    },
-  });
+    }
+    rig.snap();
+    void save('sleep').then(ok => hud.toast(ok ? t('msg.saved') : t('msg.saveFailed')));
+    window.setTimeout(() => sleepFade.classList.add('sleep-fade--out'), 900);
+    window.setTimeout(() => (sleepFade.hidden = true), 1700);
+  };
   const mailbox = PROPS.find(p => p.asset === 'mailbox');
   if (mailbox) {
     const [x, z] = mailbox.at;
@@ -342,15 +372,20 @@ async function start(): Promise<void> {
     if (event.type === 'tool.upgraded') hud.toast(t('msg.upgraded', { tool: t(`item.tool.${event.tool}`), level: t(`tool.level.${event.level}` as MessageKey) }));
     if (event.type === 'farm.rained') hud.toast(t('msg.rainWatered'));
     if (event.type === 'farm.withered') hud.toast(t('msg.withered'));
-    // The greenhouse door and the old bridge open up when they are fixed.
-    if (event.type === 'world.changed') {
-      const key = `${game.state.greenhouse}|${game.state.projects.bridge.done}`;
-      if (key !== openings) {
-        openings = key;
-        player.setColliders(buildColliders({ greenhouseFixed: game.state.greenhouse, bridgeFixed: game.state.projects.bridge.done }));
-      }
-    }
+    // Stage 5 news.
+    if (event.type === 'achievement') hud.toast(t('msg.achievement', { name: t(`ach.${event.id}` as MessageKey) }));
+    if (event.type === 'stall.sold') hud.toast(t('msg.stallSold', { item: t(`item.${event.item}`), coins: event.coins }));
+    if (event.type === 'recipe.learned') hud.toast(t('msg.recipeLearned', { item: t(`item.${recipeById(event.recipe)!.result}`) }));
+    if (event.type === 'experiment.failed') hud.toast(event.known ? t('msg.experimentKnown', { item: t(`item.${recipeById(event.known)!.result}`) }) : t('msg.experimentFailed'));
+    if (event.type === 'pet.found') hud.toast(t('msg.petFound', { qty: event.qty, item: t(`item.${event.item}`) }));
+    if (event.type === 'photo.saved') hud.toast(t('msg.photoTaken'));
+    if (event.type === 'skill.up') hud.toast(t('msg.talentReady', { skill: t(`skill.${event.skill}`) }));
     if (event.type === 'project.done') hud.toast(t('msg.projectDone', { project: t(`project.${event.project}` as MessageKey) }));
+    if (event.type === 'stars.up') hud.toast(t('msg.starsUp', { stars: event.stars }));
+    if (event.type === 'npc.arrived') {
+      hud.toast(t('msg.arrived', { name: villager(event.npc).name }));
+      world.villagers.sync(game.state, true);
+    }
     if (event.type === 'npc.heart') {
       const v = villager(event.npc);
       hud.toast(t('msg.heartUp', { name: v.name, hearts: event.hearts }));
@@ -358,7 +393,6 @@ async function start(): Promise<void> {
     }
     if (event.type === 'day.started' && me().mail.some(m => !m.read)) window.setTimeout(() => hud.toast(t('msg.newMail')), 1800);
   });
-  let openings = `${game.state.greenhouse}|${game.state.projects.bridge.done}`;
   const showHearts = (npc: NpcId) => {
     const at = world.villagers.positionOf(npc);
     if (at) bubbles.show(`hearts-${npc}`, '💗', () => at.clone().setY(at.y + 2.1), 1.8);
@@ -380,6 +414,31 @@ async function start(): Promise<void> {
   createConversations({
     game, actor: localActor, player, agents: world.villagers, dialogue, panels, interactions,
     toast: text => hud.toast(text), errorText, commitMove, hearts: npc => showHearts(npc),
+    openSalon: () => void home.openLook('salon'),
+  });
+
+  // Stage 5: the house, decorating, emotes and the photo mode.
+  const home = createHomeLife({
+    game, actor: localActor, assets, scene, post, rig, player, pet, avatar, world, interactions, panels, bubbles, uiRoot, canvas,
+    setInputEnabled: on => (input.enabled = on), setPrompt: text => hud.setPrompt(text), toast: text => hud.toast(text), errorText, commitMove, sleep,
+  });
+  const openDecor = (slot?: number) => {
+    setMap(false);
+    home.decorMode.open(slot);
+  };
+  const emotes = new EmoteWheel(uiRoot, id => home.emote(id));
+  const photo = new PhotoMode({
+    uiRoot, canvas,
+    getZoom: () => rig.followScale,
+    setZoom: z => (rig.followScale = z),
+    setPose: pose => (pose ? player.playEmote(pose, Infinity) : (player.emote = null)),
+    caption: () => `${t('hud.island', { name: game.state.island.name })} · ${formatDate(game.state.time)}`,
+    onShot: () => game.dispatch({ type: 'photo.taken' }, localActor),
+    onOpen: () => {
+      setMap(false);
+      uiRoot.classList.add('is-photo');
+    },
+    onClose: () => uiRoot.classList.remove('is-photo'),
   });
 
   game.on(event => {
@@ -456,7 +515,16 @@ async function start(): Promise<void> {
 
     // Input: the backpack or a window takes over while open; fishing holds the character still.
     const frame = input.poll();
-    if (dialogue.isOpen) {
+    if (photo.active) {
+      photo.update(frame);
+      rig.yaw += frame.turn * CAMERA_TURN_SPEED * dt;
+    } else if (emotes.isOpen) {
+      if (frame.slot !== null) emotes.choose(frame.slot);
+      else if (frame.escape || frame.emote) emotes.close();
+    } else if (home.decorMode.active && !bag.isOpen && !panels.isOpen) {
+      home.decorMode.update(frame);
+      rig.yaw += frame.turn * CAMERA_TURN_SPEED * dt;
+    } else if (dialogue.isOpen) {
       if (frame.escape) dialogue.close();
       else if (frame.slot !== null) dialogue.choose(frame.slot);
       else if (frame.action) dialogue.advance();
@@ -471,12 +539,15 @@ async function start(): Promise<void> {
         bag.open();
         hud.setPrompt(null);
       }
-      if (frame.toggleMap || (frame.escape && rig.mode === 'overview')) setMap(rig.mode !== 'overview');
+      if (!home.inside && (frame.toggleMap || (frame.escape && rig.mode === 'overview'))) setMap(rig.mode !== 'overview');
+      if (frame.decorate) openDecor();
+      if (frame.emote) emotes.toggle();
+      if (frame.photo) photo.open();
       if (frame.slot !== null) game.dispatch({ type: 'inventory.select', slot: frame.slot }, localActor);
       if (frame.slotStep !== 0) game.dispatch({ type: 'inventory.select', slot: (me().activeSlot + frame.slotStep + HOTBAR_SIZE) % HOTBAR_SIZE }, localActor);
       rig.yaw += frame.turn * CAMERA_TURN_SPEED * dt;
     }
-    const playing = !bag.isOpen && !panels.isOpen && !fishing.active && !dialogue.isOpen;
+    const playing = !bag.isOpen && !panels.isOpen && !fishing.active && !dialogue.isOpen && !photo.active && !emotes.isOpen;
     player.speedFactor = me().buff === 'speed' ? 1.2 : 1;
     player.update(dt, playing ? frame : null, rig.yaw, season);
     if (player.takeDirty()) moveDirty = true;
@@ -484,9 +555,11 @@ async function start(): Promise<void> {
 
     dialogue.update(dt);
     if (fishing.active) hud.setPrompt(fishing.update(dt, elapsed, bag.isOpen || panels.isOpen ? null : frame));
-    else if (dialogue.isOpen) hud.setPrompt(null);
-    else {
-      const action = playing ? actions.resolve() : null;
+    else if (dialogue.isOpen || photo.active) hud.setPrompt(null);
+    else if (home.decorMode.active) {
+      // Decoration mode writes its own prompt.
+    } else {
+      const action = playing ? (home.inside ? home.resolveIndoor() : actions.resolve()) : null;
       hud.setPrompt(action ? action.label : null);
       if (action && frame.action && playing) {
         // Panels (board, museum, shops) check distance with the position in the game state.
@@ -494,7 +567,8 @@ async function start(): Promise<void> {
         action.run();
       }
     }
-    bugs.update(dt, elapsed, season, game.state.time.minuteOfDay, game.state.weather);
+    if (!home.inside) bugs.update(dt, elapsed, season, game.state.time.minuteOfDay, game.state.weather);
+    home.update(dt, elapsed);
 
     moveTimer += dt;
     if (moveTimer >= MOVE_COMMIT_S) {
@@ -513,7 +587,8 @@ async function start(): Promise<void> {
     }
 
     world.update(dt, elapsed, reducedMotion);
-    weatherFx.update(dt, elapsed, { camera: rig.camera, night: atmosphere.night, cameraYaw: rig.yaw, cloudColor: atmosphere.cloudColor, particles: true, reducedMotion, center: currentArea });
+    if (!home.inside) weatherFx.update(dt, elapsed, { camera: rig.camera, night: atmosphere.night, cameraYaw: rig.yaw, cloudColor: atmosphere.cloudColor, particles: true, reducedMotion, center: currentArea });
+    else home.interior.setNight(atmosphere.night);
     atmosphere.update(dt, weatherFx.flash);
     world.sea.setTint(atmosphere.waterTint);
     rig.update(dt);
@@ -522,22 +597,24 @@ async function start(): Promise<void> {
     mapTimer += dt;
     if (mapTimer >= 0.1) {
       mapTimer = 0;
-      const area = areaAt(player.x, player.z);
+      const area = home.inside ? currentArea : areaAt(player.x, player.z);
       if (area !== currentArea) {
         currentArea = area;
         rig.setOverview({ x: area.x, y: LEVELS.main.top, z: area.z, width: area.width, depth: area.depth });
         atmosphere.setFocus(area.x, area.z);
       }
       const villagersOut = VILLAGERS.map(v => world.villagers.positionOf(v.id)).filter((p): p is THREE.Vector3 => !!p).map(p => ({ x: p.x, z: p.z }));
-      hud.drawMinimap({ season, night: atmosphere.night > 0.5, player: { x: player.x, z: player.z, facing: player.facing }, pet: { x: pet.object.position.x, z: pet.object.position.z }, area, villagers: villagersOut });
+      hud.setInside(home.floorName());
+      if (!home.inside) hud.drawMinimap({ season, night: atmosphere.night > 0.5, player: { x: player.x, z: player.z, facing: player.facing }, pet: { x: pet.object.position.x, z: pet.object.position.z }, area, villagers: villagersOut });
       mailFlag.visible = me().mail.some(m => !m.read || (m.item && !m.taken));
       mailFlag.position.y = heightAt(MAILBOX[0], MAILBOX[1]) + 1.75 + Math.sin(elapsed * 3) * 0.06;
     }
     post.render(dt);
+    photo.afterRender();
     dev?.frame(dtMs);
   });
 
-  if (import.meta.env.DEV) Object.assign(window, { __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow, __world: world, __fishing: fishing });
+  if (import.meta.env.DEV) Object.assign(window, { __decorRules: { placementError, outdoorTileFree }, __home: home, __photo: photo, __emotes: emotes, __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow, __world: world, __fishing: fishing });
 }
 
 void start().catch(error => {

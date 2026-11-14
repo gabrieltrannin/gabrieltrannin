@@ -283,9 +283,36 @@ function addAccessory(a: Appearance, head: THREE.Group): void {
       part(CYLINDER(), mat('#5C9E4A'), head, [0, 0.58, 0], [0.02, 0.2, 0.02]);
       for (const s of [-1, 1]) part(SPHERE_LOW(), mat('#7CCB5E'), head, [s * 0.1, 0.7, 0], [0.13, 0.04, 0.07], [0, 0, s * 0.45]);
       break;
+    case 'scarf': {
+      const wool = mat('#F2C14E'), stripe = mat('#E5484D');
+      part(geo('scarf', () => new THREE.TorusGeometry(0.15, 0.06, 8, 18)), wool, head, [0, -0.42, 0.02], s3(1), [Math.PI / 2 + 0.2, 0, 0]);
+      part(BOX(), wool, head, [0.1, -0.58, 0.16], [0.09, 0.22, 0.04], [0.1, 0, 0.15]);
+      part(BOX(), stripe, head, [0.105, -0.62, 0.17], [0.092, 0.04, 0.045], [0.1, 0, 0.15]);
+      break;
+    }
+    case 'beret':
+      part(SPHERE(), mat('#B83A4B'), head, [0.06, 0.4, -0.02], [0.42, 0.13, 0.42], [-0.2, 0, -0.2]);
+      part(SPHERE_LOW(), mat('#8E2A38'), head, [0.1, 0.53, -0.04], s3(0.04));
+      break;
+    case 'tiara': {
+      const gold = mat('#E2B33C'), gem = mat('#9BE7FF');
+      part(geo('tiara', () => new THREE.TorusGeometry(0.36, 0.022, 6, 24, Math.PI)), gold, head, [0, 0.3, 0.02], s3(1), [-0.35, 0, 0]);
+      part(geo('gem', () => new THREE.OctahedronGeometry(1)), gem, head, [0, 0.69, 0.14], [0.06, 0.09, 0.04]);
+      for (const s of [-1, 1]) part(geo('gem', () => new THREE.OctahedronGeometry(1)), gem, head, [s * 0.2, 0.61, 0.12], [0.035, 0.05, 0.03]);
+      break;
+    }
     case 'none':
       break;
   }
+}
+
+/** A lighter (k > 1) or darker (k < 1) version of a color, for knit stripes and pockets. */
+function shade(color: string, k: number): string {
+  const c = new THREE.Color(color);
+  c.r = Math.min(1, c.r * k);
+  c.g = Math.min(1, c.g * k);
+  c.b = Math.min(1, c.b * k);
+  return `#${c.getHexString()}`;
 }
 
 /** Builds a new character. Call `disposeAvatar` when replacing it. */
@@ -310,19 +337,23 @@ export function buildAvatar(a: Appearance, extras?: (kit: AvatarKit) => void): T
   const body = new THREE.Group();
   root.add(body);
   const skin = mat(a.skin), top = mat(a.topColor), bottom = mat(a.bottomColor), shoe = mat(a.shoes);
+  /** Outfits with a skirt show the legs. */
+  const skirted = a.outfit === 'dress' || a.outfit === 'apron';
+  /** Outfits with long sleeves. */
+  const sleeves = a.outfit === 'hoodie' || a.outfit === 'sweater' || a.outfit === 'raincoat';
 
   const legs = [-1, 1].map(s => {
     const pivot = new THREE.Group();
     pivot.position.set(s * 0.11, 0.42, 0);
     body.add(pivot);
-    part(CYLINDER(), a.outfit === 'dress' ? skin : bottom, pivot, [0, -0.17, 0], [0.075, 0.34, 0.075]);
+    part(CYLINDER(), skirted ? skin : bottom, pivot, [0, -0.17, 0], [0.075, 0.34, 0.075]);
     part(SPHERE(), shoe, pivot, [0, -0.36, 0.04], [0.12, 0.085, 0.17]);
     return pivot;
   }) as [THREE.Group, THREE.Group];
 
-  if (a.outfit !== 'dress') part(geo('hip', () => new THREE.CylinderGeometry(0.22, 0.24, 0.16, 16)), bottom, body, [0, 0.47, 0], s3(1));
+  if (!skirted) part(geo('hip', () => new THREE.CylinderGeometry(0.22, 0.24, 0.16, 16)), bottom, body, [0, 0.47, 0], s3(1));
   part(geo('torso', () => new THREE.CylinderGeometry(0.2, 0.24, 0.42, 16)), top, body, [0, 0.72, 0], s3(1));
-  if (a.outfit === 'dress') {
+  if (a.outfit === 'dress' || a.outfit === 'apron') {
     part(geo('skirt', () => new THREE.CylinderGeometry(0.22, 0.42, 0.5, 18)), top, body, [0, 0.6, 0], s3(1));
     part(geo('hem', () => new THREE.TorusGeometry(0.42, 0.03, 6, 24)), mat('#FFFFFF'), body, [0, 0.36, 0], s3(1), [Math.PI / 2, 0, 0]);
   }
@@ -337,6 +368,24 @@ export function buildAvatar(a: Appearance, extras?: (kit: AvatarKit) => void): T
     part(geo('hood', () => new THREE.TorusGeometry(0.19, 0.075, 8, 18)), top, body, [0, 0.98, -0.11], s3(1), [1.25, 0, 0]);
     part(BOX(), mat('#FFFFFF'), body, [0, 0.62, 0.225], [0.2, 0.1, 0.02]);
   }
+  // Stage 5: clothes sewn at the knitting table.
+  if (a.outfit === 'sweater') {
+    const knit = mat(shade(a.topColor, 1.18));
+    for (const y of [0.6, 0.72, 0.84]) part(geo('knitBand', () => new THREE.CylinderGeometry(0.235, 0.235, 0.035, 16, 1, true)), knit, body, [0, y, 0], [y < 0.7 ? 1.02 : 0.94, 1, y < 0.7 ? 1.02 : 0.94]);
+    part(geo('collar', () => new THREE.TorusGeometry(0.11, 0.045, 8, 16)), knit, body, [0, 0.95, 0], s3(1), [Math.PI / 2, 0, 0]);
+  }
+  if (a.outfit === 'raincoat') {
+    part(geo('coatSkirt', () => new THREE.CylinderGeometry(0.245, 0.32, 0.3, 18)), top, body, [0, 0.42, 0], s3(1));
+    part(geo('hood', () => new THREE.TorusGeometry(0.19, 0.075, 8, 18)), top, body, [0, 0.98, -0.11], s3(1), [1.25, 0, 0]);
+    for (const y of [0.82, 0.68, 0.52]) part(SPHERE_LOW(), mat('#FFFFFF'), body, [0, y, 0.235 + (0.82 - y) * 0.12], s3(0.025));
+  }
+  if (a.outfit === 'apron') {
+    const apron = mat('#FFFFFF');
+    part(BOX(), apron, body, [0, 0.58, 0.3], [0.34, 0.42, 0.025], [-0.32, 0, 0]);
+    part(BOX(), apron, body, [0, 0.82, 0.215], [0.2, 0.16, 0.02]);
+    part(BOX(), mat(shade(a.topColor, 0.8)), body, [0.07, 0.52, 0.33], [0.1, 0.08, 0.02], [-0.32, 0, 0]);
+    for (const s of [-1, 1]) part(BOX(), apron, body, [s * 0.09, 0.93, 0.05], [0.035, 0.03, 0.36]);
+  }
   part(CYLINDER(), skin, body, [0, 0.96, 0], [0.09, 0.1, 0.09]);
 
   const arms = [-1, 1].map(s => {
@@ -345,7 +394,7 @@ export function buildAvatar(a: Appearance, extras?: (kit: AvatarKit) => void): T
     pivot.rotation.z = s * 0.16;
     body.add(pivot);
     part(CYLINDER(), top, pivot, [0, -0.1, 0], [0.075, 0.2, 0.075]);
-    part(CYLINDER(), a.outfit === 'hoodie' ? top : skin, pivot, [0, -0.27, 0], [0.062, 0.2, 0.062]);
+    part(CYLINDER(), sleeves ? top : skin, pivot, [0, -0.27, 0], [0.062, 0.2, 0.062]);
     part(SPHERE_LOW(), skin, pivot, [0, -0.4, 0], s3(0.075));
     return pivot;
   }) as [THREE.Group, THREE.Group];
@@ -398,12 +447,76 @@ export function animateAvatar(avatar: THREE.Object3D, phase: number, move: numbe
   const swing = Math.sin(phase) * move * (0.6 + run * 0.35);
   p.legs[0].rotation.x = swing;
   p.legs[1].rotation.x = -swing;
-  p.arms[0].rotation.x = -swing * 1.1;
-  p.arms[1].rotation.x = swing * 1.1;
+  p.arms[0].rotation.set(-swing * 1.1, 0, -0.16);
+  p.arms[1].rotation.set(swing * 1.1, 0, 0.16);
+  p.head.rotation.x = -0.2;
+  p.body.rotation.y = 0;
   const breathe = (1 - move) * Math.sin(time * 2.2) * 0.012;
   p.body.position.y = Math.abs(Math.cos(phase)) * 0.06 * move + breathe;
   p.body.rotation.x = run * move * 0.12;
   p.head.rotation.z = (1 - move) * Math.sin(time * 0.9) * 0.04;
+}
+
+/**
+ * Holds an emote pose on top of the walk animation (stage 5): `t` is the seconds since it started.
+ * The same poses are used in the photo mode.
+ */
+export function poseAvatar(avatar: THREE.Object3D, id: string, t: number): void {
+  const p = avatarParts(avatar);
+  const wave = Math.sin(t * 9);
+  const [left, right] = p.arms;
+  switch (id) {
+    case 'wave':
+      right.rotation.set(0, 0, -2.5 + wave * 0.35);
+      break;
+    case 'happy':
+      left.rotation.set(0, 0, 2.4);
+      right.rotation.set(0, 0, -2.4);
+      p.body.position.y = Math.abs(Math.sin(t * 7)) * 0.16;
+      break;
+    case 'love':
+      left.rotation.set(-1.2, 0, 0.9);
+      right.rotation.set(-1.2, 0, -0.9);
+      p.head.rotation.z = Math.sin(t * 3) * 0.12;
+      break;
+    case 'dance':
+      left.rotation.set(0, 0, 2.2 + Math.sin(t * 8) * 0.4);
+      right.rotation.set(0, 0, -0.6 + Math.sin(t * 8) * 0.4);
+      p.body.rotation.y = Math.sin(t * 4) * 0.5;
+      p.body.position.y = Math.abs(Math.sin(t * 8)) * 0.08;
+      break;
+    case 'laugh':
+      left.rotation.set(-0.7, 0, 0.5);
+      right.rotation.set(-0.7, 0, -0.5);
+      p.body.rotation.x = -0.15 + Math.sin(t * 14) * 0.04;
+      break;
+    case 'surprised':
+      left.rotation.set(0, 0, 1.4);
+      right.rotation.set(0, 0, -1.4);
+      p.head.rotation.x = -0.35;
+      break;
+    case 'sad':
+      left.rotation.set(0.1, 0, 0.05);
+      right.rotation.set(0.1, 0, -0.05);
+      p.head.rotation.x = 0.15;
+      p.body.rotation.x = 0.12;
+      break;
+    case 'sleepy':
+      left.rotation.set(-0.4, 0, 0.3);
+      right.rotation.set(-2.6, 0, -0.4);
+      p.head.rotation.z = 0.25 + Math.sin(t * 1.5) * 0.05;
+      break;
+  }
+}
+
+/** Changes an existing character's look in place (mirror, wardrobe, salon): same object, new parts. */
+export function restyleAvatar(avatar: THREE.Object3D, a: Appearance): void {
+  const fresh = buildAvatar(a);
+  const keep = avatar.children.filter(c => c.name === 'held');
+  disposeAvatar(avatar);
+  for (const child of [...avatar.children]) if (!keep.includes(child)) avatar.remove(child);
+  for (const child of [...fresh.children]) avatar.add(child);
+  avatar.userData.parts = fresh.userData.parts;
 }
 
 /** Frees the per-character face texture and material (shared shapes and colors stay cached). */

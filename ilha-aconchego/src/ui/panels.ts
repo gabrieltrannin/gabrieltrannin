@@ -1,17 +1,20 @@
 import type { Game } from '../core/game';
-import { countItem, countKind } from '../core/inventory';
-import { levelOf, sellPrice } from '../core/rules';
+import { countItem } from '../core/inventory';
+import { playerSellPrice } from '../core/rules';
 import type { Actor, ItemStack, PlayerState } from '../core/types';
 import { absoluteDay, seasonOf } from '../core/clock';
 import { DAYS_PER_SEASON, FESTIVALS, SEASONS, WEEKDAYS } from '../data/calendar';
 import { MUSEUM_EXTRA, PROJECTS } from '../data/community';
 import { hearts, villager, VILLAGERS } from '../data/villagers';
 import { ITEM_IDS, ITEMS, type ItemId } from '../data/items';
-import { COOKING, CRAFTING, type Recipe } from '../data/recipes';
 import { shopEntries, type ShopId } from '../data/shops';
 import { MAX_TOOL_LEVEL, TOOLS, toolItem, UPGRADE_COST } from '../data/tools';
 import { t, type MessageKey } from '../i18n';
 import { itemName } from './itemText';
+import { createHomePanels, type HomePanels } from './homePanels';
+import { isItemId } from '../data/items';
+import { shopPrice } from '../core/handlers/economy';
+import { isPresent } from '../core/villagers';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = ''): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -41,7 +44,7 @@ function row(icon: string, name: string, sub: string, ...actions: HTMLElement[])
   return r;
 }
 
-export interface PanelHost {
+export interface PanelHost extends HomePanels {
   readonly isOpen: boolean;
   close(): void;
   /** Re-draws the open panel (after the game state changed). */
@@ -102,28 +105,7 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
   };
   const section = (text: string) => body.append(el('h3', 'panel__section', text));
 
-  const ingredientsText = (recipe: Recipe) => recipe.ingredients
-    .map(ing => {
-      const have = 'item' in ing ? countItem(me().inventory, ing.item) : countKind(me().inventory, ing.kind);
-      const name = 'item' in ing ? t(`item.${ing.item}`) : t(`kind.${ing.kind}`);
-      return `${ing.qty} ${name} (${Math.min(have, ing.qty)}/${ing.qty})`;
-    })
-    .join(' · ');
-
-  const recipeList = (list: readonly Recipe[], skill: 'cooking' | 'crafting', command: 'cook' | 'craft') => () => {
-    body.replaceChildren();
-    const level = levelOf(me(), skill);
-    for (const recipe of list) {
-      const def = ITEMS[recipe.result] as { energy?: number };
-      const locked = recipe.level > level;
-      const sub = locked ? t('panel.locked', { level: recipe.level, skill: t(`skill.${skill}`) }) : `${ingredientsText(recipe)}${def.energy ? ` · ${t('panel.energy', { energy: def.energy })}` : ''}`;
-      const canMake = !locked && recipe.ingredients.every(ing => ('item' in ing ? countItem(me().inventory, ing.item) : countKind(me().inventory, ing.kind)) >= ing.qty);
-      const name = recipe.qty > 1 ? `${t(`item.${recipe.result}`)} ×${recipe.qty}` : t(`item.${recipe.result}`);
-      body.append(row(ITEMS[recipe.result].icon, name, sub, button(t('panel.make'), () => dispatch({ type: 'craft', station: recipe.station, recipe: recipe.id }, t(command === 'cook' ? 'msg.cooked' : 'msg.crafted', { item: t(`item.${recipe.result}`) })), !canMake, true)));
-    }
-  };
-
-  const api: PanelHost = {
+  const api = {
     get isOpen() {
       return !overlay.hidden;
     },
@@ -146,8 +128,9 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
           const name = t(`item.${entry.item}`);
           const have = countItem(me().inventory, entry.item);
           const buy = (qty: number) => dispatch({ type: 'shop.buy', shop, item: entry.item, qty }, t('msg.bought', { item: qty > 1 ? `${qty} ${name}` : name }));
-          const actions = [button(t('panel.buyFor', { price: entry.price }), () => buy(1), me().coins < entry.price, true)];
-          if (ITEMS[entry.item].maxStack > 1) actions.push(button('×5', () => buy(5), me().coins < entry.price * 5));
+          const price = shopPrice(me(), entry.price);
+          const actions = [button(t('panel.buyFor', { price }), () => buy(1), me().coins < price, true)];
+          if (ITEMS[entry.item].maxStack > 1) actions.push(button('×5', () => buy(5), me().coins < price * 5));
           const kind = t(`kind.${ITEMS[entry.item].kind}`);
           body.append(row(ITEMS[entry.item].icon, name, `${kind} · ${t('panel.youHave', { qty: have })}`, ...actions));
         }
@@ -158,18 +141,17 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
       open(t('panel.ship.title'), () => {
         body.replaceChildren();
         body.append(el('p', 'bag__hint', t('panel.ship.hint')));
-        const charisma = levelOf(me(), 'charisma');
         const bin: ItemStack[] = game.state.shipping[actor.id] ?? [];
-        const total = bin.reduce((sum, s) => sum + sellPrice(s, charisma), 0);
+        const total = bin.reduce((sum, s) => sum + playerSellPrice(me(), s), 0);
         section(t('panel.ship.total', { coins: total.toLocaleString('pt-BR') }));
         if (bin.length === 0) body.append(el('p', 'panel__empty', t('panel.ship.empty')));
         bin.forEach((stack, index) => {
-          body.append(row(ITEMS[stack.item].icon, `${itemName(stack)} ×${stack.qty}`, t('panel.price', { price: sellPrice(stack, charisma) }), button(t('panel.ship.take'), () => dispatch({ type: 'ship.take', index }))));
+          body.append(row(ITEMS[stack.item].icon, `${itemName(stack)} ×${stack.qty}`, t('panel.price', { price: playerSellPrice(me(), stack) }), button(t('panel.ship.take'), () => dispatch({ type: 'ship.take', index }))));
         });
         section(t('panel.bag'));
         me().inventory.forEach((stack, slot) => {
           if (!stack || ITEMS[stack.item].sell <= 0) return;
-          const one = sellPrice({ ...stack, qty: 1 }, charisma);
+          const one = playerSellPrice(me(), { ...stack, qty: 1 });
           const actions = [button(t('panel.ship.add'), () => dispatch({ type: 'ship.add', slot, qty: 1 }, t('msg.shipped', { item: itemName(stack) })))];
           if (stack.qty > 1) actions.push(button(t('panel.ship.addAll'), () => dispatch({ type: 'ship.add', slot, qty: stack.qty }, t('msg.shipped', { item: `${stack.qty} ${itemName(stack)}` })), false, true));
           body.append(row(ITEMS[stack.item].icon, `${itemName(stack)} ×${stack.qty}`, t('panel.sell', { price: one }), ...actions));
@@ -178,11 +160,11 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
     },
 
     openKitchen() {
-      open(t('panel.cook.title'), recipeList(COOKING, 'cooking', 'cook'));
+      api.openStation('kitchen');
     },
 
     openWorkbench() {
-      open(t('panel.craft.title'), recipeList(CRAFTING, 'crafting', 'craft'));
+      api.openStation('carpentry');
     },
 
     openSmithy() {
@@ -275,7 +257,9 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
         if (!mail.length) body.append(el('p', 'panel__empty', t('panel.mail.empty')));
         for (const m of mail) {
           const from = m.from === 'island' ? t('panel.mail.island') : villager(m.from).name;
-          const text = t(m.key as MessageKey, { ...m.params, island: game.state.island.name, player: me().name, from });
+          // Item ids in a letter (a recipe taught by a friend) read as the item's name.
+          const params = Object.fromEntries(Object.entries(m.params).map(([key, value]) => [key, typeof value === 'string' && isItemId(value) ? t(`item.${value}`) : value]));
+          const text = t(m.key as MessageKey, { ...params, island: game.state.island.name, player: me().name, from });
           const letter = el('div', `letter${m.read ? '' : ' letter--new'}`);
           letter.append(el('div', 'letter__from', `${m.from === 'island' ? '✉️' : villager(m.from).icon} ${from}`), el('p', 'letter__text', text));
           if (m.item && !m.taken) letter.append(button(t('panel.mail.take', { item: `${m.qty ?? 1} ${t(`item.${m.item}`)}` }), () => dispatch({ type: 'mail.take', id: m.id }), false, true));
@@ -289,7 +273,7 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
       open(t('panel.friends.title'), () => {
         body.replaceChildren();
         const today = absoluteDay(game.state.time);
-        for (const v of VILLAGERS) {
+        for (const v of VILLAGERS.filter(v => isPresent(game.state, v.id))) {
           const f = me().friends[v.id];
           const h = hearts(f.points);
           const card = el('div', 'friend');
@@ -325,7 +309,7 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
           const today = seasonIndex === game.state.time.seasonIndex && day === game.state.time.day;
           if (today) cell.classList.add('calendar__day--today');
           cell.append(el('span', 'calendar__num', String(day)));
-          for (const v of VILLAGERS.filter(v => v.birthday.season === season && v.birthday.day === day)) {
+          for (const v of VILLAGERS.filter(v => v.birthday.season === season && v.birthday.day === day && isPresent(game.state, v.id))) {
             cell.append(el('span', 'calendar__mark', v.icon));
             events.push(`${day}: 🎂 ${t('panel.calendar.birthday', { name: v.name })}`);
           }
@@ -341,7 +325,10 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
       });
     },
 
-  };
+  } as PanelHost;
+  Object.assign(api, createHomePanels({
+    game, actor, body, me, open, section: text => section(text), row, button, el, dispatch, refresh: () => api.refresh(),
+  }));
   game.on(event => {
     if (event.type !== 'time.changed' && event.type !== 'player.moved') api.refresh();
   });

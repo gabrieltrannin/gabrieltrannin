@@ -20,6 +20,17 @@ export interface InputFrame {
   escape: boolean;
   /** Camera turn, -1 to 1 (Q/R keys, right stick). */
   turn: number;
+  // Stage 5.
+  /** F: the emote wheel. */
+  emote: boolean;
+  /** P: the photo mode. */
+  photo: boolean;
+  /** C: decoration mode. */
+  decorate: boolean;
+  /** G: turn the piece (decoration mode). */
+  rotate: boolean;
+  /** X or Delete: put the piece away (decoration mode). */
+  store: boolean;
 }
 
 /** Touch controls write here; the game reads it through `Input.poll`. */
@@ -67,7 +78,10 @@ export class Input {
   }
 
   poll(): InputFrame {
-    const frame: InputFrame = { moveX: 0, moveY: 0, run: false, action: false, actionHeld: false, slot: null, slotStep: 0, toggleBag: false, toggleMap: false, escape: false, turn: 0 };
+    const frame: InputFrame = {
+      moveX: 0, moveY: 0, run: false, action: false, actionHeld: false, slot: null, slotStep: 0, toggleBag: false, toggleMap: false, escape: false, turn: 0,
+      emote: false, photo: false, decorate: false, rotate: false, store: false,
+    };
     if (!this.enabled) {
       this.pressed.clear();
       this.clearTouchPresses();
@@ -89,6 +103,11 @@ export class Input {
     frame.toggleMap = this.pressed.has('KeyM');
     frame.escape = this.pressed.has('Escape');
     frame.turn = (this.held.has('KeyR') ? 1 : 0) - (this.held.has('KeyQ') ? 1 : 0);
+    frame.emote = this.pressed.has('KeyF');
+    frame.photo = this.pressed.has('KeyP');
+    frame.decorate = this.pressed.has('KeyC');
+    frame.rotate = this.pressed.has('KeyG');
+    frame.store = this.pressed.has('KeyX') || this.pressed.has('Delete');
     this.pressed.clear();
 
     // Touch.

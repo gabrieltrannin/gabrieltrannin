@@ -1,5 +1,6 @@
 import { absoluteDay, seasonOf } from '../core/clock';
 import type { Game } from '../core/game';
+import { SALON_PRICE } from '../data/clothing';
 import { countItem } from '../core/inventory';
 import type { Actor, PlayerState } from '../core/types';
 import { isBirthday, shopOpen } from '../core/villagers';
@@ -26,6 +27,8 @@ export interface ConversationContext {
   commitMove(): void;
   /** A heart pops over the villager (friendship went up a level). */
   hearts(npc: NpcId, level: number): void;
+  /** Pérola's salon: the look editor (stage 5). */
+  openSalon(): void;
 }
 
 const pick = <T>(list: readonly T[]): T | undefined => list[Math.floor(Math.random() * list.length)];
@@ -85,11 +88,14 @@ export function createConversations(ctx: ConversationContext): void {
   /** The menu after talking. */
   const choicesFor = (def: VillagerDef) => (): DialogueChoice[] => {
     const list: DialogueChoice[] = [];
-    const counterShop = def.shop && def.shop !== 'salon' && shopOpen(game.state, def.shop) ? def.shop : null;
+    const counterShop = def.shop && def.shop !== 'salon' && shopOpen(game.state, def.shop) && (def.shop !== 'books' || game.state.projects.museum.done) ? def.shop : null;
     if (counterShop === 'smithy') list.push({ label: t('dialogue.upgrade'), run: () => { dialogue.close(); ctx.panels.openSmithy(); } });
     else if (counterShop) list.push({ label: t('dialogue.shop'), run: () => { dialogue.close(); ctx.panels.openShop(counterShop); } });
     if (def.id === 'celeste' && game.state.projects.museum.done) list.push({ label: t('dialogue.museum'), run: () => { dialogue.close(); ctx.panels.openMuseum(); } });
     if (def.id === 'lino') list.push({ label: t('dialogue.projects'), run: () => { dialogue.close(); ctx.panels.openBoard(); } });
+    // Stage 5: Lino grows the house; Pérola's salon changes the look.
+    if (def.id === 'lino') list.push({ label: t('dialogue.homeUpgrade'), run: () => { dialogue.close(); ctx.panels.openHomeUpgrade(); } });
+    if (def.shop === 'salon' && shopOpen(game.state, 'salon')) list.push({ label: t('dialogue.salon', { price: SALON_PRICE }), run: () => { dialogue.close(); ctx.openSalon(); } });
     const request = game.state.requests.find(r => r.npc === def.id && !r.done);
     if (request && countItem(me().inventory, request.item) >= request.qty) {
       list.push({

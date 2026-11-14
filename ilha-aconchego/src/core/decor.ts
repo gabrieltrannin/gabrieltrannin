@@ -64,7 +64,7 @@ let staticCache: { colliders: Collider[]; clear: ReturnType<typeof keepClear>; p
 function statics() {
   if (!staticCache) {
     staticCache = {
-      colliders: buildColliders({ tents: TENTS.map(t => t.npc) }),
+      colliders: buildColliders({ tents: TENTS.map(t => t.npc), homeLevel: 3 }),
       clear: keepClear(),
       paths: PATH_EDGES.map(([a, b]) => [PATH_NODES[a]!, PATH_NODES[b]!] as [XZ, XZ]),
     };
