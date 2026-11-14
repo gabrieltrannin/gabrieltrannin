@@ -11,6 +11,8 @@ import type { FarmCropId } from '../data/crops';
 import type { GameState } from '../core/types';
 import { buildFarmDecor } from './farmDecor';
 import { buildFarmWorld, type FarmWorld } from './farmWorld';
+import { buildTown } from './town';
+import { VillagerAgents } from './villagerAgents';
 import { GroundPainter } from './groundPainter';
 import { buildIsland } from './island';
 import { buildProps } from './props';
@@ -34,6 +36,8 @@ export interface World {
   repaintSigns(): void;
   /** Farm, animals, machines, rocks and the rest that follow the game state. */
   farm: FarmWorld;
+  /** The villagers walking around (stage 4). */
+  villagers: VillagerAgents;
   /** Redraws what follows the game state (call after farm or world events). */
   syncState(state: Readonly<GameState>): void;
   update(dt: number, elapsed: number, reducedMotion: boolean): void;
@@ -49,7 +53,9 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
   const farm = buildFarmDecor(assets);
   const props = buildProps(assets);
   const farmWorld = buildFarmWorld(assets);
-  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root, farmWorld.root);
+  const town = buildTown(assets);
+  const villagers = new VillagerAgents();
+  root.add(buildIsland(painter.texture), sea.root, vegetation.root, farm.root, props.root, farmWorld.root, town.root, villagers.root);
 
   // Season visibility by mesh name, so glTF models can follow the same rule.
   const onlyIn: Record<string, THREE.Object3D[]> = { 'only:winter': [], 'only:autumn': [], 'only:warm': [], fruit: [] };
@@ -81,6 +87,7 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
     for (const o of onlyIn['only:warm']!) o.visible = season === 'spring' || season === 'summer';
     for (const o of onlyIn.fruit!) o.visible = p.fruitOnTrees;
     vegetation.applySeason(p);
+    town.setSeason(p);
   };
   setSeason(opts.season);
 
@@ -95,8 +102,10 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
       repaintStallSigns();
     },
     farm: farmWorld,
+    villagers,
     syncState(state) {
       farmWorld.sync(state);
+      town.sync(state);
       vegetation.setGrassCut(new Set(Object.keys(state.grass).map(Number)));
       // Each sign shows the crop planted most in its bed.
       const signs: Record<string, FarmCropId | null> = {};
@@ -114,6 +123,7 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
       sea.update(elapsed, reducedMotion);
       vegetation.update(dt);
       farmWorld.update(dt, elapsed, reducedMotion);
+      villagers.update(dt, elapsed);
       if (!reducedMotion) for (const b of props.blades) b.rotation.z = elapsed * 0.8;
       if (props.boat) {
         props.boat.position.y = boatBase + Math.sin(elapsed * 1.3) * 0.06;

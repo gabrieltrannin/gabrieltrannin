@@ -110,7 +110,7 @@ export const ptBRDialogue: Record<string, readonly string[]> = {
   'birthday.dreamy': ['Hoje é meu aniversário. Mais uma volta ao redor do sol.'],
 
   // Requests.
-  'request.ask': ['Estou precisando de {qty} {item}. Coloquei no quadro de pedidos!'],
+  'request.ask': ['Estou precisando de {qty}× {item}. Coloquei no quadro de pedidos!'],
   'request.thanks': ['Muito {{obrigado}}! Você salvou o meu dia!', 'Perfeito! Aqui está a sua recompensa.'],
   'request.lumi': ['Quero fazer uma torta de morango especial... Você me traz 3 morangos? Pago 300 moedas!'],
 

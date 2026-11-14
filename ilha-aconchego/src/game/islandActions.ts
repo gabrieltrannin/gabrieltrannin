@@ -15,6 +15,9 @@ import {
 import { GREENHOUSE_COST, MACHINES, machineOfItem } from '../data/recipes';
 import type { ShopId } from '../data/shops';
 import { toolOfItem, type ToolId } from '../data/tools';
+import { BRIDGE_SIGN, MUSEUM_DOOR, NOTICE_BOARD, SEED_SHOP_COUNTER } from '../data/village';
+import { VILLAGERS } from '../data/villagers';
+import { shopOpen } from '../core/villagers';
 import { t } from '../i18n';
 import type { Bubbles } from '../ui/bubbles';
 import type { PanelHost } from '../ui/panels';
@@ -82,20 +85,36 @@ export function createIslandActions(ctx: ActionContext): { resolve(): IslandActi
   interactions.add({ id: 'bin', at: () => ({ x: SHIPPING_BIN[0], z: SHIPPING_BIN[1] }), radius: STATION_REACH, label: () => t('act.ship'), act: () => panels.openShipping() });
   interactions.add({ id: 'kitchen', at: () => ({ x: KITCHEN[0], z: KITCHEN[1] }), radius: STATION_REACH, label: () => t('act.cook'), act: () => panels.openKitchen() });
   interactions.add({ id: 'workbench', at: () => ({ x: WORKBENCH[0], z: WORKBENCH[1] }), radius: STATION_REACH, label: () => t('act.craft'), act: () => panels.openWorkbench() });
+  // Shops: their keeper serves them (talk to them); when the keeper is away, the counter says so.
+  const closedAt = (id: string, at: () => { x: number; z: number }, shop: ShopId, radius = 2.0) => {
+    const keeper = VILLAGERS.find(v => v.shop === shop);
+    interactions.add({
+      id, at, radius,
+      enabled: () => !shopOpen(game.state, shop),
+      label: () => t('act.closed'),
+      act: () => {
+        if (!keeper) return;
+        const start = keeper.routine.find(([, place]) => place.startsWith('stall.') || place === 'seeds' || place === 'forge');
+        const end = start ? keeper.routine[keeper.routine.indexOf(start) + 1] : undefined;
+        toast(start && end ? t('msg.shopHours', { name: keeper.name, from: formatClock(start[0]), to: formatClock(end[0]) }) : t('msg.closed'));
+      },
+    });
+  };
+  for (const stall of STALLS) closedAt(stall.asset, () => ({ x: stall.at[0], z: stall.at[1] + 1.2 }), SHOP_OF[stall.asset]!);
+  closedAt('seeds', () => ({ x: SEED_SHOP_COUNTER[0], z: SEED_SHOP_COUNTER[1] }), 'seeds');
+  closedAt('forge', () => ({ x: BENTO_SPOT[0], z: BENTO_SPOT[1] }), 'smithy', 2.2);
+  interactions.add({ id: 'board', at: () => ({ x: NOTICE_BOARD[0], z: NOTICE_BOARD[1] + 0.4 }), radius: 2.0, label: () => t('act.board'), act: () => panels.openBoard() });
   interactions.add({
-    id: 'bento',
-    at: () => ({ x: BENTO_SPOT[0], z: BENTO_SPOT[1] }),
-    radius: 2.2,
-    label: () => t('act.smith'),
-    act: () => {
-      bubbles.show('bento', t('bento.hello'), above(BENTO_SPOT[0], BENTO_SPOT[1], 1.7), 4, t('bento.name'));
-      panels.openSmithy();
-    },
+    id: 'museum', at: () => ({ x: MUSEUM_DOOR[0], z: MUSEUM_DOOR[1] }), radius: 2.0,
+    label: () => (game.state.projects.museum.done ? t('act.museum') : t('act.museumClosed')),
+    act: () => (game.state.projects.museum.done ? panels.openMuseum() : toast(t('msg.museumClosed'))),
   });
-  for (const stall of STALLS) {
-    const [x, z] = stall.at;
-    interactions.add({ id: stall.asset, at: () => ({ x, z: z + 1.2 }), radius: 2.0, label: () => t('act.shop'), act: () => panels.openShop(SHOP_OF[stall.asset]!) });
-  }
+  interactions.add({
+    id: 'bridge-sign', at: () => ({ x: BRIDGE_SIGN[0], z: BRIDGE_SIGN[1] }), radius: 1.6,
+    enabled: () => !game.state.projects.bridge.done,
+    label: () => t('act.bridgeSign'),
+    act: () => bubbles.show('bridge-sign', t('msg.bridgeSign'), above(BRIDGE_SIGN[0], BRIDGE_SIGN[1], 1.6), 4),
+  });
   interactions.add({
     id: 'greenhouse',
     at: () => ({ x: GREENHOUSE.x, z: GREENHOUSE.z + GREENHOUSE.d / 2 + 0.3 }),

@@ -1,9 +1,8 @@
 import type { SeasonId } from '../data/calendar';
 import { BEDS, HOUSE, LEVELS, PIER, PLAZA, TOUR_PLACES, type RoundedRect } from '../data/map';
 import { SEASON_PALETTES } from '../data/seasonPalettes';
-
-/** World area shown on the minimap (the whole island and the pier). */
-const VIEW = { x0: -21, z0: -16.5, x1: 21, z1: 23.5 };
+import type { Area } from '../data/areas';
+import { BRIDGES, HOUSE_SIZE, HOUSE_SPOTS, ISLETS, MUSEUM, SEED_SHOP } from '../data/village';
 
 export interface MinimapFrame {
   season: SeasonId;
@@ -12,15 +11,23 @@ export interface MinimapFrame {
   pet: { x: number; z: number };
   /** Tour places not visited yet (shown as stars). */
   pendingPlaces: readonly string[];
+  /** The part of the world to show (main island, village or wood). */
+  area: Area;
+  /** Villagers outside, as little dots. */
+  villagers: readonly { x: number; z: number }[];
 }
 
 /** Small round map in the corner, north up. Clicking it toggles the whole-island camera. */
 export function createMinimap(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext('2d')!;
   const size = canvas.width;
-  const scale = size / Math.max(VIEW.x1 - VIEW.x0, VIEW.z1 - VIEW.z0);
-  const ox = size / 2 - ((VIEW.x0 + VIEW.x1) / 2) * scale, oz = size / 2 - ((VIEW.z0 + VIEW.z1) / 2) * scale;
+  let scale = 1, ox = 0, oz = 0;
   const px = (x: number) => ox + x * scale, pz = (z: number) => oz + z * scale;
+  const frame = (a: Area) => {
+    scale = size / (Math.max(a.width, a.depth) + 3);
+    ox = size / 2 - a.x * scale;
+    oz = size / 2 - a.z * scale;
+  };
   const rect = (r: RoundedRect, fill: string) => {
     const radius = (typeof r.r === 'number' ? r.r : r.r[0]) * scale;
     ctx.fillStyle = fill;
@@ -31,8 +38,17 @@ export function createMinimap(canvas: HTMLCanvasElement) {
 
   return {
     draw(f: MinimapFrame): void {
+      frame(f.area);
       ctx.fillStyle = f.night ? '#2E5480' : '#7CC8D2';
       ctx.fillRect(0, 0, size, size);
+      for (const islet of ISLETS) {
+        rect(islet.beach, '#EBD9A8');
+        rect(islet.main, SEASON_PALETTES[f.season].map);
+      }
+      for (const b of BRIDGES) rect({ x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1, r: 0.2 }, '#B8875A');
+      for (const h of HOUSE_SPOTS) rect({ x0: h.x - HOUSE_SIZE.w / 2, z0: h.z - HOUSE_SIZE.d / 2, x1: h.x + HOUSE_SIZE.w / 2, z1: h.z + HOUSE_SIZE.d / 2, r: 0.3 }, '#C9955A');
+      rect({ x0: MUSEUM.x - MUSEUM.w / 2, z0: MUSEUM.z - MUSEUM.d / 2, x1: MUSEUM.x + MUSEUM.w / 2, z1: MUSEUM.z + MUSEUM.d / 2, r: 0.3 }, '#E9E2D0');
+      rect({ x0: SEED_SHOP.x - SEED_SHOP.w / 2, z0: SEED_SHOP.z - SEED_SHOP.d / 2, x1: SEED_SHOP.x + SEED_SHOP.w / 2, z1: SEED_SHOP.z + SEED_SHOP.d / 2, r: 0.3 }, '#7CC35A');
       rect(LEVELS.beach, '#EBD9A8');
       rect(LEVELS.main, SEASON_PALETTES[f.season].map);
       rect(LEVELS.upper, 'rgba(0,0,0,.12)');
@@ -54,6 +70,12 @@ export function createMinimap(canvas: HTMLCanvasElement) {
       ctx.beginPath();
       ctx.arc(px(f.pet.x), pz(f.pet.z), size * 0.022, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = '#F2B33D';
+      for (const v of f.villagers) {
+        ctx.beginPath();
+        ctx.arc(px(v.x), pz(v.z), size * 0.02, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Player arrow, pointing where the character faces.
       const x = px(f.player.x), z = pz(f.player.z), a = f.player.facing, r = size * 0.05;

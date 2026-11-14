@@ -120,6 +120,11 @@ export class Atmosphere {
   }
 
   /** Keeps the fog behind the island however far the camera is. */
+  /** Centers the sun's shadow area on the part of the world being shown (the main island or the village). */
+  setFocus(x: number, z: number): void {
+    this.sun.target.position.set(x, 0, z);
+  }
+
   setViewDistance(distance: number): void {
     const fog = this.scene.fog as THREE.Fog;
     fog.near = distance + 25;

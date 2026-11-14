@@ -22,7 +22,8 @@ describe('player.move', () => {
 
   it('refuses the open sea, bad numbers and unknown players', () => {
     const state = createInitialState();
-    expect(moveTo(state, 40, 0)).toEqual({ ok: false, error: 'invalid' });
+    expect(moveTo(state, -40, 0)).toEqual({ ok: false, error: 'invalid' });
+    expect(moveTo(state, 21.5, 6)).toEqual({ ok: false, error: 'invalid' });
     expect(moveTo(state, Number.NaN, 0)).toEqual({ ok: false, error: 'invalid' });
     expect(applyCommand(state, { type: 'player.move', x: 0, z: 5, facing: 0 }, ghost)).toEqual({ ok: false, error: 'forbidden' });
   });

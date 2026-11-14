@@ -1,4 +1,5 @@
 import { LEVELS, PIER, RAMP, STAIRS, type RoundedRect } from '../data/map';
+import { BRIDGES, ISLETS } from '../data/village';
 
 /** True if (x, z) is inside the rounded rectangle, with an optional inward margin. */
 export function insideRoundedRect(x: number, z: number, rect: RoundedRect, margin = 0): boolean {
@@ -30,7 +31,13 @@ export function groundHeight(x: number, z: number): number | null {
     return LEVELS.main.top;
   }
   if (x > PIER.x0 && x < PIER.x1 && z > PIER.z0 && z < PIER.z1) return PIER.deck;
+  for (const b of BRIDGES) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1) return b.deck;
   if (insideRoundedRect(x, z, LEVELS.beach)) return LEVELS.beach.top;
+  // The village islet and the wood (stage 4).
+  for (const islet of ISLETS) {
+    if (insideRoundedRect(x, z, islet.main)) return islet.main.top;
+    if (insideRoundedRect(x, z, islet.beach)) return islet.beach.top;
+  }
   return null;
 }
 

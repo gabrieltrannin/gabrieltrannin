@@ -19,6 +19,8 @@ export interface WeatherFxFrame {
   night: number;
   cameraYaw: number;
   cloudColor: THREE.Color;
+  /** Middle of the part of the world on screen; the clouds circle around it. */
+  center?: { x: number; z: number };
   /** "Chuva, neve e pétalas" setting. */
   particles: boolean;
   reducedMotion: boolean;
@@ -205,8 +207,9 @@ export class WeatherFx {
     // Clouds drift around the island and fade out when they pass between the camera and the island.
     for (const c of this.clouds) {
       if (!f.reducedMotion) c.angle += c.speed * dt;
-      c.group.position.set(Math.cos(c.angle) * c.radius, c.y, Math.sin(c.angle) * c.radius);
-      let d = Math.abs(Math.atan2(c.group.position.x, c.group.position.z) - f.cameraYaw) % (Math.PI * 2);
+      const cx = f.center?.x ?? 0, cz = f.center?.z ?? 0;
+      c.group.position.set(cx + Math.cos(c.angle) * c.radius, c.y, cz + Math.sin(c.angle) * c.radius);
+      let d = Math.abs(Math.atan2(c.group.position.x - cx, c.group.position.z - cz) - f.cameraYaw) % (Math.PI * 2);
       if (d > Math.PI) d = Math.PI * 2 - d;
       c.material.opacity = Math.min(1, Math.max(0, (d - 0.8) / 0.6)) * 0.96;
       c.material.color.copy(f.cloudColor);

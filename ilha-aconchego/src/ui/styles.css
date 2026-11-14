@@ -1410,3 +1410,216 @@ body {
     top: 38%;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Stage 4: dialogue, letters, friends, calendar, museum.               */
+/* ------------------------------------------------------------------ */
+.dialogue {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--edge-b) + 5.2em);
+  transform: translateX(-50%);
+  width: min(36em, calc(100% - 28px));
+  background: var(--ui-paper);
+  border: 3px solid var(--ui-line);
+  border-radius: 1.4em;
+  box-shadow: 0 0.3em 0 var(--ui-shadow);
+  padding: 1.1em 1.2em 0.9em;
+  pointer-events: auto;
+  z-index: 15;
+  cursor: pointer;
+}
+
+.dialogue__name {
+  position: absolute;
+  top: -0.95em;
+  left: 1em;
+  background: var(--ui-accent);
+  color: var(--ui-white);
+  font-weight: 600;
+  border-radius: 99px;
+  padding: 0.2em 0.9em;
+  box-shadow: 0 0.15em 0 var(--ui-shadow);
+}
+
+.dialogue__text {
+  margin: 0.2em 0 0;
+  font-size: 1.1em;
+  min-height: 2.6em;
+  line-height: 1.35;
+}
+
+.dialogue__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin-top: 0.5em;
+  cursor: default;
+}
+
+.dialogue__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  width: 100%;
+}
+
+.dialogue__hint {
+  position: absolute;
+  right: 1em;
+  bottom: 0.4em;
+  font-size: 0.8em;
+  color: var(--ui-accent);
+  animation: bob 1s ease-in-out infinite;
+}
+
+@keyframes bob {
+  50% {
+    transform: translateY(0.2em);
+  }
+}
+
+.has-touch .dialogue {
+  bottom: calc(var(--edge-b) + 17em);
+}
+
+.bag__tabs {
+  display: flex;
+  gap: 0.3em;
+  margin-left: auto;
+}
+
+.panel__note {
+  margin: 0;
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+.letter {
+  background: #fffdf7;
+  border: 2px dashed var(--ui-line);
+  border-radius: 0.9em;
+  padding: 0.6em 0.8em;
+  display: grid;
+  gap: 0.35em;
+  justify-items: start;
+}
+
+.letter--new {
+  border-color: var(--ui-accent);
+}
+
+.letter__from {
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.letter__text {
+  margin: 0;
+  font-family: var(--font-body);
+  line-height: 1.4;
+}
+
+.friend {
+  background: var(--ui-slot);
+  border: 2px solid var(--ui-line);
+  border-radius: 0.9em;
+  padding: 0.45em 0.7em;
+  display: grid;
+  gap: 0.15em;
+}
+
+.friend__top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45em;
+}
+
+.friend__icon {
+  font-size: 1.3em;
+}
+
+.friend__job {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.friend__hearts {
+  color: var(--ui-accent);
+  letter-spacing: 0.08em;
+}
+
+.friend__sub {
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.calendar__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25em;
+}
+
+.calendar__weekday {
+  text-align: center;
+  font-size: 0.75em;
+  opacity: 0.7;
+}
+
+.calendar__day {
+  min-height: 2.8em;
+  background: var(--ui-slot);
+  border: 2px solid var(--ui-line);
+  border-radius: 0.6em;
+  padding: 0.15em 0.25em;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0.1em;
+}
+
+.calendar__day--today {
+  border-color: var(--ui-accent);
+  background: var(--ui-white);
+}
+
+.calendar__num {
+  width: 100%;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.calendar__mark {
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+.museum-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+}
+
+.museum-cell {
+  width: 2.2em;
+  height: 2.2em;
+  display: grid;
+  place-items: center;
+  border-radius: 0.6em;
+  background: var(--ui-slot);
+  border: 2px dashed var(--ui-line);
+  opacity: 0.6;
+}
+
+.museum-cell--on {
+  opacity: 1;
+  border-style: solid;
+  background: var(--ui-white);
+  font-size: 1.2em;
+}

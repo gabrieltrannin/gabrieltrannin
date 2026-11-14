@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { AssetRegistry } from '../assets/registry';
 import { FARM_CROP_DEFS, growthStage, type FarmCropId } from '../data/crops';
 import {
-  BARN, BENTO_SPOT, COOP, CREEK, CREEK_BEACH, CREEK_WIDTH, FARM_TILES, GREENHOUSE, HIVES, KITCHEN, LEVELS, MACHINE_PADS, MINE_NODES, PEN, PEN_YARD, POND,
+  BARN, COOP, CREEK, CREEK_BEACH, CREEK_WIDTH, FARM_TILES, GREENHOUSE, HIVES, KITCHEN, LEVELS, MACHINE_PADS, MINE_NODES, PEN, PEN_YARD, POND,
   SHIPPING_BIN, SMITHY, STUMPS, WORKBENCH,
 } from '../data/map';
 import { absoluteDay } from '../core/clock';
@@ -61,7 +61,6 @@ export function buildFarmWorld(assets: AssetRegistry): FarmWorld {
   place('barn', BARN.x, BARN.z);
   place('coop', COOP.x, COOP.z);
   place('smithy', SMITHY.x, SMITHY.z);
-  const bento = place('npc.bento', BENTO_SPOT[0], BENTO_SPOT[1], -0.5);
   place('shipping.bin', SHIPPING_BIN[0], SHIPPING_BIN[1], -0.35);
   place('kitchen', KITCHEN[0], KITCHEN[1], 0.25);
   place('workbench', WORKBENCH[0], WORKBENCH[1]);
@@ -317,7 +316,6 @@ export function buildFarmWorld(assets: AssetRegistry): FarmWorld {
         m.position.y = (m.userData.baseY as number) + Math.sin(elapsed * 3) * 0.08;
         m.rotation.y = elapsed * 1.5;
       }
-      bento.position.y = heightAt(BENTO_SPOT[0], BENTO_SPOT[1]) + Math.abs(Math.sin(elapsed * 1.6)) * 0.02;
       // Animals wander: walk to a random point in the yard, rest a little, pick another.
       for (const w of animals.values()) {
         const p = w.object.position;

@@ -2,6 +2,7 @@ import type { AssetRegistry } from '../registry';
 import { registerFarm } from './farm';
 import { registerNature } from './nature';
 import { registerVillage } from './village';
+import { registerTown } from './townhouses';
 import { registerWork } from './work';
 
 export { repaintStallSigns } from './village';
@@ -22,6 +23,7 @@ export function registerProceduralAssets(registry: AssetRegistry): void {
   registerFarm(registry);
   registerVillage(registry);
   registerWork(registry);
+  registerTown(registry);
 }
 
 /** Every object the design document lists under "Elementos que precisam existir", by asset name. */

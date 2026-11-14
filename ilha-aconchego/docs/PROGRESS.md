@@ -19,12 +19,127 @@ npm run build      # checagem de tipos + versão de produção em dist/
 - [x] **Etapa 1**: mundo e visual
 - [x] **Etapa 2**: personagem, controle e interface
 - [x] **Etapa 3**: fazenda e atividades
-- [ ] **Etapa 4**: vila e moradores
+- [x] **Etapa 4**: vila e moradores
 - [ ] **Etapa 5**: casa, decoração, ofícios e progressão
 - [ ] **Etapa 6**: exploração e eventos
 - [ ] **Etapa 7**: multijogador
 - [ ] **Etapa 8**: opções, som, acessibilidade e publicação
 - [ ] **Etapa 9**: expansão
+
+---
+
+## Etapa 4: vila e moradores (concluída)
+
+### O que foi feito
+
+- **A vila** (`src/data/village.ts`, `src/world/town.ts`): fica numa ilhota a leste, ligada à ilha principal por uma ponte nova de madeira. Tem 12 casas em três ruas, a praça com o poço, o quadro de pedidos, a loja de sementes da Flora e o museu. Ao norte, atrás de uma ponte velha quebrada, fica o bosque, com árvores, pedras e tocos.
+- **Os 12 moradores** (`src/data/villagers.ts`, `src/render/villager.ts`) são animais com roupas, no mesmo corpo da personagem, com orelhas, focinho, rabo e detalhes de cada espécie:
+  - Lumi (raposa, padeira);
+  - Pipo (lontra, pescador);
+  - Celeste (coruja, cuida do museu);
+  - Bento (texugo, ferreiro);
+  - Flora (coelha, loja de sementes);
+  - Dudu (urso, mel);
+  - Margô (ovelha, flores);
+  - Tico (cachorro);
+  - Juca (sapo);
+  - Lino (tartaruga, cuida das obras);
+  - Pérola (gata);
+  - Nico (esquilo).
+
+  Cada um tem casa própria, personalidade (alegre, doce, séria ou sonhadora), gostos de presente e aniversário.
+- **Rotina por horário e por clima**: cada morador tem uma agenda de lugares por hora e outra para dias de chuva. Exemplo: a Lumi abre a barraca de pães às 7h30, vai às mesas da praça às 17h e volta para casa às 21h. Na chuva, o Pipo fica no píer e o Dudu não sai da barraca de mel.
+  - Onde cada um está é calculado a partir da hora e do clima, igual para todo mundo (`villagerSpot`).
+  - No aparelho, eles caminham pelos caminhos da ilha pelo trajeto mais curto (`src/data/paths.ts`, `src/core/pathfinding.ts`). À noite entram em casa e somem.
+- **Diálogo** (`src/ui/dialogue.ts`, `src/game/conversations.ts`):
+  - balão com o nome, texto que aparece letra a letra e um balbucio baixinho no tom de cada morador;
+  - escolhas simples: conversar, dar presente, entregar pedido, loja, melhorar ferramenta, ver os projetos, doar ao museu e tchau;
+  - E avança, as teclas 1 a 8 escolhem e Esc fecha; no celular, toque.
+- **Falas** (`src/i18n/locales/pt-BR.dialogue.ts`): mudam com a personalidade, a hora, a estação, o clima e o nível de amizade. Os moradores lembram do último presente ("Ainda tô feliz com o Morango que você me deu!"), comentam o aniversário e lembram do pedido em aberto.
+- **Amizade de 0 a 10 corações** (100 pontos cada):
+  - conversar dá +20, uma vez por dia;
+  - um presente por dia: amado +80, gostado +45, neutro +20, não gostado −20;
+  - no aniversário, o presente vale o dobro;
+  - um pedido entregue dá +100.
+- **Quadro de pedidos** (na praça da vila): até 3 pedidos, renovados de manhã, com prazo de 4 dias e recompensa em moedas. O primeiro é o da Lumi: 3 morangos por 300 moedas, sem prazo.
+- **Projetos comunitários** (`src/data/community.ts`): cada jogadora doa aos poucos, pelo quadro. Ao concluir, todo mundo recebe uma carta de agradecimento.
+  - **Consertar a ponte velha** (40 madeiras, 20 pedras, 1.500 moedas): libera o bosque, com pedras onde aparecem mais fósseis.
+  - **Abrir o museu** (30 pedras, 8 minérios de cobre, 1 fóssil, 2.000 moedas): libera a coleção de 21 peças (peixes, insetos e o fóssil), uma de cada.
+  - **Ampliar a loja da Flora** (25 madeiras, 5 adubos, 1.200 moedas): libera sementes de todas as estações para a estufa.
+- **Feira funcionando**: barraca de pães (Lumi), de mel (Dudu) e de flores (Margô), loja de sementes (Flora) e ferraria (Bento). Cada loja só abre com o dono no balcão; fora do horário aparece "Está fechado agora".
+- **Itens de Lançamento** que também entraram:
+  - presentes favoritos, que a tela de amizade mostra conforme você descobre;
+  - aniversários no calendário, com uma carta de lembrete na véspera;
+  - correio: cartas chegam na caixa de correio (com um envelope em cima), e aos 4, 6 e 8 corações vêm com presente;
+  - cenas especiais a cada 2 corações.
+- **Telas novas**, no estilo da interface:
+  - amizade e calendário, pela mochila (botões "Amizades" e "Calendário");
+  - quadro de pedidos e projetos;
+  - museu;
+  - cartas.
+- **Mapa e câmera**: o minimapa mostra a área em que você está (ilha, vila ou bosque) com pontinhos dos moradores. A visão "Ilha toda", as sombras e as nuvens acompanham a área.
+- **Salvamento**: versão 4 do arquivo. Jogos da etapa 3 são convertidos sozinhos (ganham amizades, correio, pedidos, projetos e museu).
+
+### Como testar
+
+1. `npm test`: 114 testes passam. Os novos da vila cobrem:
+   - reações a presentes;
+   - rotina e chuva, e loja aberta só com o dono;
+   - memória de conversa e presente, aniversário em dobro e cena aos 2 corações;
+   - carta com presente aos 4 corações;
+   - o pedido da Lumi (+300 moedas e o quadro volta a ter 3);
+   - a ponte consertada com a carta de agradecimento;
+   - a doação ao museu (uma vez só);
+   - a conversão do save da etapa 3.
+2. `npm run dev`, crie a personagem e:
+   - vá até a feira e fale com a Lumi (E): converse, escolha "Dar presente" ou, com 3 morangos colhidos, "Entregar 3× Morango";
+   - atravesse a ponte nova a leste até a vila; o quadro de pedidos fica ao lado do poço;
+   - no painel de testes, mude a hora ("Manhã", "Pôr do sol", "Noite") e o clima ("Chuva") para ver os moradores mudarem de lugar;
+   - na mochila (Tab), abra "Amizades" e "Calendário"; cartas novas aparecem com um envelope sobre a caixa de correio, ao lado da casa.
+
+Verificado nesta etapa:
+- **Comandos básicos**: testes, checagem de tipos e build passando.
+- **Rotinas por hora no navegador**:
+  - às 10h, cada morador na sua barraca, loja, píer ou praça;
+  - às 17h20, caminhando até o próximo lugar;
+  - às 21h30, todos em casa, menos a Celeste e o Juca, que estão no lago;
+  - na chuva, Dudu na barraca e Pipo no píer;
+  - a Lumi vai da barraca às mesas da praça pelo caminho atrás das barracas, sem dar a volta pela fazenda.
+- **Presente e entrega**: a torta de amora dada à Lumi teve reação de "amado", ficou registrada como favorito descoberto e continuou lá depois de recarregar. A entrega dos 3 morangos rendeu 300 moedas.
+- **Telas**: quadro, amizade, calendário e cartas abertas e conferidas.
+- **Ponte**: o projeto foi concluído pelo quadro e a personagem atravessou a ponte velha até o bosque. Recarregando, a ponte continuou consertada.
+- **Museu**: o projeto foi concluído, o prédio abriu (as tábuas saem da porta), "Entrar no museu" aparece na porta e a doação do fóssil entrou na coleção.
+- **Celular** (390×844): diálogo com escolhas e lista de presentes, sem rolagem lateral.
+- **Sem erros no console**, com cerca de 250 a 300 chamadas de desenho e 370 a 490 mil triângulos por quadro, contando sombras.
+
+Não verificado: aparelhos reais (aqui não há placa de vídeo, então não dá para medir qps) e o balbucio com som de verdade.
+
+### Decisões técnicas
+
+- **Lugar da vila**: a vila ganhou uma ilhota própria a leste, ligada pela ponte nova. O bosque fica numa terceira ilhota, ao norte da vila, atrás da ponte velha; até o conserto, um bloqueio invisível impede a passagem.
+- **Lojas**:
+  - a loja de sementes passou para a Flora, na vila;
+  - a barraca de flores agora vende flores;
+  - o Bento deixou de ficar parado na forja e passou a ter rotina como os outros;
+  - a terceira obra, "Ampliar a loja da Flora", libera sementes de todas as estações;
+  - a reforma da estufa continua como na etapa 3.
+- **Posição dos moradores**: não fica salva. Ela é calculada pela hora e pelo clima, então todas as jogadoras veem o mesmo e o servidor da etapa 7 só precisa conferir a regra. Os comandos aceitam a jogadora até 9 m do lugar atual ou anterior do morador, porque ele pode estar caminhando.
+- **Comandos novos** em `src/core/handlers/village.ts`: conversar, presentear, entregar pedido, doar a projeto, doar ao museu, ler e pegar carta. A virada do dia renova o quadro, entrega cartas e lembretes de aniversário.
+- **Falas com gênero**: frases de agradecimento usam a forma certa para a personagem ("Obrigado"/"Obrigada"). As outras falas foram escritas de forma neutra.
+- **Balbucio**: gerado na hora com WebAudio, baixinho, sem arquivos de som.
+- **Antes de qualquer ação com E**, a posição da personagem é gravada no estado. Antes, ao chegar correndo no quadro ou no museu, a doação podia dizer "Chegue mais perto".
+
+### Pendências e notas
+
+- **Pedidos**: são de itens que já existem (cultivos, peixes, insetos, minérios, pratos). Pedidos mais elaborados e com história ficam para depois.
+- **Cenas especiais** são diálogos curtos com o morador, sem câmera ou animação própria.
+- **Interiores**: as casas dos moradores e o museu ainda não têm interior. Por enquanto, o museu é uma janela com a coleção.
+- **Desempenho**: o custo de desenho subiu com a vila (cerca de 290 chamadas por quadro). Se pesar no celular, as casas podem passar a ser desenhadas em grupo (instâncias).
+- **Ícones**: continuam sendo emoji.
+
+### Próximo passo
+
+Etapa 5: casa, decoração, ofícios e progressão.
 
 ---
 
@@ -116,7 +231,7 @@ Não verificado: a meta de qps num aparelho real (aqui não há placa de vídeo)
 
 - **Pegar insetos e cortar lenha** não estão entre as seis habilidades. Os insetos dão experiência de carisma e a lenha, de ofícios.
 - **Opções ainda sem menu** (etapa 8): a "barra de energia ligada" e as "plantas murcham sem água" ainda não podem ser trocadas. O "minijogos assistidos" já existe no código (faixa verde maior), mas também espera o menu.
-- **O Bento fica parado na forja**: a rotina, a fala e a amizade dos moradores chegam na etapa 4. As barracas ainda se atendem sozinhas.
+- **O Bento fica parado na forja**: a rotina, a fala e a amizade dos moradores chegam na etapa 4. As barracas ainda se atendem sozinhas. (Resolvido na etapa 4.)
 - **Compras e qualidade**: ainda não dá para comprar mais animais. A qualidade só vale para a colheita; os produtos dos animais e o suco têm preço fixo.
 - **Máquinas e irrigadores** não podem ser recolhidos depois de colocados.
 - **Ícones**: os itens novos também usam emoji (o feno usa 🍂 para não se confundir com o selo de semente).

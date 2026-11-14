@@ -22,7 +22,7 @@ const RED = 0xc8553d;
 const INK = 0x2a1e1e;
 
 /** Gable roof of two slanted boards over a box of width w and depth d, starting at height y. */
-function gable(w: number, d: number, y: number, rise: number, color: number, overhang = 0.18): THREE.BufferGeometry[] {
+export function gable(w: number, d: number, y: number, rise: number, color: number, overhang = 0.18): THREE.BufferGeometry[] {
   const half = w / 2 + overhang;
   const slope = Math.atan2(rise, half);
   const len = Math.hypot(half, rise);

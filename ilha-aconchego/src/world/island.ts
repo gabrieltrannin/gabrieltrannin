@@ -22,7 +22,7 @@ export function roundedRectShape(rect: RoundedRect): THREE.Shape {
 }
 
 /** Extrudes a shape upward from y0. Material 0 = top (and hidden bottom) cap, material 1 = side walls. */
-function slab(shape: THREE.Shape, y0: number, height: number, top: THREE.Material, side: THREE.Material): THREE.Mesh {
+export function slab(shape: THREE.Shape, y0: number, height: number, top: THREE.Material, side: THREE.Material): THREE.Mesh {
   const g = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, curveSegments: 10 });
   g.rotateX(-Math.PI / 2);
   g.translate(0, y0, 0);
@@ -33,7 +33,7 @@ function slab(shape: THREE.Shape, y0: number, height: number, top: THREE.Materia
 }
 
 /** Cliff-band texture stretched so one band set covers the wall height (the top row sits at the top edge). */
-function cliffMaterial(height: number): THREE.MeshLambertMaterial {
+export function cliffMaterial(height: number): THREE.MeshLambertMaterial {
   const t = cliffTexture();
   t.repeat.set(1 / 4, 1 / height);
   t.offset.set(0, -(1 - height) / height);
@@ -41,7 +41,7 @@ function cliffMaterial(height: number): THREE.MeshLambertMaterial {
 }
 
 /** Rounded grass lip running along the top edge of a cliff. */
-function lip(shape: THREE.Shape, y: number, material: THREE.Material): THREE.Mesh {
+export function lip(shape: THREE.Shape, y: number, material: THREE.Material): THREE.Mesh {
   const points = shape.getSpacedPoints(220);
   points.pop();
   const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(p.x, y, -p.y)), true);

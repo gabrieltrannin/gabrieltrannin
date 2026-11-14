@@ -289,7 +289,22 @@ function addAccessory(a: Appearance, head: THREE.Group): void {
 }
 
 /** Builds a new character. Call `disposeAvatar` when replacing it. */
-export function buildAvatar(a: Appearance): THREE.Group {
+/** Shapes and helpers to add extra parts to a character (the villagers' ears, snouts and tails). */
+export interface AvatarKit {
+  root: THREE.Group;
+  body: THREE.Group;
+  head: THREE.Group;
+  part: typeof part;
+  mat: typeof mat;
+  sphere: () => THREE.BufferGeometry;
+  sphereLow: () => THREE.BufferGeometry;
+  cone: () => THREE.BufferGeometry;
+  cylinder: () => THREE.BufferGeometry;
+  box: () => THREE.BufferGeometry;
+  geo: typeof geo;
+}
+
+export function buildAvatar(a: Appearance, extras?: (kit: AvatarKit) => void): THREE.Group {
   const root = new THREE.Group();
   root.name = 'avatar';
   const body = new THREE.Group();
@@ -357,6 +372,7 @@ export function buildAvatar(a: Appearance): THREE.Group {
   addHair(a, head);
   addEars(a, head, body);
   addAccessory(a, head);
+  extras?.({ root, body, head, part, mat, sphere: SPHERE, sphereLow: SPHERE_LOW, cone: CONE, cylinder: CYLINDER, box: BOX, geo });
 
   // Fewer draw calls: merge every group's plain shapes (the groups themselves keep animating).
   const groups: THREE.Object3D[] = [];

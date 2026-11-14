@@ -92,3 +92,21 @@ describe('walking around the island', () => {
     expect(end.x).toBeLessThan(PIER.x1);
   });
 });
+
+describe('the village islet and its bridges', () => {
+  it('crosses the new bridge to the village, but not the broken old one', () => {
+    const toVillage = walk([14.6, -2.8], [27.5, -2.8]);
+    expect(toVillage.x).toBeGreaterThan(26);
+    expect(toVillage.h).toBe(1.4);
+    const blocked = walk([34.5, -10.5], [34.5, -21]);
+    expect(blocked.z).toBeGreaterThan(-15);
+    const fixed = buildColliders({ bridgeFixed: true });
+    let [x, z] = [34.5, -10.5];
+    for (let i = 0; i < 200; i++) {
+      const r = step(x, z, x, z - 0.12, fixed, 'spring');
+      if (!r.moved) break;
+      [x, z] = [r.x, r.z];
+    }
+    expect(z).toBeLessThan(-20);
+  });
+});

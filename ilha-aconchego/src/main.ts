@@ -11,10 +11,14 @@ import type { Actor, GameState } from './core/types';
 import { DEFAULT_DAY_LENGTH_MIN, type SeasonId } from './data/calendar';
 import { DEFAULT_PLAYER } from './data/defaults';
 import { HOTBAR_SIZE } from './data/items';
-import { BED_REACH, HOUSE_DOOR, LEVELS, ORCHARD, orchardTreeId, OVERVIEW, PLAYER_START, PROPS, TOUR_PLACES, TREE_REACH } from './data/map';
+import { BED_REACH, HOUSE_DOOR, LEVELS, MAILBOX, ORCHARD, orchardTreeId, OVERVIEW, PLAYER_START, PROPS, TOUR_PLACES, TREE_REACH } from './data/map';
 import { FishingSession } from './game/fishing';
 import { Interactions } from './game/interactions';
 import { createIslandActions } from './game/islandActions';
+import { createConversations } from './game/conversations';
+import { areaAt } from './data/areas';
+import { VILLAGERS, villager, type NpcId } from './data/villagers';
+import { DialogueBox } from './ui/dialogue';
 import { Pet } from './game/pet';
 import { PlayerController } from './game/playerController';
 import { t, type MessageKey } from './i18n';
@@ -165,7 +169,7 @@ async function start(): Promise<void> {
   const avatar = buildAvatar(me().appearance);
   avatar.name = 'player';
   scene.add(avatar);
-  const colliders = buildColliders({ greenhouseFixed: game.state.greenhouse });
+  const colliders = buildColliders({ greenhouseFixed: game.state.greenhouse, bridgeFixed: game.state.projects.bridge.done });
   const player = new PlayerController(avatar, colliders, me().position);
   const pet = new Pet(assets.create('pet.bunny'), player.x - 0.8, player.z - 0.6);
   scene.add(pet.object);
@@ -208,6 +212,14 @@ async function start(): Promise<void> {
       if (!r.ok) hud.toast(errorText(r.error));
     },
     onClose: () => bag.close(),
+    onFriends: () => {
+      bag.close();
+      panels.openFriends();
+    },
+    onCalendar: () => {
+      bag.close();
+      panels.openCalendar();
+    },
   });
   game.on(event => {
     if ((event.type === 'inventory.changed' || event.type === 'player.changed') && bag.isOpen) bag.refresh();
@@ -228,10 +240,9 @@ async function start(): Promise<void> {
 
   const ERROR_TEXT: Partial<Record<CommandError, MessageKey>> = {
     too_far: 'msg.tooFar', inventory_full: 'msg.inventoryFull', tired: 'msg.tired', no_money: 'msg.noMoney', missing: 'msg.missing',
-    not_tilled: 'msg.notTilled', occupied: 'msg.occupied', wrong_season: 'msg.wrongSeason', not_ready: 'msg.nothingToHarvest', no_tool: 'msg.noTool',
+    not_tilled: 'msg.notTilled', occupied: 'msg.occupied', wrong_season: 'msg.wrongSeason', not_ready: 'msg.nothingToHarvest', no_tool: 'msg.noTool', already: 'msg.already', closed: 'msg.closed',
   };
   const errorText = (error: string | undefined): string => t(ERROR_TEXT[error as CommandError] ?? 'msg.notAvailable');
-  const above = (x: number, z: number, height: number) => () => new THREE.Vector3(x, heightAt(x, z) + height, z);
 
   // Things to act on with E / Ação.
   const interactions = new Interactions();
@@ -263,7 +274,7 @@ async function start(): Promise<void> {
       at: () => ({ x, z }),
       radius: 1.6,
       label: () => t('interact.mail'),
-      act: () => bubbles.show('mailbox', t('msg.mail', { island: game.state.island.name }), above(x, z, 1.5), 5),
+      act: () => panels.openMail(),
     });
   }
   ORCHARD.forEach(([x, z], index) => {
@@ -331,12 +342,45 @@ async function start(): Promise<void> {
     if (event.type === 'tool.upgraded') hud.toast(t('msg.upgraded', { tool: t(`item.tool.${event.tool}`), level: t(`tool.level.${event.level}` as MessageKey) }));
     if (event.type === 'farm.rained') hud.toast(t('msg.rainWatered'));
     if (event.type === 'farm.withered') hud.toast(t('msg.withered'));
-    if (event.type === 'world.changed' && game.state.greenhouse && !greenhouseOpen) {
-      greenhouseOpen = true;
-      player.setColliders(buildColliders({ greenhouseFixed: true }));
+    // The greenhouse door and the old bridge open up when they are fixed.
+    if (event.type === 'world.changed') {
+      const key = `${game.state.greenhouse}|${game.state.projects.bridge.done}`;
+      if (key !== openings) {
+        openings = key;
+        player.setColliders(buildColliders({ greenhouseFixed: game.state.greenhouse, bridgeFixed: game.state.projects.bridge.done }));
+      }
     }
+    if (event.type === 'project.done') hud.toast(t('msg.projectDone', { project: t(`project.${event.project}` as MessageKey) }));
+    if (event.type === 'npc.heart') {
+      const v = villager(event.npc);
+      hud.toast(t('msg.heartUp', { name: v.name, hearts: event.hearts }));
+      showHearts(event.npc);
+    }
+    if (event.type === 'day.started' && me().mail.some(m => !m.read)) window.setTimeout(() => hud.toast(t('msg.newMail')), 1800);
   });
-  let greenhouseOpen = game.state.greenhouse;
+  let openings = `${game.state.greenhouse}|${game.state.projects.bridge.done}`;
+  const showHearts = (npc: NpcId) => {
+    const at = world.villagers.positionOf(npc);
+    if (at) bubbles.show(`hearts-${npc}`, '💗', () => at.clone().setY(at.y + 2.1), 1.8);
+  };
+
+  // Villagers: they walk to their next place when the clock or the weather change, and jump there on a new day.
+  let lastMinute = game.state.time.minuteOfDay;
+  world.villagers.sync(game.state, true);
+  game.on(event => {
+    if (event.type === 'day.started' || event.type === 'date.changed') world.villagers.sync(game.state, true);
+    if (event.type === 'time.changed') {
+      const jump = Math.abs(game.state.time.minuteOfDay - lastMinute) > 40;
+      world.villagers.sync(game.state, jump);
+    }
+    if (event.type === 'weather.changed' || event.type === 'project.done') world.villagers.sync(game.state);
+    lastMinute = game.state.time.minuteOfDay;
+  });
+  const dialogue = new DialogueBox(uiRoot);
+  createConversations({
+    game, actor: localActor, player, agents: world.villagers, dialogue, panels, interactions,
+    toast: text => hud.toast(text), errorText, commitMove, hearts: npc => showHearts(npc),
+  });
 
   game.on(event => {
     if (event.type === 'tree.shaken') {
@@ -396,6 +440,13 @@ async function start(): Promise<void> {
   let last = performance.now();
   let elapsed = 0;
   let moveTimer = 0, saveTimer = 0, tourTimer = 0, mapTimer = 1;
+  let currentArea = areaAt(player.x, player.z);
+  rig.setOverview({ x: currentArea.x, y: LEVELS.main.top, z: currentArea.z, width: currentArea.width, depth: currentArea.depth });
+  atmosphere.setFocus(currentArea.x, currentArea.z);
+  // A little sparkle over the mailbox when letters are waiting.
+  const mailFlag = assets.create('marker.ready');
+  mailFlag.position.set(MAILBOX[0], 3, MAILBOX[1]);
+  scene.add(mailFlag);
   renderer.setAnimationLoop(now => {
     const dtMs = Math.min(250, now - last);
     last = now;
@@ -405,7 +456,11 @@ async function start(): Promise<void> {
 
     // Input: the backpack or a window takes over while open; fishing holds the character still.
     const frame = input.poll();
-    if (panels.isOpen) {
+    if (dialogue.isOpen) {
+      if (frame.escape) dialogue.close();
+      else if (frame.slot !== null) dialogue.choose(frame.slot);
+      else if (frame.action) dialogue.advance();
+    } else if (panels.isOpen) {
       if (frame.escape || frame.toggleBag) panels.close();
     } else if (bag.isOpen) {
       if (frame.toggleBag || frame.escape) bag.close();
@@ -421,17 +476,23 @@ async function start(): Promise<void> {
       if (frame.slotStep !== 0) game.dispatch({ type: 'inventory.select', slot: (me().activeSlot + frame.slotStep + HOTBAR_SIZE) % HOTBAR_SIZE }, localActor);
       rig.yaw += frame.turn * CAMERA_TURN_SPEED * dt;
     }
-    const playing = !bag.isOpen && !panels.isOpen && !fishing.active;
+    const playing = !bag.isOpen && !panels.isOpen && !fishing.active && !dialogue.isOpen;
     player.speedFactor = me().buff === 'speed' ? 1.2 : 1;
     player.update(dt, playing ? frame : null, rig.yaw, season);
     if (player.takeDirty()) moveDirty = true;
     pet.update(dt, { x: player.x, z: player.z, y: avatar.position.y, facing: player.facing });
 
+    dialogue.update(dt);
     if (fishing.active) hud.setPrompt(fishing.update(dt, elapsed, bag.isOpen || panels.isOpen ? null : frame));
+    else if (dialogue.isOpen) hud.setPrompt(null);
     else {
       const action = playing ? actions.resolve() : null;
       hud.setPrompt(action ? action.label : null);
-      if (action && frame.action && playing) action.run();
+      if (action && frame.action && playing) {
+        // Panels (board, museum, shops) check distance with the position in the game state.
+        commitMove();
+        action.run();
+      }
     }
     bugs.update(dt, elapsed, season, game.state.time.minuteOfDay, game.state.weather);
 
@@ -452,7 +513,7 @@ async function start(): Promise<void> {
     }
 
     world.update(dt, elapsed, reducedMotion);
-    weatherFx.update(dt, elapsed, { camera: rig.camera, night: atmosphere.night, cameraYaw: rig.yaw, cloudColor: atmosphere.cloudColor, particles: true, reducedMotion });
+    weatherFx.update(dt, elapsed, { camera: rig.camera, night: atmosphere.night, cameraYaw: rig.yaw, cloudColor: atmosphere.cloudColor, particles: true, reducedMotion, center: currentArea });
     atmosphere.update(dt, weatherFx.flash);
     world.sea.setTint(atmosphere.waterTint);
     rig.update(dt);
@@ -461,7 +522,16 @@ async function start(): Promise<void> {
     mapTimer += dt;
     if (mapTimer >= 0.1) {
       mapTimer = 0;
-      hud.drawMinimap({ season, night: atmosphere.night > 0.5, player: { x: player.x, z: player.z, facing: player.facing }, pet: { x: pet.object.position.x, z: pet.object.position.z } });
+      const area = areaAt(player.x, player.z);
+      if (area !== currentArea) {
+        currentArea = area;
+        rig.setOverview({ x: area.x, y: LEVELS.main.top, z: area.z, width: area.width, depth: area.depth });
+        atmosphere.setFocus(area.x, area.z);
+      }
+      const villagersOut = VILLAGERS.map(v => world.villagers.positionOf(v.id)).filter((p): p is THREE.Vector3 => !!p).map(p => ({ x: p.x, z: p.z }));
+      hud.drawMinimap({ season, night: atmosphere.night > 0.5, player: { x: player.x, z: player.z, facing: player.facing }, pet: { x: pet.object.position.x, z: pet.object.position.z }, area, villagers: villagersOut });
+      mailFlag.visible = me().mail.some(m => !m.read || (m.item && !m.taken));
+      mailFlag.position.y = heightAt(MAILBOX[0], MAILBOX[1]) + 1.75 + Math.sin(elapsed * 3) * 0.06;
     }
     post.render(dt);
     dev?.frame(dtMs);

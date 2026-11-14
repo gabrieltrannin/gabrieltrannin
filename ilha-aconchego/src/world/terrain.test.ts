@@ -27,7 +27,10 @@ describe('groundHeight', () => {
   it('has the pier over the sea and nothing in open water', () => {
     expect(groundHeight(10, 20)).toBe(PIER.deck);
     expect(groundHeight(14, 21)).toBeNull();
-    expect(groundHeight(30, 0)).toBeNull();
+    expect(groundHeight(-30, 0)).toBeNull();
+    expect(groundHeight(21.5, 6)).toBeNull();
+    expect(groundHeight(30, 0)).toBe(1.4);
+    expect(groundHeight(20, -2.8)).toBe(1.4);
   });
 });
 

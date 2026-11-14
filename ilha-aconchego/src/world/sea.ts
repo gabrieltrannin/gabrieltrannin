@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { LEVELS, SEA_LEVEL } from '../data/map';
+import { ISLETS } from '../data/village';
 import { rippleTexture, seaGradientTexture } from '../render/textures';
 import { roundedRectShape } from './island';
 
@@ -28,19 +29,25 @@ export function buildSea(): Sea {
   rippleLayer.rotation.x = -Math.PI / 2;
   rippleLayer.position.set(0, SEA_LEVEL + 0.02, 1.2);
 
-  // Foam: a flattened tube just outside the beach outline.
-  const points = roundedRectShape(LEVELS.beach).getSpacedPoints(200);
-  points.pop();
-  const curve = new THREE.CatmullRomCurve3(
-    points.map(p => {
-      const d = Math.hypot(p.x, p.y) || 1;
-      return new THREE.Vector3(p.x + (p.x / d) * 0.25, SEA_LEVEL + 0.02, -p.y - (p.y / d) * 0.25);
-    }),
-    true,
-  );
+  // Foam: a flattened tube just outside each beach outline (the island, the village islet, the wood).
   const foamMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false });
-  const foam = new THREE.Mesh(new THREE.TubeGeometry(curve, 400, 0.26, 5, true), foamMaterial);
-  foam.scale.y = 0.25;
+  const foams = [LEVELS.beach, ...ISLETS.map(i => i.beach)].map(beach => {
+    const points = roundedRectShape(beach).getSpacedPoints(200);
+    points.pop();
+    const cx = (beach.x0 + beach.x1) / 2, cz = (beach.z0 + beach.z1) / 2;
+    const curve = new THREE.CatmullRomCurve3(
+      points.map(p => {
+        const dx = p.x - cx, dz = -p.y - cz, d = Math.hypot(dx, dz) || 1;
+        return new THREE.Vector3(p.x + (dx / d) * 0.25, SEA_LEVEL + 0.02, -p.y + (dz / d) * 0.25);
+      }),
+      true,
+    );
+    const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 400, 0.26, 5, true), foamMaterial);
+    mesh.scale.y = 0.25;
+    return mesh;
+  });
+  const foam = new THREE.Group();
+  foam.add(...foams);
 
   root.add(plane, rippleLayer, foam);
   return {
@@ -52,7 +59,6 @@ export function buildSea(): Sea {
       if (!reducedMotion) ripples.offset.set(elapsed * 0.012, elapsed * 0.006);
       const pulse = Math.sin(elapsed * 1.4);
       foamMaterial.opacity = 0.5 + pulse * 0.2;
-      foam.scale.x = foam.scale.z = 1 + pulse * 0.004;
     },
   };
 }

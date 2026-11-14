@@ -12,6 +12,8 @@ export interface InventoryPanelOptions {
   onMove(from: number, to: number): void;
   onEat(slot: number): void;
   onClose(): void;
+  onFriends?(): void;
+  onCalendar?(): void;
 }
 
 export interface InventoryPanel {
@@ -66,7 +68,15 @@ export function createInventoryPanel(root: HTMLElement, opts: InventoryPanelOpti
   title.id = 'bag-title';
   const close = el('button', 'ui-btn ui-btn--small', t('inventory.close'));
   close.type = 'button';
-  header.append(title, close);
+  const tabs = el('div', 'bag__tabs');
+  for (const [label, run] of [[t('bag.friends'), opts.onFriends], [t('bag.calendar'), opts.onCalendar]] as const) {
+    if (!run) continue;
+    const b = el('button', 'ui-btn ui-btn--small', label);
+    b.type = 'button';
+    b.addEventListener('click', () => run());
+    tabs.append(b);
+  }
+  header.append(title, tabs, close);
   const grid = el('div', 'bag__grid');
   const hint = el('p', 'bag__hint', t('inventory.hint'));
   const details = el('div', 'bag__details');

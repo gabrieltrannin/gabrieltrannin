@@ -6,6 +6,9 @@ import {
   STUMPS, WORKBENCH,
 } from '../data/map';
 import { groundHeight, insideRoundedRect } from './terrain';
+import {
+  BRIDGE_SIGN, BRIDGES, HOUSE_SIZE, HOUSE_SPOTS, ISLETS, MUSEUM, NOTICE_BOARD, OLD_BRIDGE_GAP, SEED_SHOP, VILLAGE_LAMPS, VILLAGE_TREES, WELL, WOOD_TREES,
+} from '../data/village';
 
 /**
  * Walking rules, as pure functions (no Three.js): where the ground can be walked on, what blocks the way,
@@ -34,7 +37,17 @@ export function walkableHeight(x: number, z: number): number | null {
   }
   if (insideRoundedRect(x, z, main, EDGE_MARGIN)) return groundHeight(x, z);
   if (x > PIER.x0 + 0.1 && x < PIER.x1 - 0.1 && z > PIER.z0 && z < PIER.z1 - 0.1) return PIER.deck;
+  // Bridges between islands, walked on at deck height (the rails keep you on them).
+  for (const b of BRIDGES) {
+    const inX = b.along === 'x' ? x >= b.x0 - 0.6 && x <= b.x1 + 0.6 : x > b.x0 + 0.3 && x < b.x1 - 0.3;
+    const inZ = b.along === 'z' ? z >= b.z0 - 0.6 && z <= b.z1 + 0.6 : z > b.z0 + 0.3 && z < b.z1 - 0.3;
+    if (inX && inZ) return b.deck;
+  }
   if (insideRoundedRect(x, z, LEVELS.beach, EDGE_MARGIN) && !insideRoundedRect(x, z, main, -0.05)) return LEVELS.beach.top;
+  for (const islet of ISLETS) {
+    if (insideRoundedRect(x, z, islet.main, EDGE_MARGIN)) return islet.main.top;
+    if (insideRoundedRect(x, z, islet.beach, EDGE_MARGIN) && !insideRoundedRect(x, z, islet.main, -0.05)) return islet.beach.top;
+  }
   return null;
 }
 
@@ -86,8 +99,24 @@ function workColliders(greenhouseFixed: boolean): Collider[] {
 }
 
 /** Everything solid on the starting island, built from the map data (the greenhouse door opens once it is fixed). */
-export function buildColliders(opts: { greenhouseFixed?: boolean } = {}): Collider[] {
-  const list: Collider[] = workColliders(opts.greenhouseFixed ?? false);
+/** Stage 4: village houses, museum, seed shop, board, well, lamps and trees; bridge rails; the gap of the old bridge. */
+function villageColliders(bridgeFixed: boolean): Collider[] {
+  const list: Collider[] = [];
+  for (const h of HOUSE_SPOTS) list.push(rect(h.x, h.z, HOUSE_SIZE.w, HOUSE_SIZE.d));
+  list.push(rect(MUSEUM.x, MUSEUM.z, MUSEUM.w, MUSEUM.d), rect(SEED_SHOP.x, SEED_SHOP.z, SEED_SHOP.w, SEED_SHOP.d));
+  list.push({ kind: 'circle', x: NOTICE_BOARD[0], z: NOTICE_BOARD[1], r: 0.55 }, { kind: 'circle', x: WELL[0], z: WELL[1], r: 0.6 }, { kind: 'circle', x: BRIDGE_SIGN[0], z: BRIDGE_SIGN[1], r: 0.3 });
+  for (const [x, z] of VILLAGE_LAMPS) list.push({ kind: 'circle', x, z, r: 0.2 });
+  for (const [x, z, s] of [...VILLAGE_TREES, ...WOOD_TREES]) list.push({ kind: 'circle', x, z, r: 0.45 * s });
+  for (const b of BRIDGES) {
+    if (b.along === 'x') list.push(segment(b.x0 + 0.6, b.z0, b.x1 - 0.6, b.z0, 0.08), segment(b.x0 + 0.6, b.z1, b.x1 - 0.6, b.z1, 0.08));
+    else list.push(segment(b.x0, b.z0 + 0.6, b.x0, b.z1 - 0.6, 0.08), segment(b.x1, b.z0 + 0.6, b.x1, b.z1 - 0.6, 0.08));
+  }
+  if (!bridgeFixed) list.push({ kind: 'box', x0: OLD_BRIDGE_GAP.x0, z0: OLD_BRIDGE_GAP.z0, x1: OLD_BRIDGE_GAP.x1, z1: OLD_BRIDGE_GAP.z1 });
+  return list;
+}
+
+export function buildColliders(opts: { greenhouseFixed?: boolean; bridgeFixed?: boolean } = {}): Collider[] {
+  const list: Collider[] = [...workColliders(opts.greenhouseFixed ?? false), ...villageColliders(opts.bridgeFixed ?? false)];
   for (const p of PROPS) {
     const c = footprintCollider(fp(p.asset), p.at[0], p.at[1], p.ry, p.scale);
     if (p.asset === 'boat') continue;

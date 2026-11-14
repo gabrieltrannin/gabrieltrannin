@@ -2,8 +2,11 @@ import type { Game } from '../core/game';
 import { countItem, countKind } from '../core/inventory';
 import { levelOf, sellPrice } from '../core/rules';
 import type { Actor, ItemStack, PlayerState } from '../core/types';
-import { seasonOf } from '../core/clock';
-import { ITEMS, type ItemId } from '../data/items';
+import { absoluteDay, seasonOf } from '../core/clock';
+import { DAYS_PER_SEASON, FESTIVALS, SEASONS, WEEKDAYS } from '../data/calendar';
+import { MUSEUM_EXTRA, PROJECTS } from '../data/community';
+import { hearts, villager, VILLAGERS } from '../data/villagers';
+import { ITEM_IDS, ITEMS, type ItemId } from '../data/items';
 import { COOKING, CRAFTING, type Recipe } from '../data/recipes';
 import { shopEntries, type ShopId } from '../data/shops';
 import { MAX_TOOL_LEVEL, TOOLS, toolItem, UPGRADE_COST } from '../data/tools';
@@ -48,6 +51,12 @@ export interface PanelHost {
   openKitchen(): void;
   openWorkbench(): void;
   openSmithy(): void;
+  /** Village notice board: requests and community projects. */
+  openBoard(): void;
+  openMuseum(): void;
+  openMail(): void;
+  openFriends(): void;
+  openCalendar(season?: number): void;
 }
 
 /**
@@ -201,6 +210,137 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
         }
       });
     },
+
+    openBoard() {
+      open(t('panel.board.title'), () => {
+        body.replaceChildren();
+        section(t('panel.board.requests'));
+        const today = absoluteDay(game.state.time);
+        const active = game.state.requests.filter(r => !r.done);
+        if (!active.length) body.append(el('p', 'panel__empty', t('panel.board.none')));
+        for (const r of active) {
+          const v = villager(r.npc);
+          const left = r.until < 0 ? t('panel.board.noLimit') : t('panel.board.daysLeft', { days: r.until - today + 1 });
+          const have = countItem(me().inventory, r.item);
+          body.append(row(v.icon, t('panel.board.request', { name: v.name, qty: r.qty, item: t(`item.${r.item}`) }), `${t('panel.board.reward', { coins: r.reward })} · ${left} · ${t('panel.youHave', { qty: have })}`));
+        }
+        body.append(el('p', 'bag__hint', t('panel.board.hint')));
+        for (const def of PROJECTS) {
+          const project = game.state.projects[def.id];
+          section(`${t(`project.${def.id}` as MessageKey)}${project.done ? ' ✓' : ''}`);
+          body.append(el('p', 'panel__note', t(`project.${def.id}.text` as MessageKey)));
+          if (project.done) continue;
+          for (const need of def.needs) {
+            const given = project.given[need.item] ?? 0, left = need.qty - given, have = countItem(me().inventory, need.item);
+            const give = Math.min(left, have);
+            body.append(row(ITEMS[need.item].icon, `${t(`item.${need.item}`)} ${given}/${need.qty}`, t('panel.youHave', { qty: have }),
+              button(give > 0 ? t('panel.board.give', { qty: give }) : t('panel.board.giveNone'), () => dispatch({ type: 'project.contribute', project: def.id, item: need.item, qty: give }), give <= 0 || left <= 0, true)));
+          }
+          const leftCoins = def.coins - project.coins, giveCoins = Math.min(leftCoins, me().coins);
+          body.append(row('🪙', `${t('panel.board.coins')} ${project.coins.toLocaleString('pt-BR')}/${def.coins.toLocaleString('pt-BR')}`, t('panel.youHave', { qty: me().coins.toLocaleString('pt-BR') }),
+            button(giveCoins > 0 ? t('panel.board.giveCoins', { coins: giveCoins.toLocaleString('pt-BR') }) : t('panel.board.giveNone'), () => dispatch({ type: 'project.contribute', project: def.id, item: 'coins', qty: giveCoins }), giveCoins <= 0 || leftCoins <= 0, true)));
+        }
+      });
+    },
+
+    openMuseum() {
+      open(t('panel.museum.title'), () => {
+        body.replaceChildren();
+        const kinds = [...ITEM_IDS.filter(id => ITEMS[id].kind === 'fish'), ...ITEM_IDS.filter(id => ITEMS[id].kind === 'bug'), ...MUSEUM_EXTRA];
+        body.append(el('p', 'bag__hint', t('panel.museum.hint', { count: game.state.museum.length, total: kinds.length })));
+        section(t('panel.museum.donate'));
+        let any = false;
+        me().inventory.forEach((stack, slot) => {
+          if (!stack || !kinds.includes(stack.item) || game.state.museum.includes(stack.item)) return;
+          any = true;
+          body.append(row(ITEMS[stack.item].icon, itemName(stack), t(`kind.${ITEMS[stack.item].kind}` as MessageKey), button(t('panel.museum.give'), () => dispatch({ type: 'museum.donate', slot }, t('msg.donated', { item: t(`item.${stack.item}`) })), false, true)));
+        });
+        if (!any) body.append(el('p', 'panel__empty', t('panel.museum.nothing')));
+        section(t('panel.museum.collection'));
+        const grid = el('div', 'museum-grid');
+        for (const id of kinds) {
+          const has = game.state.museum.includes(id);
+          const cell = el('span', `museum-cell${has ? ' museum-cell--on' : ''}`, has ? ITEMS[id].icon : '?');
+          cell.title = has ? t(`item.${id}`) : '?';
+          grid.append(cell);
+        }
+        body.append(grid);
+      });
+    },
+
+    openMail() {
+      open(t('panel.mail.title'), () => {
+        body.replaceChildren();
+        const mail = [...me().mail].reverse();
+        if (!mail.length) body.append(el('p', 'panel__empty', t('panel.mail.empty')));
+        for (const m of mail) {
+          const from = m.from === 'island' ? t('panel.mail.island') : villager(m.from).name;
+          const text = t(m.key as MessageKey, { ...m.params, island: game.state.island.name, player: me().name, from });
+          const letter = el('div', `letter${m.read ? '' : ' letter--new'}`);
+          letter.append(el('div', 'letter__from', `${m.from === 'island' ? '✉️' : villager(m.from).icon} ${from}`), el('p', 'letter__text', text));
+          if (m.item && !m.taken) letter.append(button(t('panel.mail.take', { item: `${m.qty ?? 1} ${t(`item.${m.item}`)}` }), () => dispatch({ type: 'mail.take', id: m.id }), false, true));
+          body.append(letter);
+          if (!m.read) game.dispatch({ type: 'mail.read', id: m.id }, actor);
+        }
+      });
+    },
+
+    openFriends() {
+      open(t('panel.friends.title'), () => {
+        body.replaceChildren();
+        const today = absoluteDay(game.state.time);
+        for (const v of VILLAGERS) {
+          const f = me().friends[v.id];
+          const h = hearts(f.points);
+          const card = el('div', 'friend');
+          const top = el('div', 'friend__top');
+          top.append(el('span', 'friend__icon', v.icon), el('b', '', v.name), el('span', 'friend__job', t(`npc.job.${v.id}` as MessageKey)));
+          const heartsEl = el('div', 'friend__hearts', '♥'.repeat(h) + '♡'.repeat(10 - h));
+          heartsEl.setAttribute('aria-label', t('panel.friends.hearts', { hearts: h }));
+          const flags = [f.talkedDay === today ? `✓ ${t('panel.friends.talked')}` : '', f.giftDay === today ? `✓ ${t('panel.friends.gifted')}` : ''].filter(Boolean).join(' · ');
+          const loved = Object.entries(f.known).filter(([, r]) => r === 'love').map(([id]) => ITEMS[id as keyof typeof ITEMS].icon).join(' ');
+          const sub = [`🎂 ${t('panel.friends.birthday', { day: v.birthday.day, season: t(`season.${v.birthday.season}`) })}`, flags, loved ? `${t('panel.friends.loves')} ${loved}` : ''].filter(Boolean).join(' · ');
+          card.append(top, heartsEl, el('div', 'friend__sub', sub));
+          body.append(card);
+        }
+      });
+    },
+
+    openCalendar(seasonIndex = game.state.time.seasonIndex) {
+      open(t('panel.calendar.title'), () => {
+        body.replaceChildren();
+        const season = SEASONS[seasonIndex]!;
+        const nav = el('div', 'calendar__nav');
+        const prev = button('◀', () => api.openCalendar((seasonIndex + 3) % 4));
+        const next = button('▶', () => api.openCalendar((seasonIndex + 1) % 4));
+        prev.setAttribute('aria-label', t('panel.calendar.prev'));
+        next.setAttribute('aria-label', t('panel.calendar.next'));
+        nav.append(prev, el('b', '', `${t(`season.${season}`)} · ${t('hud.year', { year: game.state.time.year })}`), next);
+        body.append(nav);
+        const grid = el('div', 'calendar');
+        for (const w of WEEKDAYS) grid.append(el('span', 'calendar__weekday', t(`weekday.${w}` as MessageKey).slice(0, 3)));
+        const events: string[] = [];
+        for (let day = 1; day <= DAYS_PER_SEASON; day++) {
+          const cell = el('div', 'calendar__day');
+          const today = seasonIndex === game.state.time.seasonIndex && day === game.state.time.day;
+          if (today) cell.classList.add('calendar__day--today');
+          cell.append(el('span', 'calendar__num', String(day)));
+          for (const v of VILLAGERS.filter(v => v.birthday.season === season && v.birthday.day === day)) {
+            cell.append(el('span', 'calendar__mark', v.icon));
+            events.push(`${day}: 🎂 ${t('panel.calendar.birthday', { name: v.name })}`);
+          }
+          const festival = FESTIVALS.find(f => f.season === season && f.day === day);
+          if (festival) {
+            cell.append(el('span', 'calendar__mark', '🎉'));
+            events.push(`${day}: 🎉 ${t(`festival.${festival.id}` as MessageKey)}`);
+          }
+          grid.append(cell);
+        }
+        body.append(grid);
+        for (const e of events) body.append(el('div', 'panel-row__sub', e));
+      });
+    },
+
   };
   game.on(event => {
     if (event.type !== 'time.changed' && event.type !== 'player.moved') api.refresh();
