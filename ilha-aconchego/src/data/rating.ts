@@ -67,7 +67,7 @@ export const DIG_SPOTS: readonly { at: XZ; area: 'grass' | 'beach' | 'village' |
   { at: [-6.0, 0.7], area: 'grass' },
   { at: [2.0, 9.4], area: 'grass' },
   { at: [-15.4, 0.4], area: 'grass' },
-  { at: [-8.4, -2.6], area: 'grass' },
+  { at: [-1.2, 8.4], area: 'grass' },
   { at: [-12.6, -9.6], area: 'grass' },
   { at: [-4.4, -9.4], area: 'grass' },
   { at: [2.0, 7.4], area: 'grass' },
