@@ -164,7 +164,7 @@ async function start(): Promise<void> {
   syncLook();
   // Farm, animals, rocks and the other things that follow the game state.
   world.syncState(game.state);
-  const STATE_EVENTS = new Set(['farm.changed', 'world.changed', 'animals.changed', 'day.started', 'date.changed']);
+  const STATE_EVENTS = new Set(['farm.changed', 'world.changed', 'animals.changed', 'day.started', 'date.changed', 'npc.arrived']);
   game.on(event => {
     if (STATE_EVENTS.has(event.type)) world.syncState(game.state);
     if (event.type === 'farm.watered') world.farm.splash(event.tiles);

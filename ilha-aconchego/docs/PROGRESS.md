@@ -20,11 +20,153 @@ npm run build      # checagem de tipos + versão de produção em dist/
 - [x] **Etapa 2**: personagem, controle e interface
 - [x] **Etapa 3**: fazenda e atividades
 - [x] **Etapa 4**: vila e moradores
-- [ ] **Etapa 5**: casa, decoração, ofícios e progressão
+- [x] **Etapa 5**: casa, decoração, ofícios e progressão
 - [ ] **Etapa 6**: exploração e eventos
 - [ ] **Etapa 7**: multijogador
 - [ ] **Etapa 8**: opções, som, acessibilidade e publicação
 - [ ] **Etapa 9**: expansão
+
+---
+
+## Etapa 5: casa, decoração, ofícios e progressão (concluída)
+
+### O que foi feito
+
+- **Modo decoração** (`src/ui/decorMode.ts`, `src/core/decor.ts`): funciona dentro e fora de casa, numa grade de 1 × 1.
+  - Para abrir: tecla C, o botão 🛋️ do canto, a aba "Decorar" da mochila ou "Colocar" num móvel da mochila.
+  - Uma cópia transparente do móvel segue o mouse (ou fica na frente da personagem), verde onde cabe e vermelha onde não cabe.
+  - E coloca ou pega, G gira, X guarda na mochila e Esc sai. No celular há botões para tudo.
+  - Fora de casa não dá para bloquear portas, balcões, pontos de trabalho, pontes e os caminhos dos moradores. Tapetes e pedras de caminho ficam no chão: dá para pisar e pôr móveis em cima.
+- **O interior da casa é uma cena própria** (`src/world/interior.ts`): a porta da casa agora diz "Entrar em casa". Por dentro a casa é aberta como uma casa de bonecas, com parede do fundo alta, janelas que acendem à noite e luz quente.
+  - A casa já vem mobiliada: cama, guarda-roupa, espelho, tapete, mesa, cadeira, luminária e planta.
+  - Dorme-se na cama, e de manhã você acorda dentro de casa.
+- **Casa que cresce** (`src/data/house.ts`), com o Lino ("Reformar a casa" na conversa):
+  - um cômodo novo ao lado (2.500 moedas e 40 madeiras);
+  - escada e andar de cima (6.000 moedas, 60 madeiras e 30 pedras);
+  - porão (10.000 moedas, 50 pedras e 10 cobres).
+
+  Por fora aparecem o cômodo novo, uma janelinha no telhado e a porta do porão.
+- **40 móveis e enfeites** (`src/data/decor.ts`, `src/assets/procedural/furniture.ts`), em seis coleções: Aconchego, Ofícios, Jardim, **Praia**, **Fazenda** e **Feira**. Luminárias, lanternas e postes acendem à noite.
+- **Catálogo de móveis** (mochila → Catálogo): compra qualquer móvel com moedas. Praia e Fazenda abrem com 2 estrelas, Feira com 3.
+- **Cinco bancadas de criação** (`src/data/recipes.ts`, `src/core/handlers/crafting.ts`), com 74 receitas:
+  - carpintaria: a bancada atrás da casa, para móveis, máquinas e as outras bancadas;
+  - cozinha: o fogão ao lado da casa;
+  - tricô, alquimia (adubos, tintas e poções) e joalheria: feitas na carpintaria e postas onde você quiser, dentro ou fora.
+
+  Também dá para fazer um fogão e uma bancada de carpintaria extras.
+- **Cadeias de produção**: lã vira fio, fio vira tecido, tecido vira roupa (suéter, capa de chuva, vestido de avental, cachecol, boina) e também cama, sofá e tapete.
+- **Receitas descobertas** de três jeitos:
+  - **experimento**: na bancada, escolha até três coisas da mochila e aperte "Experimentar"; os itens só são gastos se a combinação existir;
+  - **livros**: cinco livros, vendidos pela Celeste no museu e às vezes achados pelo bichinho;
+  - **presentes**: cada morador ensina uma receita por carta quando chega a 4 corações.
+- **Guarda-roupa, espelho e salão** (reaproveitam o criador de personagem, `openLookEditor`):
+  - roupas costuradas e a tiara de cristal vão para o guarda-roupa;
+  - cada tinta acrescenta uma cor nova para blusa, calça e sapatos;
+  - o espelho muda rosto e cabelo de graça;
+  - o **Salão da Pérola**, na vila, muda espécie, pele, rosto e cabelo por 200 moedas. A Pérola agora é cabeleireira.
+- **Nota da ilha em estrelas** (`src/core/rating.ts`, `src/data/rating.ts`): fica no cartão da data. Clicar mostra de onde vêm os pontos:
+  - enfeites ao ar livre e dentro das casas;
+  - variedade de enfeites;
+  - coleções completas;
+  - casa, obras da vila e museu;
+  - horta plantada.
+
+  As estrelas trazem:
+  - **visitantes** que passeiam pela ilha, conversam e ajudam a vender na barraca;
+  - **moradores novos**: a **Mel** (ouriço costureira) chega com 3 estrelas e o **Gaspar** (guaxinim colecionador) com 5. Eles acampam em barracas na praia sul, com rotina, falas, presentes favoritos, aniversário e receita própria.
+- **Sua barraca na feira**: um carrinho rosa na praça, com até 6 coisas à mostra.
+  - De hora em hora, das 8h às 18h, cada uma pode vender uma unidade, com mais chance quando há mais estrelas e visitantes.
+  - O que você faz vende 50% mais caro que o preço da caixa de venda; o resto, 15%.
+- **Árvore de talentos** (mochila → Talentos, `src/data/talents.ts`): seis habilidades × 10 níveis × 2 escolhas, como "10% de chance de ganhar a semente de volta" ou "5% de chance de a horta crescer um dia a mais". Cada talento escolhido muda a regra correspondente do jogo.
+- **Conquistas, coleções e títulos** (mochila → Perfil):
+  - 33 conquistas; 25 delas dão um título que você escolhe para o perfil;
+  - coleções de peixes, insetos, colheitas, pratos, móveis, roupas, joias e tintas, contando tudo o que você já teve.
+- **Modo foto** (tecla P ou 📷):
+  - a interface some, dá para girar a câmera e usar zoom;
+  - 7 filtros, 6 molduras (incluindo polaroide com o nome da ilha e a data) e 7 poses;
+  - "Tirar foto" mostra a imagem e um botão para baixar o arquivo.
+- **Emotes na tecla F** (ou 😊): oito emotes com pose e balão. O morador mais perto responde, e uma vez por dia o emote dá um pouco de amizade.
+- **Bichinho companheiro**:
+  - todo dia três coisas ficam escondidas pela ilha (sementes, flores, minérios, fósseis, livros, móveis de praia...);
+  - quando você passa perto, o coelhinho corre até o lugar, fareja e aparece um montinho; E cava;
+  - acessórios feitos no tricô e na joalheria (lacinho, cachecol, coroinha de flores, coleira com sininho) vão nele pela mochila.
+- **Salvamento**: versão 5 do arquivo. Jogos da etapa 4 (e anteriores) são convertidos sozinhos.
+
+### Como testar
+
+1. `npm test`: 126 testes passam. Os novos (`src/core/home.test.ts`) cobrem:
+   - decoração na ilha: colocar, empilhar no tapete, girar, mudar e guardar;
+   - lugares proibidos;
+   - nota subindo e a Mel chegando;
+   - entrar, sair, decorar e dormir na cama;
+   - reformas com a escada;
+   - a cadeia lã, fio, tecido e suéter;
+   - experimento, livro e carta;
+   - guarda-roupa, espelho e salão;
+   - a barraca vendendo;
+   - talentos;
+   - título, bichinho e emote;
+   - conversão do save da etapa 4.
+2. `npm run dev`, crie a personagem e:
+   - aperte E na porta da casa para entrar; C abre o modo decoração; o espelho e o guarda-roupa ficam encostados na parede do fundo;
+   - fora de casa, aperte C, escolha um móvel na barra (compre no catálogo da mochila), aponte com o mouse e aperte E;
+   - clique nas estrelas do cartão da data para ver a nota da ilha;
+   - F abre os emotes e P o modo foto; a barraca rosa fica no canto sudeste da praça.
+3. No painel de testes, "Dormir" passa os dias (os achados do bichinho e os visitantes mudam).
+
+Verificado no navegador:
+- **Casa por dentro**:
+  - entrar pela porta, decorar com o teclado e girar o sofá;
+  - fazer fio na mesa de tricô;
+  - mudar o cabelo no espelho;
+  - guardar o suéter e a tinta de lula e vestir o suéter azul-marinho;
+  - com a casa reformada, subir a escada.
+- **Na ilha**:
+  - fonte, dois canteiros de flores, poste e banco colocados pelo modo decoração; a nota subiu para 2 estrelas;
+  - a barraca, o catálogo, os talentos e o perfil abertos e usados;
+  - emote para a Lumi, que respondeu e deu +5 de amizade;
+  - foto com moldura polaroide, filtro e pose de aceno;
+  - o bichinho farejou e desenterrou 2 minérios de cobre.
+- **Reformas e chegadas**:
+  - as três reformas feitas com o Lino;
+  - a casa vista de fora com o cômodo novo e o sótão;
+  - a Mel chegou com 3 estrelas e a barraca dela apareceu na praia;
+  - o salão da Pérola trocou a espécie para povo-gato.
+- **Recarregar a página**: manteve a casa, os enfeites, as estrelas, o visual e a Mel.
+- **Celular** (390×844): modo decoração por toque, emotes, modo foto e mochila com as abas novas, sem rolagem lateral.
+- **Sem erros no console**, com cerca de 250 a 350 chamadas de desenho por quadro, como na etapa 4.
+
+Não verificado:
+- aparelhos reais, qps e o arquivo da foto baixado num celular de verdade;
+- o Gaspar chegando com 5 estrelas, testado só pela regra.
+
+### Decisões técnicas
+
+- **Espaços**: o estado da personagem diz se ela está fora ou em qual andar (`inside`). Dentro, a posição é contada no próprio andar. Os comandos de fora (lojas, horta, moradores) ficam "longe demais" enquanto ela está em casa.
+- **Onde ficam os enfeites**: os de fora são da ilha (de todos que moram nela) e os de dentro são de cada jogadora. Os móveis de fora também viram obstáculos.
+- **Nota da ilha**: é recontada depois de cada ação. Durante o dia ela só sobe; de manhã é recontada e pode baixar. Os moradores novos não vão embora.
+- **Receitas**: as receitas comuns chegam com o nível da habilidade. As secretas são aprendidas e ficam salvas. O antigo comando de cozinhar virou `craft` com a bancada.
+- **Roupas**: as quatro roupas e os seis acessórios do criador continuam livres. O guarda-roupa guarda só as peças novas (3 roupas, 3 acessórios) e as 7 cores de tinta.
+- **Talentos** somam um modificador cada (`src/core/talents.ts`). Os da ilha toda, como a horta crescer mais rápido e os achados do bichinho, usam o melhor valor entre as jogadoras.
+- **O modo decoração grava a posição** da personagem antes de cada comando, pelo mesmo motivo da correção da etapa 4.
+- **Mudanças em coisas que já existiam**:
+  - a porta da casa agora é para entrar (antes era para dormir);
+  - os sacos ao lado da casa mudaram de lugar para dar espaço ao cômodo novo;
+  - a Pérola trocou a pintura pelo salão;
+  - as receitas de adubo foram para a alquimia.
+
+### Pendências e notas
+
+- Os **moradores novos** moram em barracas na praia; casas de verdade para eles podem vir com a expansão da vila.
+- **Visitantes** são só passeio e conversa: não dão pedidos e não são salvos.
+- **Fotos**: não ficam guardadas num álbum dentro do jogo; o botão baixa o arquivo.
+- **Acessórios**: o bichinho usa um de cada vez.
+- **Cenas especiais e interiores**: as casas dos moradores ainda não têm interior.
+- **Ícones**: continuam sendo emoji.
+
+### Próximo passo
+
+Etapa 6: exploração e eventos.
 
 ---
 
@@ -139,7 +281,7 @@ Não verificado: aparelhos reais (aqui não há placa de vídeo, então não dá
 
 ### Próximo passo
 
-Etapa 5: casa, decoração, ofícios e progressão.
+Etapa 5: casa, decoração, ofícios e progressão. (Concluída.)
 
 ---
 

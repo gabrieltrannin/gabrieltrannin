@@ -98,7 +98,7 @@ export const STARTING_HOME: readonly { item: DecorItem; x: number; z: number; ro
 
 /** Outside, the house grows with its levels: assets placed around the hut (offsets from data/map HOUSE). */
 export const HOUSE_GROWTH: readonly { asset: string; level: number; dx: number; dz: number; dy: number; ry: number }[] = [
-  { asset: 'house.annex', level: 1, dx: -2.7, dz: -1.3, dy: 0, ry: 0.5 },
+  { asset: 'house.annex', level: 1, dx: -2.9, dz: -0.5, dy: 0, ry: 0.9 },
   { asset: 'house.loft', level: 2, dx: 0, dz: 1.75, dy: 3.3, ry: 0 },
   { asset: 'house.cellar', level: 3, dx: 2.1, dz: -0.5, dy: 0, ry: -0.3 },
 ];
