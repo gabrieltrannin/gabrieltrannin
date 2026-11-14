@@ -6,6 +6,7 @@ import {
   BRIDGE_SIGN, BRIDGES, HOUSE_SPOTS, ISLETS, MUSEUM, NOTICE_BOARD, SEED_SHOP, VILLAGE_LAMPS, VILLAGE_PATHS, VILLAGE_PLAZA, VILLAGE_TREES, WELL,
   WOOD_PATHS, WOOD_TREES, type Islet,
 } from '../data/village';
+import { MUSEUM_GROWTH } from '../data/community';
 import { materials } from '../render/materials';
 import { instantiate } from '../render/instancing';
 import { seededRandom, sandTexture } from '../render/textures';
@@ -134,6 +135,16 @@ export function buildTown(assets: AssetRegistry): Town {
   };
   for (const h of HOUSE_SPOTS) place(`house.${h.npc}`, h.x, h.z);
   const museum = place('museum', MUSEUM.x, MUSEUM.z);
+  // Additions as the collection grows: banners and flowers, a glass dome, a fossil skeleton, a gallery.
+  const growth = [
+    place('museum.banners', MUSEUM.x, MUSEUM.z + MUSEUM.d / 2 + 0.6),
+    place('museum.dome', MUSEUM.x, MUSEUM.z),
+    place('museum.statue', MUSEUM.x - 2.6, MUSEUM.z + MUSEUM.d / 2 + 2.1, 0.4),
+    place('museum.wing', MUSEUM.x + MUSEUM.w / 2 + 0.9, MUSEUM.z + 0.2),
+  ];
+  growth[1]!.position.y += 3.3;
+  growth[3]!.scale.set(0.62, 0.9, 0.85);
+  for (const g of growth) g.visible = false;
   place('shop.seeds', SEED_SHOP.x, SEED_SHOP.z);
   place('board.notices', NOTICE_BOARD[0], NOTICE_BOARD[1]);
   place('well', WELL[0], WELL[1]);
@@ -169,6 +180,8 @@ export function buildTown(assets: AssetRegistry): Town {
         if (o.name === 'only:closed') o.visible = !open;
         if (o.name === 'only:open') o.visible = open;
       });
+      // Stage 6: the museum grows with the collection.
+      growth.forEach((g, i) => (g.visible = open && state.museum.length >= MUSEUM_GROWTH[i]!));
     },
   };
 }

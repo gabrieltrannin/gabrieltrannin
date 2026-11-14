@@ -24,6 +24,8 @@ import { PLAYER_STALL } from '../data/rating';
 import { TENTS } from '../data/village';
 import { HOUSE_GROWTH } from '../data/house';
 import type { HiddenItem } from '../core/types';
+import type { FestivalId } from '../data/calendar';
+import { MINE_CAVE, MINE_DOOR } from '../data/mine';
 
 export interface WorldOptions {
   season: SeasonId;
@@ -51,6 +53,8 @@ export interface World {
   setHomeLevel(level: number): void;
   /** Little mounds where the pet found something (only the ones it already sniffed out). */
   syncHidden(list: readonly HiddenItem[], revealed: ReadonlySet<number>): void;
+  /** Stage 6: the market square dressed for a festival (or not). */
+  setFestival(id: FestivalId | null): void;
   update(dt: number, elapsed: number, reducedMotion: boolean): void;
 }
 
@@ -90,6 +94,30 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
     return { object: o, level: g.level };
   });
   const mounds = new Map<number, THREE.Object3D>();
+
+  // Stage 6: the mine's cave in the west cliff, and the festival decorations of the square.
+  const cave = assets.create('mine.cave');
+  cave.position.set(MINE_CAVE[0], heightAt(MINE_DOOR[0], MINE_DOOR[1]), MINE_CAVE[1]);
+  cave.rotation.y = -Math.PI / 2;
+  root.add(cave);
+  const FESTIVAL_SPOTS: readonly [number, number, number][] = [[6.2, 2.6, 0.6], [14.4, 2.6, -0.6], [6.8, 7.4, 0.3], [11.9, 7.4, -0.3]];
+  const festivalDecor = new Map<FestivalId, THREE.Group>();
+  for (const id of ['flowers', 'lanterns', 'harvest', 'snow'] as const) {
+    const g = new THREE.Group();
+    g.name = `festival.${id}`;
+    for (const [x, z, ry] of FESTIVAL_SPOTS) {
+      const o = assets.create(`festival.${id}`);
+      o.position.set(x, heightAt(x, z), z);
+      o.rotation.y = ry;
+      g.add(o);
+    }
+    const stand = assets.create('festival.stand');
+    stand.position.set(8.4, heightAt(8.4, 1.6), 1.6);
+    g.add(stand);
+    g.visible = false;
+    root.add(g);
+    festivalDecor.set(id, g);
+  }
 
   // Season visibility by mesh name, so glTF models can follow the same rule.
   const onlyIn: Record<string, THREE.Object3D[]> = { 'only:winter': [], 'only:autumn': [], 'only:warm': [], fruit: [] };
@@ -138,6 +166,9 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
     farm: farmWorld,
     villagers,
     decor,
+    setFestival(id) {
+      for (const [key, g] of festivalDecor) g.visible = key === id;
+    },
     setHomeLevel(level) {
       for (const g of growth) g.object.visible = level >= g.level;
     },
