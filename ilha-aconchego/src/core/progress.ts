@@ -38,6 +38,9 @@ export function measure(state: Readonly<GameState>, player: PlayerState, a: Achi
     case 'dyes': return player.wardrobe.colors.length;
     case 'talents': return player.talents.length;
     case 'stations': return STATIONS.filter(s => (player.stats[`station.${s}`] ?? 0) > 0).length;
+    case 'regions': return player.explore.visited.length;
+    case 'deepest': return player.explore.deepest;
+    case 'festivals': return new Set(player.explore.festivals.map(f => f.split(':')[0])).size;
   }
 }
 
@@ -71,4 +74,6 @@ export const COLLECTION_GROUPS: readonly { id: string; items: readonly ItemId[] 
   { id: 'clothing', items: (Object.keys(ITEMS) as ItemId[]).filter(i => ITEMS[i].kind === 'clothing' || i === 'jewel.tiara') },
   { id: 'jewelry', items: (Object.keys(ITEMS) as ItemId[]).filter(i => ITEMS[i].kind === 'jewelry') },
   { id: 'dye', items: (Object.keys(ITEMS) as ItemId[]).filter(i => ITEMS[i].kind === 'dye') },
+  { id: 'shell', items: (Object.keys(ITEMS) as ItemId[]).filter(i => ITEMS[i].kind === 'shell') },
+  { id: 'fossil', items: (Object.keys(ITEMS) as ItemId[]).filter(i => ITEMS[i].kind === 'fossil' || i === 'res.fossil') },
 ];

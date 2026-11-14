@@ -31,6 +31,15 @@ export function newIslandHome(): Pick<GameState, 'decor' | 'decorSeq' | 'stars' 
   return { decor: [], decorSeq: 0, stars: 1, stalls: {}, hidden: [], hiddenSeq: 0, arrived: [] };
 }
 
+/** Stage 6 parts of a player and of the island (also used to bring older saves up to date). */
+export function newPlayerExplore(): Pick<PlayerState, 'away' | 'explore'> {
+  return { away: null, explore: { visited: [], deepest: 0, chests: [], festivals: [] } };
+}
+
+export function newIslandExplore(day: number): Pick<GameState, 'explore' | 'options'> {
+  return { explore: { day, taken: [], calmed: [], mine: {}, puzzles: {} }, options: { peaceful: false } };
+}
+
 /** Buries today's finds for the pet: a few spots, each with something from its kind of place. */
 export function rollHidden(state: GameState): void {
   const spots = DIG_SPOTS.filter(s => s.area !== 'wood' || state.projects.bridge.done);

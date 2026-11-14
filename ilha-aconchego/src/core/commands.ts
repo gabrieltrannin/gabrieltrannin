@@ -30,6 +30,10 @@ import type { StationId } from '../data/decor';
 import type { EmoteId } from '../data/emotes';
 import type { FloorId } from '../data/house';
 import { STALL_HOURS } from '../data/rating';
+import { exploreHandlers } from './handlers/explore';
+import { isRegionId, type RegionId } from '../data/regions';
+import type { FestivalId } from '../data/calendar';
+import { mineFloor, mineGround, regionGround } from './explore';
 import { isWeatherId } from './weather';
 
 /**
@@ -120,7 +124,27 @@ export type Command =
   | { type: 'pet.dress'; slot: number }
   | { type: 'pet.undress' }
   | { type: 'emote'; emote: EmoteId; npc?: NpcId }
-  | { type: 'photo.taken' };
+  | { type: 'photo.taken' }
+  // Stage 6: the boat, the mines, exploring the regions, creatures, puzzles, festivals, options.
+  | { type: 'travel.go'; region: RegionId }
+  | { type: 'travel.home' }
+  | { type: 'mine.enter' }
+  | { type: 'mine.exit' }
+  | { type: 'mine.down' }
+  | { type: 'mine.elevator'; floor: number }
+  | { type: 'mine.break'; rock: number }
+  | { type: 'mine.treasure' }
+  | { type: 'explore.forage'; spot: number }
+  | { type: 'explore.node'; node: number }
+  | { type: 'explore.grass'; clump: number }
+  | { type: 'creature.calm'; id: string }
+  | { type: 'creature.bump'; id: string }
+  | { type: 'puzzle.push'; block: number; dir: 'n' | 's' | 'e' | 'w' }
+  | { type: 'puzzle.press'; index: number }
+  | { type: 'puzzle.reset' }
+  | { type: 'puzzle.chest' }
+  | { type: 'festival.play'; score: number }
+  | { type: 'options.set'; peaceful: boolean };
 
 export type CommandType = Command['type'];
 
@@ -180,7 +204,23 @@ export type GameEvent =
   | { type: 'pet.changed'; playerId: string }
   | { type: 'hidden.changed' }
   | { type: 'emoted'; playerId: string; emote: EmoteId; npc?: NpcId; points: number }
-  | { type: 'photo.saved'; playerId: string };
+  | { type: 'photo.saved'; playerId: string }
+  // Stage 6.
+  /** Went to a region by boat (`region`) or back home (null). */
+  | { type: 'travel'; playerId: string; region: RegionId | null; first: boolean }
+  /** Arrived on a mine floor (0 = back outside). */
+  | { type: 'mine.floor'; playerId: string; floor: number }
+  | { type: 'mine.broken'; playerId: string; floor: number; rock: number; ladder: boolean }
+  | { type: 'explore.changed' }
+  | { type: 'grass.searched'; playerId: string; item: ItemId; caught: boolean }
+  | { type: 'creature.calmed'; playerId: string; id: string }
+  | { type: 'player.fainted'; playerId: string }
+  | { type: 'puzzle.changed'; region: RegionId }
+  | { type: 'puzzle.pressed'; playerId: string; region: RegionId; correct: boolean }
+  | { type: 'puzzle.solved'; region: RegionId }
+  | { type: 'chest.opened'; playerId: string; chest: string }
+  | { type: 'festival.done'; playerId: string; festival: FestivalId; score: number; coins: number; prize: ItemId | null }
+  | { type: 'options.changed' };
 
 export type CommandError =
   | 'unknown_command' | 'forbidden' | 'invalid' | 'day_ended' | 'too_far' | 'inventory_full' | 'not_available'
@@ -271,6 +311,8 @@ const baseHandlers = {
       const player = playerOf(state, actor);
       if (!player) return 'forbidden';
       if (!isNum(cmd.x) || !isNum(cmd.z) || !isNum(cmd.facing)) return 'invalid';
+      if (player.away?.kind === 'region') return isRegionId(player.away.id) && regionGround(player.away.id, cmd.x, cmd.z, 0) !== null ? null : 'invalid';
+      if (player.away?.kind === 'mine') return mineGround(mineFloor(state.seed, player.away.floor, absoluteDay(state.time)), cmd.x, cmd.z, 0) !== null ? null : 'invalid';
       if (player.inside) return insideFloor(player, cmd.x, cmd.z) ? null : 'invalid';
       return groundHeight(cmd.x, cmd.z) === null ? 'invalid' : null;
     },
@@ -360,7 +402,7 @@ const baseHandlers = {
   },
 } satisfies Partial<HandlerMap>;
 
-const handlers: HandlerMap = { ...baseHandlers, ...farmHandlers, ...gatherHandlers, ...economyHandlers, ...villageHandlers, ...homeHandlers, ...craftHandlers, ...progressHandlers };
+const handlers: HandlerMap = { ...baseHandlers, ...farmHandlers, ...gatherHandlers, ...economyHandlers, ...villageHandlers, ...homeHandlers, ...craftHandlers, ...progressHandlers, ...exploreHandlers };
 
 /** Commands too small and frequent to recount the island rating and achievements after. */
 const QUIET: ReadonlySet<string> = new Set(['player.move', 'inventory.select']);

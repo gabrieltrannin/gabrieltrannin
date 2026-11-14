@@ -1,6 +1,6 @@
 import { HONEY_DAYS } from '../data/map';
 import { MAX_ENERGY } from '../data/items';
-import { FARM_TILES, farmTile, MINE_NODES, WOOD_NODE_START } from '../data/map';
+import { FARM_TILES, farmTile, MINE_NODES, PLAYER_START, WOOD_NODE_START } from '../data/map';
 import { absoluteDay, seasonOf, startNextDay } from './clock';
 import type { GameEvent } from './commands';
 import { animalMorning, cropGrowsIn, growPlot, playerSellPrice, roll, rollOre, sprinklerTiles } from './rules';
@@ -127,8 +127,16 @@ export function startNewDay(state: GameState): GameEvent[] {
   rollHidden(state);
   const stars = updateStars(state, true);
 
-  // 8. Everyone wakes up rested; yesterday's meal bonus is over.
+  // 8. Stage 6: a new day of exploring (everything grows back; puzzles stay as they are).
+  state.explore = { ...state.explore, day: today, taken: [], calmed: [], mine: {} };
+
+  // 9. Everyone wakes up rested; yesterday's meal bonus is over. Anyone still away wakes up at home.
   for (const player of Object.values(state.players)) {
+    if (player.away) {
+      player.away = null;
+      player.inside = null;
+      player.position = { ...PLAYER_START };
+    }
     player.energy = MAX_ENERGY;
     player.buff = null;
     player.fishing = null;

@@ -11,7 +11,10 @@ import { newIslandProgress, newIslandVillage, newPlayerProgress, newPlayerVillag
 import { NPC_IDS } from '../data/villagers';
 import { PROJECT_IDS } from '../data/community';
 import type { GameState, Inventory, ItemStack, PlayerState } from './types';
-import { newIslandHome, newPlayerHome, rollHidden } from './home';
+import { newIslandExplore, newIslandHome, newPlayerExplore, newPlayerHome, rollHidden } from './home';
+import { isRegionId, REGION_IDS } from '../data/regions';
+import { MAX_MINE_FLOOR } from '../data/mine';
+import { absoluteDay } from './clock';
 import { newFriend } from './villagers';
 import { isFloorId } from '../data/house';
 import { isDecorItem } from '../data/decor';
@@ -59,8 +62,16 @@ function validPlayer(id: string, p: unknown): p is PlayerState {
   if (p.fishing !== null && !(isObj(p.fishing) && isItemId(p.fishing.item))) return false;
   if (!isObj(p.friends) || !NPC_IDS.every(id => validFriend((p.friends as Record<string, unknown>)[id]))) return false;
   if (!Array.isArray(p.mail) || !p.mail.every(validMail) || !isInt(p.mailSeq)) return false;
-  if (!validPlayerHome(p)) return false;
+  if (!validPlayerHome(p) || !validPlayerExplore(p)) return false;
   return validInventory(p.inventory);
+}
+
+/** Stage 6 parts of a player: where they are away, regions visited, mine depth, chests and festivals. */
+function validPlayerExplore(p: Record<string, unknown>): boolean {
+  const away = p.away;
+  if (away !== null && !(isObj(away) && ((away.kind === 'region' && isRegionId(away.id)) || (away.kind === 'mine' && isInt(away.floor) && away.floor >= 1 && away.floor <= MAX_MINE_FLOOR)))) return false;
+  const e = p.explore;
+  return isObj(e) && strings(e.visited, REGION_IDS) && isInt(e.deepest) && e.deepest >= 0 && strings(e.chests) && strings(e.festivals);
 }
 
 const validDecor = (d: unknown): boolean =>
@@ -111,7 +122,13 @@ function validIsland(s: Record<string, unknown>): boolean {
   if (!Array.isArray(s.decor) || !s.decor.every(validDecor) || !isInt(s.decorSeq) || !isInt(s.stars) || s.stars < 1 || s.stars > 5) return false;
   if (!allValues(s.stalls, st => isObj(st) && Array.isArray(st.items) && st.items.every(validStack))) return false;
   if (!Array.isArray(s.hidden) || !s.hidden.every(h => isObj(h) && isInt(h.id) && isNum(h.x) && isNum(h.z) && isItemId(h.item) && isInt(h.qty)) || !isInt(s.hiddenSeq)) return false;
-  return Array.isArray(s.arrived) && s.arrived.every(id => (NPC_IDS as readonly unknown[]).includes(id));
+  if (!Array.isArray(s.arrived) || !s.arrived.every(id => (NPC_IDS as readonly unknown[]).includes(id))) return false;
+  // Stage 6.
+  const e = s.explore;
+  if (!isObj(e) || !isInt(e.day) || !strings(e.taken) || !strings(e.calmed) || !allValues(e.mine, list => Array.isArray(list) && list.every(isInt))) return false;
+  const pairs = (v: unknown) => Array.isArray(v) && v.every(b => Array.isArray(b) && b.length === 2 && b.every(isInt));
+  if (!isObj(e.puzzles) || !Object.entries(e.puzzles).every(([id, pz]) => isRegionId(id) && isObj(pz) && pairs(pz.blocks) && Array.isArray(pz.pressed) && pz.pressed.every(isInt) && isBool(pz.solved))) return false;
+  return isObj(s.options) && isBool(s.options.peaceful);
 }
 
 /** Checks every field of a loaded state. Anything unexpected means the save is not used. */
@@ -135,7 +152,7 @@ export function isValidState(s: unknown): s is GameState {
  */
 export function migrateSave(data: Record<string, unknown>): Record<string, unknown> | null {
   if (data.version === SAVE_VERSION) return data;
-  if ((data.version !== 2 && data.version !== 3 && data.version !== 4) || !isObj(data.state)) return null;
+  if ((data.version !== 2 && data.version !== 3 && data.version !== 4 && data.version !== 5) || !isObj(data.state)) return null;
   const state = data.state as Record<string, unknown>;
   if (!isObj(state.time) || !isInt(state.rng)) return null;
   const players = isObj(state.players) ? Object.values(state.players).filter(isObj) : [];
@@ -149,7 +166,17 @@ export function migrateSave(data: Record<string, unknown>): Record<string, unkno
     Object.assign(state, newIslandVillage());
     for (const p of players) Object.assign(p, newPlayerVillage());
   }
-  // Stage 5: the house inside, decorations, wardrobe, talents, achievements, stall, the pet's finds and newcomers.
+  if (data.version !== 5) migrateToStage5(state, players);
+  // Stage 6: exploring, the mines, puzzles, festivals and the peaceful option.
+  Object.assign(state, newIslandExplore(isObj(state.time) ? absoluteDay(state.time as unknown as GameState['time']) : 0));
+  for (const p of players) Object.assign(p, newPlayerExplore());
+  state.version = SAVE_VERSION;
+  data.version = SAVE_VERSION;
+  return data;
+}
+
+/** Stage 5: the house inside, decorations, wardrobe, talents, achievements, stall, the pet's finds and newcomers. */
+function migrateToStage5(state: Record<string, unknown>, players: Record<string, unknown>[]): void {
   Object.assign(state, newIslandHome());
   for (const p of players) {
     const inv = Array.isArray(p.inventory) ? (p.inventory as PlayerState['inventory']) : [];
@@ -162,9 +189,6 @@ export function migrateSave(data: Record<string, unknown>): Record<string, unkno
     p.friends = friends;
   }
   if (isObj(state.projects)) rollHidden(state as unknown as GameState);
-  state.version = SAVE_VERSION;
-  data.version = SAVE_VERSION;
-  return data;
 }
 
 /** Reads a stored save. Returns null for anything missing, old or damaged. */

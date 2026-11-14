@@ -12,6 +12,7 @@ import type { ProjectId } from '../data/community';
 import type { NpcId } from '../data/villagers';
 import type { Accessory, Outfit } from '../data/appearance';
 import type { FloorId } from '../data/house';
+import type { RegionId } from '../data/regions';
 
 /** Position in the calendar plus the time of day. Plain data, safe to save and send over the network. */
 export interface GameTime {
@@ -97,6 +98,30 @@ export interface PlayerState {
   /** Title shown on the profile (an achievement id), or none. */
   title: string | null;
   pet: PetState;
+  // Stage 6.
+  /** Away from the home island: in a region (by boat) or on a mine floor. Away, `position` is in that place's coordinates. */
+  away: AwayPlace | null;
+  explore: ExploreProgress;
+}
+
+export type AwayPlace = { kind: 'region'; id: RegionId } | { kind: 'mine'; floor: number };
+
+export interface ExploreProgress {
+  /** Regions visited at least once. */
+  visited: RegionId[];
+  /** Deepest mine floor reached (the elevator stops at every fifth floor up to it). */
+  deepest: number;
+  /** Puzzle chests opened (region ids) and the mine's treasure ('mine'). */
+  chests: string[];
+  /** Festivals played ("flowers:1" = the flower festival of year 1). */
+  festivals: string[];
+}
+
+/** A puzzle of a region: where its blocks are, which switches or bells were used, and whether it is solved. */
+export interface PuzzleState {
+  blocks: [number, number][];
+  pressed: number[];
+  solved: boolean;
 }
 
 /** A piece of furniture or decoration on the grid. `x`, `z` is its corner tile; `rot` is quarter turns. */
@@ -293,4 +318,18 @@ export interface GameState {
   hiddenSeq: number;
   /** Newcomers who moved in. */
   arrived: NpcId[];
+  // Stage 6.
+  /** What was already picked, searched, broken or calmed today (all reset in the morning), and the puzzles. */
+  explore: {
+    day: number;
+    /** "forage:beach:3", "grass:forest:1", "node:volcano:2". */
+    taken: string[];
+    /** Creatures calmed today ("beach:0", "mine:7:1"). */
+    calmed: string[];
+    /** Mine rocks broken today, by floor. */
+    mine: Record<string, number[]>;
+    puzzles: Partial<Record<RegionId, PuzzleState>>;
+  };
+  /** Island options set by the host. */
+  options: { peaceful: boolean };
 }

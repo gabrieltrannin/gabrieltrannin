@@ -7,7 +7,9 @@ import type { FruitId } from './defaults';
 export type ItemKind =
   | 'tool' | 'seed' | 'crop' | 'fruit' | 'animal' | 'fish' | 'bug' | 'resource' | 'supply' | 'dish' | 'artisan' | 'placeable' | 'flower'
   // Stage 5: furniture and decorations, clothes, dyes, jewelry, potions, recipe books and the pet's accessories.
-  | 'furniture' | 'clothing' | 'dye' | 'jewelry' | 'potion' | 'book' | 'petwear';
+  | 'furniture' | 'clothing' | 'dye' | 'jewelry' | 'potion' | 'book' | 'petwear'
+  // Stage 6: shells and fossils for the museum.
+  | 'shell' | 'fossil';
 
 export type BuffId = 'speed' | 'fishing' | 'mining' | 'farming' | 'luck';
 
@@ -36,6 +38,8 @@ const dye = (icon: string, sell: number): ItemDef => ({ icon, kind: 'dye', maxSt
 const jewel = (icon: string, sell: number): ItemDef => ({ icon, kind: 'jewelry', maxStack: 10, sell });
 const book = (icon: string): ItemDef => ({ icon, kind: 'book', maxStack: 5, sell: 60 });
 const petwear = (icon: string, sell: number): ItemDef => ({ icon, kind: 'petwear', maxStack: 5, sell });
+const shell = (icon: string, sell: number): ItemDef => ({ icon, kind: 'shell', maxStack: 20, sell });
+const fossil = (icon: string, sell: number): ItemDef => ({ icon, kind: 'fossil', maxStack: 10, sell });
 
 export const ITEMS = {
   'tool.hoe': tool('⚒️'),
@@ -44,6 +48,8 @@ export const ITEMS = {
   'tool.pickaxe': tool('⛏️'),
   'tool.fishingRod': tool('🎣'),
   'tool.bugNet': tool('🥅'),
+  /** Stage 6: blows bubbles that calm the cute creatures down (not an upgradable tool). */
+  'gear.wand': { icon: '🫧', kind: 'tool', maxStack: 1, sell: 0 },
 
   'seed.strawberry': seed('🍓', 20),
   'seed.lettuce': seed('🥬', 10),
@@ -70,6 +76,10 @@ export const ITEMS = {
   'fruit.peach': { icon: '🍑', kind: 'fruit', maxStack: 99, sell: 45, energy: 10 },
   'fruit.orange': { icon: '🍊', kind: 'fruit', maxStack: 99, sell: 45, energy: 10 },
   'fruit.cherry': { icon: '🍒', kind: 'fruit', maxStack: 99, sell: 45, energy: 10 },
+  // Found in the regions (not grown in the orchard).
+  'fruit.coconut': { icon: '🥥', kind: 'fruit', maxStack: 99, sell: 60, energy: 12 },
+  'fruit.blackberry': { icon: '🫐', kind: 'fruit', maxStack: 99, sell: 40, energy: 8 },
+  'crop.mushroom': crop('🍄', 45, 10),
 
   'animal.egg': { icon: '🥚', kind: 'animal', maxStack: 99, sell: 50, energy: 8 },
   'animal.milk': { icon: '🥛', kind: 'animal', maxStack: 99, sell: 90, energy: 15 },
@@ -97,6 +107,9 @@ export const ITEMS = {
   'bug.firefly': bug('✨', 120),
   'bug.caterpillar': bug('🐛', 40),
   'bug.beetle': bug('🪲', 150),
+  'bug.blueFirefly': bug('✨', 200),
+  'bug.lavaBeetle': bug('🐞', 260),
+  'bug.cloudMoth': bug('🦋', 300),
 
   'res.wood': res('🪵', 4),
   'res.stone': res('🪨', 3),
@@ -106,6 +119,29 @@ export const ITEMS = {
   'res.crystal': res('💎', 350),
   'res.hay': res('🍂', 4),
   'res.fossil': res('🦴', 180),
+  'res.obsidian': res('🖤', 120),
+  'res.fireCrystal': res('💠', 400),
+  'res.stardust': res('🌟', 250),
+  'res.cloudCotton': res('☁️', 90),
+  // Things the cute creatures leave when they calm down.
+  'res.jelly': res('🟢', 30),
+  'res.moss': res('🌱', 25),
+  'res.ember': res('🔸', 45),
+  'res.puff': res('🤍', 40),
+
+  // Stage 6: shells and fossils (the museum keeps one of each).
+  'shell.scallop': shell('🐚', 40),
+  'shell.cowrie': shell('🐚', 60),
+  'shell.starfish': shell('⭐', 50),
+  'shell.conch': shell('🐚', 90),
+  'shell.nautilus': shell('🐚', 220),
+  'shell.pearl': shell('🦪', 320),
+  'fossil.fern': fossil('🌿', 180),
+  'fossil.ammonite': fossil('🌀', 220),
+  'fossil.trilobite': fossil('🦐', 260),
+  'fossil.feather': fossil('🪶', 280),
+  'fossil.tooth': fossil('🦷', 320),
+  'fossil.egg': fossil('🥚', 400),
 
   'flower.tulip': { icon: '🌷', kind: 'flower', maxStack: 99, sell: 30 },
   'flower.sunflower': { icon: '🌻', kind: 'flower', maxStack: 99, sell: 35 },
@@ -180,6 +216,11 @@ export const ITEMS = {
   'furn.birdbath': furn('🕊️', 180),
   'furn.flowerBed': furn('🌼', 120),
   'furn.stonePath': furn('🪨', 10),
+  // Festival prizes.
+  'furn.flowerArch': furn('🌸', 600),
+  'furn.paperLantern': furn('🏮', 500),
+  'furn.jackLantern': furn('🎃', 500),
+  'furn.snowGlobe': furn('🔮', 700),
 
   // Clothes sewn at the knitting table (they go to the wardrobe), dyes for new colors, jewelry.
   'cloth.sweater': cloth('🧥', 2100),

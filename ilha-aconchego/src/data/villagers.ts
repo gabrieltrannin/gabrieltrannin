@@ -54,7 +54,7 @@ export const PLACES = {
   // Stage 5: Pérola's salon, in front of her house.
   salon: [37.9, 12.1],
 } as const satisfies Record<string, XZ>;
-export type PlaceId = keyof typeof PLACES | 'home';
+export type PlaceId = keyof typeof PLACES | 'home' | 'festival';
 
 /** One step of a routine: from this minute of the day on, be at this place. */
 export type Routine = readonly (readonly [minute: number, place: PlaceId])[];

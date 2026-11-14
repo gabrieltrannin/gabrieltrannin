@@ -30,13 +30,14 @@ export type FestivalId = 'flowers' | 'lanterns' | 'harvest' | 'snow';
 export interface Festival {
   id: FestivalId;
   season: SeasonId;
-  /** Day of the season. `null` means the design document has not fixed the day yet (stage 6). */
-  day: number | null;
+  /** Day of the season. */
+  day: number;
 }
 
+/** One festival per season (stage 6 fixed the days the design document left open). */
 export const FESTIVALS: readonly Festival[] = [
   { id: 'flowers', season: 'spring', day: 13 },
-  { id: 'lanterns', season: 'summer', day: null },
-  { id: 'harvest', season: 'autumn', day: null },
-  { id: 'snow', season: 'winter', day: null },
+  { id: 'lanterns', season: 'summer', day: 20 },
+  { id: 'harvest', season: 'autumn', day: 22 },
+  { id: 'snow', season: 'winter', day: 24 },
 ];

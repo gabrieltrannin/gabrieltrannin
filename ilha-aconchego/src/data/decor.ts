@@ -11,10 +11,10 @@ export const STATIONS: readonly StationId[] = ['carpentry', 'kitchen', 'knitting
 export const isStationId = (v: unknown): v is StationId => typeof v === 'string' && (STATIONS as readonly string[]).includes(v);
 
 /** Themed collections of the catalog. */
-export type CollectionId = 'cozy' | 'craft' | 'garden' | 'beach' | 'farm' | 'market';
-export const COLLECTIONS: readonly CollectionId[] = ['cozy', 'craft', 'garden', 'beach', 'farm', 'market'];
-/** Island stars needed before a collection can be ordered from the catalog. */
-export const COLLECTION_STARS: Record<CollectionId, number> = { cozy: 1, craft: 1, garden: 1, beach: 2, farm: 2, market: 3 };
+export type CollectionId = 'cozy' | 'craft' | 'garden' | 'beach' | 'farm' | 'market' | 'festival';
+export const COLLECTIONS: readonly CollectionId[] = ['cozy', 'craft', 'garden', 'beach', 'farm', 'market', 'festival'];
+/** Island stars needed before a collection can be ordered from the catalog (festival prizes are never sold). */
+export const COLLECTION_STARS: Record<CollectionId, number> = { cozy: 1, craft: 1, garden: 1, beach: 2, farm: 2, market: 3, festival: 99 };
 /** Collections that count as "themed" for achievements, titles and the island rating. */
 export const THEMED: readonly CollectionId[] = ['beach', 'farm', 'market'];
 
@@ -89,6 +89,11 @@ export const DECOR = {
   'furn.umbrella': d(1, 1, 'out', 'market', 4, 720),
   'furn.chalkboard': d(1, 1, 'any', 'market', 4, 360),
   'furn.lantern': d(1, 1, 'any', 'market', 4, 480, { light: true }),
+  // Festival prizes (stage 6): won in the minigames, never sold in the catalog.
+  'furn.flowerArch': d(2, 1, 'out', 'festival', 5, 9999),
+  'furn.paperLantern': d(1, 1, 'any', 'festival', 5, 9999, { light: true }),
+  'furn.jackLantern': d(1, 1, 'any', 'festival', 5, 9999, { light: true }),
+  'furn.snowGlobe': d(1, 1, 'any', 'festival', 5, 9999),
 } as const satisfies Partial<Record<ItemId, DecorDef>>;
 
 export type DecorItem = keyof typeof DECOR;

@@ -9,11 +9,13 @@ import type { CollectionId } from './decor';
 /** Counters kept per player (PlayerState.stats). */
 export type StatId =
   | 'harvested' | 'fished' | 'bugs' | 'ores' | 'cooked' | 'crafted' | 'decorPlaced' | 'gifts' | 'requests'
-  | 'photos' | 'emotes' | 'petFinds' | 'stallSold' | 'earned' | 'experiments';
+  | 'photos' | 'emotes' | 'petFinds' | 'stallSold' | 'earned' | 'experiments'
+  // Stage 6.
+  | 'calmed' | 'puzzles';
 
 export type Metric =
   | { stat: StatId }
-  | { of: 'stars' | 'homeLevel' | 'bestHearts' | 'friends3' | 'museum' | 'recipes' | 'sewn' | 'dyes' | 'talents' | 'stations' }
+  | { of: 'stars' | 'homeLevel' | 'bestHearts' | 'friends3' | 'museum' | 'recipes' | 'sewn' | 'dyes' | 'talents' | 'stations' | 'regions' | 'deepest' | 'festivals' }
   | { collection: CollectionId };
 
 export interface AchievementDef {
@@ -61,6 +63,16 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   a('petFinds5', '🐰', { stat: 'petFinds' }, 5, true),
   a('stall10', '🧺', { stat: 'stallSold' }, 10, true),
   a('earned10k', '🪙', { stat: 'earned' }, 10000, true),
+  // Stage 6.
+  a('regions1', '⛵', { of: 'regions' }, 1),
+  a('regions4', '🗺️', { of: 'regions' }, 4, true),
+  a('mine10', '🪜', { of: 'deepest' }, 10),
+  a('mine30', '💎', { of: 'deepest' }, 30, true),
+  a('calm20', '🫧', { stat: 'calmed' }, 20, true),
+  a('puzzles4', '🧩', { stat: 'puzzles' }, 4, true),
+  a('festival1', '🎉', { of: 'festivals' }, 1),
+  a('festival4', '🎊', { of: 'festivals' }, 4, true),
+  a('museum30', '🦴', { of: 'museum' }, 30, true),
 ];
 export const achievementById = (id: unknown): AchievementDef | undefined => ACHIEVEMENTS.find(x => x.id === id);
 export const TITLE_IDS: readonly string[] = ACHIEVEMENTS.filter(x => x.title).map(x => x.id);

@@ -4,6 +4,7 @@
  * Placeholders use {name}.
  */
 import { ptBRHome } from './pt-BR.home';
+import { ptBRExplore } from './pt-BR.explore';
 
 export const ptBR = {
   'app.title': 'Ilha Aconchego',
@@ -541,6 +542,7 @@ export const ptBR = {
   'npc.job.perola': 'Gata cabeleireira',
   'npc.job.nico': 'Esquilo aventureiro',
   ...ptBRHome,
+  ...ptBRExplore,
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof ptBR;

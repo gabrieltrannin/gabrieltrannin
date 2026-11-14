@@ -315,6 +315,7 @@ export const homeHandlers: HandlersFor<HomeCommands> = {
 
 /** Sleep: in a bed at home, or (as before stage 5) at the front door. */
 export function canSleep(state: Readonly<GameState>, player: PlayerState): boolean {
+  if (player.away) return false;
   if (player.inside) return !!usableNear(state, player, 'bed');
   return distance(player, HOUSE_DOOR) <= BED_REACH;
 }

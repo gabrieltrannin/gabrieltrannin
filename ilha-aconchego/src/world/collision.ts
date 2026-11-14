@@ -12,6 +12,7 @@ import {
 } from '../data/village';
 import { PLAYER_STALL } from '../data/rating';
 import { HOUSE_GROWTH } from '../data/house';
+import { MINE_CAVE } from '../data/mine';
 
 /**
  * Walking rules, as pure functions (no Three.js): where the ground can be walked on, what blocks the way,
@@ -123,6 +124,8 @@ export function buildColliders(opts: { greenhouseFixed?: boolean; bridgeFixed?: 
   // Stage 5: the player's market stall, and the newcomers' tents once they arrived.
   list.push(rect(PLAYER_STALL.x, PLAYER_STALL.z, PLAYER_STALL.w, PLAYER_STALL.d));
   for (const t of TENTS) if (opts.tents?.includes(t.npc)) list.push(rect(t.x, t.z, TENT_SIZE.w, TENT_SIZE.d));
+  // Stage 6: the mine's cave in the west cliff.
+  list.push({ kind: 'circle', x: MINE_CAVE[0], z: MINE_CAVE[1], r: 0.9 });
   // The house's side room and cellar door, once built.
   const level = opts.homeLevel ?? 0;
   for (const g of HOUSE_GROWTH) {

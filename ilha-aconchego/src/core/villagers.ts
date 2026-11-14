@@ -7,6 +7,8 @@ import { FRIEND_POINTS, homeOf, NPC_IDS, PLACES, villager, VILLAGERS, type NpcId
 import type { WeatherId } from '../data/weather';
 import { absoluteDay, seasonOf } from './clock';
 import { pickWeighted, roll } from './rules';
+import { festivalActive } from './explore';
+import { FESTIVAL_CENTER, festivalSpot } from '../data/festivals';
 import type { FriendState, GameState, GameTime, RequestState } from './types';
 
 /** Pure rules about the villagers: where they are, what they think of a gift, the board's requests. */
@@ -49,6 +51,7 @@ export function scheduleAt(routine: Routine, minute: number): { place: PlaceId; 
 /** A place in the world; places that need an unlocked area fall back to a nearby one. */
 export function placePoint(npc: NpcId, place: PlaceId, opened: { bridge: boolean }): XZ {
   if (place === 'home') return homeOf(npc);
+  if (place === 'festival') return FESTIVAL_CENTER;
   if ((place === 'wood' || place === 'woodGrove') && !opened.bridge) return PLACES.beachWest;
   return PLACES[place];
 }
@@ -61,6 +64,14 @@ export function villagerSpot(state: Readonly<GameState>, npc: NpcId): { at: XZ; 
   const def = villager(npc);
   // Newcomers stay away (out of sight, "at home") until the island earns enough stars.
   if (!isPresent(state, npc)) return { at: homeOf(npc), previous: homeOf(npc), place: 'home' };
+  // Festival (stage 6): everyone gathers in the square; the host stands in the middle.
+  const festival = festivalActive(state);
+  if (festival) {
+    const present = NPC_IDS.filter(id => isPresent(state, id) && id !== festival.host);
+    const at = npc === festival.host ? FESTIVAL_CENTER : festivalSpot(present.indexOf(npc), present.length);
+    const before = scheduleAt(routineFor(def, state.weather), festival.hours[0] - 10);
+    return { at: [at[0], at[1]], previous: placePoint(npc, before.place, { bridge: state.projects.bridge?.done ?? false }), place: 'festival' };
+  }
   const s = scheduleAt(routineFor(def, state.weather), state.time.minuteOfDay);
   const opened = { bridge: state.projects.bridge?.done ?? false };
   return { at: placePoint(npc, s.place, opened), previous: placePoint(npc, s.previous, opened), place: s.place };

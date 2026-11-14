@@ -6,7 +6,7 @@ import { FARM_TILES, MINE_NODES, PLAYER_START } from '../data/map';
 import { SKILLS, type SkillId } from '../data/skills';
 import { TOOLS, type ToolId } from '../data/tools';
 import { FIRST_DAY_WEATHER } from '../data/weather';
-import { createTime, seasonOf, startNextDay } from './clock';
+import { absoluteDay, createTime, seasonOf, startNextDay } from './clock';
 import { createInventory } from './inventory';
 import { emptyPlot } from './rules';
 import { firstRequest, newFriend } from './villagers';
@@ -17,10 +17,10 @@ import type { AnimalState, GameState, OreId, PlayerState } from './types';
 /** What the rocks hold on the first day: mostly stone and copper, one silver. */
 const STARTING_ORES: readonly OreId[] = ['copper', 'stone', 'copper', 'stone', 'silver', 'stone', 'copper', 'stone'];
 import { rollWeather } from './weather';
-import { newIslandHome, newPlayerHome, rollHidden } from './home';
+import { newIslandExplore, newIslandHome, newPlayerExplore, newPlayerHome, rollHidden } from './home';
 
 /** Bumped whenever the shape of GameState changes; older saves are not loaded. */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface NewIslandOptions {
   seed?: number;
@@ -45,6 +45,7 @@ export function createPlayer(id: string, name: string, appearance: Appearance = 
     ...newPlayerProgress(),
     ...newPlayerVillage(),
     ...newPlayerHome(inventory),
+    ...newPlayerExplore(),
   };
 }
 
@@ -118,6 +119,7 @@ export function createInitialState(opts: NewIslandOptions = {}): GameState {
     ...newIslandProgress(time, seed),
     ...newIslandVillage(),
     ...newIslandHome(),
+    ...newIslandExplore(absoluteDay(time)),
   };
   rollHidden(state);
   return state;
