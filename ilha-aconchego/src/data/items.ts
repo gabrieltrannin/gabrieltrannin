@@ -4,7 +4,10 @@ import type { FruitId } from './defaults';
  * Everything that fits in the backpack. Names come from i18n (`item.<id>`); icons are emoji drawn by
  * the browser until there is item art. `sell` is the base price at the shipping bin (0 = cannot be sold).
  */
-export type ItemKind = 'tool' | 'seed' | 'crop' | 'fruit' | 'animal' | 'fish' | 'bug' | 'resource' | 'supply' | 'dish' | 'artisan' | 'placeable' | 'flower';
+export type ItemKind =
+  | 'tool' | 'seed' | 'crop' | 'fruit' | 'animal' | 'fish' | 'bug' | 'resource' | 'supply' | 'dish' | 'artisan' | 'placeable' | 'flower'
+  // Stage 5: furniture and decorations, clothes, dyes, jewelry, potions, recipe books and the pet's accessories.
+  | 'furniture' | 'clothing' | 'dye' | 'jewelry' | 'potion' | 'book' | 'petwear';
 
 export type BuffId = 'speed' | 'fishing' | 'mining' | 'farming' | 'luck';
 
@@ -27,6 +30,12 @@ const fish = (icon: string, sell: number): ItemDef => ({ icon, kind: 'fish', max
 const bug = (icon: string, sell: number): ItemDef => ({ icon, kind: 'bug', maxStack: 99, sell });
 const res = (icon: string, sell: number): ItemDef => ({ icon, kind: 'resource', maxStack: 99, sell });
 const dish = (icon: string, sell: number, energy: number, buff?: BuffId): ItemDef => ({ icon, kind: 'dish', maxStack: 99, sell, energy, ...(buff ? { buff } : {}) });
+const furn = (icon: string, sell: number): ItemDef => ({ icon, kind: 'furniture', maxStack: 10, sell });
+const cloth = (icon: string, sell: number): ItemDef => ({ icon, kind: 'clothing', maxStack: 5, sell });
+const dye = (icon: string, sell: number): ItemDef => ({ icon, kind: 'dye', maxStack: 20, sell });
+const jewel = (icon: string, sell: number): ItemDef => ({ icon, kind: 'jewelry', maxStack: 10, sell });
+const book = (icon: string): ItemDef => ({ icon, kind: 'book', maxStack: 5, sell: 60 });
+const petwear = (icon: string, sell: number): ItemDef => ({ icon, kind: 'petwear', maxStack: 5, sell });
 
 export const ITEMS = {
   'tool.hoe': tool('⚒️'),
@@ -119,10 +128,95 @@ export const ITEMS = {
   'dish.cheeseToast': dish('🥪', 330, 70, 'luck'),
   'dish.bread': dish('🍞', 40, 25),
   'dish.blackberryPie': dish('🥧', 120, 45),
+  'dish.fruitPie': dish('🥧', 260, 65, 'luck'),
+  'dish.jam': dish('🫙', 180, 30),
+  'dish.fishStew': dish('🍲', 300, 80, 'fishing'),
+  'dish.pizza': dish('🍕', 380, 85, 'speed'),
+  'dish.fruitSalad': dish('🍧', 220, 55),
 
   'artisan.juice': { icon: '🧃', kind: 'artisan', maxStack: 99, sell: 150, energy: 20 },
   'artisan.cheese': { icon: '🧀', kind: 'artisan', maxStack: 99, sell: 230, energy: 25 },
   'artisan.yarn': { icon: '🧶', kind: 'artisan', maxStack: 99, sell: 320 },
+  'artisan.fabric': { icon: '🧵', kind: 'artisan', maxStack: 99, sell: 700 },
+
+  // Furniture and decorations (data/decor.ts says where they go and how big they are).
+  'furn.bed': furn('🛏️', 1600),
+  'furn.table': furn('🪵', 120),
+  'furn.chair': furn('🪑', 60),
+  'furn.sofa': furn('🛋️', 2300),
+  'furn.bookshelf': furn('📚', 200),
+  'furn.lamp': furn('💡', 90),
+  'furn.rug': furn('🟫', 1900),
+  'furn.plant': furn('🪴', 80),
+  'furn.wardrobe': furn('🚪', 300),
+  'furn.mirror': furn('🪞', 260),
+  'furn.workbench': furn('🔨', 250),
+  'furn.stove': furn('🍳', 320),
+  'furn.loom': furn('🧶', 250),
+  'furn.alchemy': furn('⚗️', 250),
+  'furn.jeweler': furn('💍', 250),
+  'furn.beachChair': furn('🏖️', 850),
+  'furn.parasol': furn('⛱️', 220),
+  'furn.surfboard': furn('🏄', 240),
+  'furn.shellLamp': furn('🐚', 280),
+  'furn.sandcastle': furn('🏰', 160),
+  'furn.lifebuoy': furn('🛟', 150),
+  'furn.hayBale': furn('🌾', 50),
+  'furn.crate': furn('📦', 40),
+  'furn.milkCan': furn('🥛', 150),
+  'furn.flowerBox': furn('🌷', 140),
+  'furn.miniScarecrow': furn('🧑‍🌾', 180),
+  'furn.birdhouse': furn('🐦', 120),
+  'furn.cafeTable': furn('☕', 260),
+  'furn.bunting': furn('🎏', 180),
+  'furn.fruitCrate': furn('🍎', 140),
+  'furn.umbrella': furn('🏮', 240),
+  'furn.chalkboard': furn('🪧', 120),
+  'furn.lantern': furn('🏮', 260),
+  'furn.bench': furn('🪑', 200),
+  'furn.streetLamp': furn('🔦', 260),
+  'furn.fence': furn('🚧', 20),
+  'furn.fountain': furn('⛲', 600),
+  'furn.birdbath': furn('🕊️', 180),
+  'furn.flowerBed': furn('🌼', 120),
+  'furn.stonePath': furn('🪨', 10),
+
+  // Clothes sewn at the knitting table (they go to the wardrobe), dyes for new colors, jewelry.
+  'cloth.sweater': cloth('🧥', 2100),
+  'cloth.raincoat': cloth('🧥', 1700),
+  'cloth.apron': cloth('👗', 1600),
+  'cloth.scarf': cloth('🧣', 800),
+  'cloth.beret': cloth('🎨', 1200),
+  'dye.red': dye('🔴', 80),
+  'dye.yellow': dye('🟡', 80),
+  'dye.pink': dye('🌸', 80),
+  'dye.green': dye('🟢', 100),
+  'dye.navy': dye('🔵', 120),
+  'dye.lilac': dye('🟣', 120),
+  'dye.orange': dye('🟠', 90),
+  'jewel.copperRing': jewel('💍', 120),
+  'jewel.silverRing': jewel('💍', 260),
+  'jewel.goldNecklace': jewel('📿', 900),
+  'jewel.crystalPendant': jewel('🔮', 1000),
+  'jewel.tiara': jewel('👑', 1500),
+
+  // Potions from the alchemy table.
+  'potion.energy': { icon: '🧃', kind: 'potion', maxStack: 20, sell: 150, energy: 60 },
+  'potion.speed': { icon: '🧪', kind: 'potion', maxStack: 20, sell: 200, energy: 10, buff: 'speed' },
+  'potion.luck': { icon: '🍀', kind: 'potion', maxStack: 20, sell: 260, energy: 10, buff: 'luck' },
+
+  // Recipe books (reading one teaches its recipes).
+  'book.kitchen': book('📕'),
+  'book.carpentry': book('📗'),
+  'book.knitting': book('📘'),
+  'book.alchemy': book('📙'),
+  'book.jewelry': book('📓'),
+
+  // The pet's accessories.
+  'pet.bow': petwear('🎀', 150),
+  'pet.scarf': petwear('🧣', 200),
+  'pet.flowerCrown': petwear('💐', 180),
+  'pet.bell': petwear('🔔', 160),
 
   'place.sprinkler': { icon: '⛲', kind: 'placeable', maxStack: 20, sell: 40 },
   'place.keg': { icon: '🛢️', kind: 'placeable', maxStack: 5, sell: 0 },

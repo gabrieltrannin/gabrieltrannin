@@ -43,6 +43,14 @@ export const SHOPS = {
     { item: 'animal.milk', price: 120 },
     { item: 'dish.honeyCake', price: 380 },
   ],
+  // Celeste's recipe books at the museum (once it is open).
+  books: [
+    { item: 'book.kitchen', price: 800 },
+    { item: 'book.carpentry', price: 900 },
+    { item: 'book.knitting', price: 900 },
+    { item: 'book.alchemy', price: 1000 },
+    { item: 'book.jewelry', price: 1200 },
+  ],
   // Bento's tool shop at the smithy.
   smithy: [
     { item: 'res.copper', price: 75 },

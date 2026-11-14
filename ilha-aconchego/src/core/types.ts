@@ -10,6 +10,8 @@ import type { ToolId } from '../data/tools';
 import type { WeatherId } from '../data/weather';
 import type { ProjectId } from '../data/community';
 import type { NpcId } from '../data/villagers';
+import type { Accessory, Outfit } from '../data/appearance';
+import type { FloorId } from '../data/house';
 
 /** Position in the calendar plus the time of day. Plain data, safe to save and send over the network. */
 export interface GameTime {
@@ -78,6 +80,67 @@ export interface PlayerState {
   /** Letters in the mailbox, newest last. */
   mail: MailItem[];
   mailSeq: number;
+  // Stage 5.
+  /** Inside the house (on this floor) or outside on the island (null). Inside, `position` is in the floor's own coordinates. */
+  inside: FloorId | null;
+  home: HomeState;
+  /** Secret recipes learned (by experiment, books or letters); the others come with skill levels. */
+  recipes: string[];
+  wardrobe: WardrobeState;
+  /** Chosen talents (data/talents ids). */
+  talents: string[];
+  /** Counters for achievements (data/achievements StatId). */
+  stats: Record<string, number>;
+  /** Every item ever owned (collections). */
+  discovered: ItemId[];
+  achievements: string[];
+  /** Title shown on the profile (an achievement id), or none. */
+  title: string | null;
+  pet: PetState;
+}
+
+/** A piece of furniture or decoration on the grid. `x`, `z` is its corner tile; `rot` is quarter turns. */
+export interface PlacedDecor {
+  id: number;
+  item: ItemId;
+  x: number;
+  z: number;
+  rot: number;
+  /** Who placed it (on a shared island, stage 7). */
+  by?: string;
+}
+
+export interface HomeState {
+  /** 0 to 3 (data/house HOME_LEVELS). */
+  level: number;
+  /** Furniture on each floor. */
+  floors: Partial<Record<FloorId, PlacedDecor[]>>;
+  seq: number;
+}
+
+/** Pieces and colors beyond what the character creator offers. */
+export interface WardrobeState {
+  outfits: Outfit[];
+  accessories: Accessory[];
+  colors: string[];
+}
+
+export interface PetState {
+  accessory: ItemId | null;
+}
+
+/** The player's market stall: what is on display. */
+export interface StallState {
+  items: ItemStack[];
+}
+
+/** Something buried that the pet can sniff out today. */
+export interface HiddenItem {
+  id: number;
+  x: number;
+  z: number;
+  item: ItemId;
+  qty: number;
 }
 
 export type GiftReaction = 'love' | 'like' | 'neutral' | 'dislike';
@@ -88,6 +151,8 @@ export interface FriendState {
   /** absoluteDay of the last chat and the last gift (once a day each). */
   talkedDay: number;
   giftDay: number;
+  /** absoluteDay of the last emote shown to them (stage 5, once a day). */
+  emoteDay: number;
   /** Gifts already given and what they thought of them (shown in the friendship screen). */
   known: Partial<Record<ItemId, GiftReaction>>;
   lastGift: { item: ItemId; day: number } | null;
@@ -215,4 +280,17 @@ export interface GameState {
   projects: Record<ProjectId, ProjectState>;
   /** Fish, bugs and fossils donated to the museum. */
   museum: ItemId[];
+  // Stage 5.
+  /** Decorations outside on the island (shared by everyone who lives here). */
+  decor: PlacedDecor[];
+  decorSeq: number;
+  /** Island rating: stars reached so far (they only go up during the day; the morning recount can lower them). */
+  stars: number;
+  /** Each player's market stall. */
+  stalls: Record<string, StallState>;
+  /** Today's hidden finds. */
+  hidden: HiddenItem[];
+  hiddenSeq: number;
+  /** Newcomers who moved in. */
+  arrived: NpcId[];
 }

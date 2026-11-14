@@ -17,9 +17,10 @@ import type { AnimalState, GameState, OreId, PlayerState } from './types';
 /** What the rocks hold on the first day: mostly stone and copper, one silver. */
 const STARTING_ORES: readonly OreId[] = ['copper', 'stone', 'copper', 'stone', 'silver', 'stone', 'copper', 'stone'];
 import { rollWeather } from './weather';
+import { newIslandHome, newPlayerHome, rollHidden } from './home';
 
 /** Bumped whenever the shape of GameState changes; older saves are not loaded. */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface NewIslandOptions {
   seed?: number;
@@ -31,6 +32,7 @@ export interface NewIslandOptions {
 }
 
 export function createPlayer(id: string, name: string, appearance: Appearance = DEFAULT_APPEARANCE): PlayerState {
+  const inventory = createInventory(STARTING_INVENTORY);
   return {
     id,
     name,
@@ -38,10 +40,11 @@ export function createPlayer(id: string, name: string, appearance: Appearance = 
     position: { ...PLAYER_START },
     coins: STARTING_COINS,
     energy: MAX_ENERGY,
-    inventory: createInventory(STARTING_INVENTORY),
+    inventory,
     activeSlot: 0,
     ...newPlayerProgress(),
     ...newPlayerVillage(),
+    ...newPlayerHome(inventory),
   };
 }
 
@@ -100,7 +103,7 @@ export function createInitialState(opts: NewIslandOptions = {}): GameState {
   const seed = opts.seed ?? DEFAULT_SEED;
   const playerId = opts.playerId ?? DEFAULT_PLAYER.id;
   const time = createTime();
-  return {
+  const state: GameState = {
     version: SAVE_VERSION,
     seed,
     time,
@@ -114,5 +117,8 @@ export function createInitialState(opts: NewIslandOptions = {}): GameState {
     trees: {},
     ...newIslandProgress(time, seed),
     ...newIslandVillage(),
+    ...newIslandHome(),
   };
+  rollHidden(state);
+  return state;
 }

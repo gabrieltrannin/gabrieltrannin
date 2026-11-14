@@ -9,18 +9,20 @@ import type { GameEvent } from '../commands';
 import { addItem, countItem, removeItem, takeFromSlot } from '../inventory';
 import type { FriendState, GameState, PlayerState } from '../types';
 import { giftPoints, isBirthday, reactionTo, villagerSpot } from '../villagers';
+import { boost } from '../talents';
+import { bump } from '../progress';
 
 type VillageCommands = 'npc.talk' | 'npc.gift' | 'request.deliver' | 'project.contribute' | 'museum.donate' | 'mail.read' | 'mail.take';
 
 /** Villagers walk between places: the player must be near where they are now or were just before. */
 const NPC_REACH = 9;
-function nearNpc(state: Readonly<GameState>, player: PlayerState, npc: NpcId): boolean {
+export function nearNpc(state: Readonly<GameState>, player: PlayerState, npc: NpcId): boolean {
   const spot = villagerSpot(state, npc);
   return near(player, spot.at, NPC_REACH) || near(player, spot.previous, NPC_REACH);
 }
 
 const MAX_POINTS = HEART_POINTS * MAX_HEARTS;
-function addPoints(friend: FriendState, points: number): void {
+export function addPoints(friend: FriendState, points: number): void {
   friend.points = Math.max(0, Math.min(MAX_POINTS, friend.points + points));
 }
 
@@ -49,7 +51,7 @@ export const villageHandlers: HandlersFor<VillageCommands> = {
       const before = hearts(friend.points);
       if (first) {
         friend.talkedDay = today;
-        addPoints(friend, FRIEND_POINTS.talk);
+        addPoints(friend, Math.round(FRIEND_POINTS.talk * boost(player, 'friendTalk')));
       }
       const scene = sceneDue(friend);
       if (scene) {
@@ -84,7 +86,9 @@ export const villageHandlers: HandlersFor<VillageCommands> = {
       const birthday = isBirthday(def, state.time);
       const before = hearts(friend.points);
       takeFromSlot(player.inventory, cmd.slot, 1);
-      addPoints(friend, giftPoints(reaction, birthday));
+      const points = giftPoints(reaction, birthday);
+      addPoints(friend, points > 0 ? Math.round(points * boost(player, 'giftBonus')) : points);
+      bump(player, 'gifts');
       const today = absoluteDay(state.time);
       friend.giftDay = today;
       friend.known[item] = reaction;
@@ -110,12 +114,15 @@ export const villageHandlers: HandlersFor<VillageCommands> = {
       const player = state.players[actor.id]!;
       const request = state.requests.find(r => r.id === cmd.request)!;
       removeItem(player.inventory, request.item, request.qty);
-      player.coins += request.reward;
+      const reward = Math.round(request.reward * boost(player, 'requestBonus'));
+      player.coins += reward;
+      bump(player, 'requests');
+      bump(player, 'earned', reward);
       request.done = true;
       const friend = player.friends[request.npc];
       const before = hearts(friend.points);
       addPoints(friend, FRIEND_POINTS.request);
-      const events: GameEvent[] = [{ type: 'request.done', playerId: actor.id, request: request.id, npc: request.npc, reward: request.reward }, { type: 'board.changed' }, ...changed(actor.id)];
+      const events: GameEvent[] = [{ type: 'request.done', playerId: actor.id, request: request.id, npc: request.npc, reward }, { type: 'board.changed' }, ...changed(actor.id)];
       if (hearts(friend.points) > before) events.push({ type: 'npc.heart', playerId: actor.id, npc: request.npc, hearts: hearts(friend.points) });
       return events.concat(xp(player, 'charisma', 15));
     },

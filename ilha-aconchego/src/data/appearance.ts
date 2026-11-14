@@ -10,11 +10,16 @@ export const EYE_COLORS = ['#2B2B2B', '#5A3B22', '#2F6FB0', '#3E8E5A', '#8A4FBF'
 export const MOUTHS = ['smile', 'laugh', 'cat', 'calm'] as const;
 export const HAIR_STYLES = ['short', 'bun', 'ponytail', 'long', 'bob', 'spiky'] as const;
 export const HAIR_COLORS = ['#3B2A20', '#7A4A2A', '#C98A4B', '#F2D27A', '#E8708F', '#7FB7E6', '#9ADBB5', '#B9A1E6', '#EDEDED'] as const;
-export const OUTFITS = ['tshirt', 'dress', 'overalls', 'hoodie'] as const;
+/** The first four can be chosen when the character is made; the others are sewn later (stage 5). */
+export const OUTFITS = ['tshirt', 'dress', 'overalls', 'hoodie', 'sweater', 'raincoat', 'apron'] as const;
+export const BASE_OUTFITS = OUTFITS.slice(0, 4);
 export const TOP_COLORS = ['#7C4DA6', '#3FA7A0', '#E8708F', '#F2C14E', '#5B8DD9', '#F4F1EA', '#E5484D', '#6B8E4E'] as const;
 export const BOTTOM_COLORS = ['#3E5C8A', '#4A4A52', '#8A6A4A', '#E8708F', '#F4F1EA', '#5E8F5A'] as const;
 export const SHOE_COLORS = ['#5A3B2E', '#2B2B2B', '#F4F1EA', '#E5484D', '#5B8DD9'] as const;
-export const ACCESSORIES = ['none', 'strawHat', 'beanie', 'bow', 'flowerCrown', 'sprout'] as const;
+export const ACCESSORIES = ['none', 'strawHat', 'beanie', 'bow', 'flowerCrown', 'sprout', 'scarf', 'beret', 'tiara'] as const;
+export const BASE_ACCESSORIES = ACCESSORIES.slice(0, 6);
+/** Colors that dyes add to the wardrobe (stage 5), for tops, trousers and shoes. */
+export const DYE_COLORS = ['#B83A4B', '#FFE07A', '#F7B6C8', '#9ADBB5', '#2E3A6B', '#B9A1E6', '#F28C38'] as const;
 
 export type Species = (typeof SPECIES)[number];
 export type EyeStyle = (typeof EYES)[number];
@@ -57,7 +62,10 @@ export const DEFAULT_APPEARANCE: Readonly<Appearance> = {
 };
 
 /** Which option list each field picks from. `blush` is a yes/no switch. */
-export const APPEARANCE_OPTIONS = {
+export type AppearanceOptions = { [K in Exclude<keyof Appearance, 'blush'>]: readonly string[] };
+
+/** What a new character can choose (the character creator). */
+export const APPEARANCE_OPTIONS: AppearanceOptions = {
   species: SPECIES,
   skin: SKIN_TONES,
   eyes: EYES,
@@ -65,12 +73,22 @@ export const APPEARANCE_OPTIONS = {
   mouth: MOUTHS,
   hairStyle: HAIR_STYLES,
   hairColor: HAIR_COLORS,
-  outfit: OUTFITS,
+  outfit: BASE_OUTFITS,
   topColor: TOP_COLORS,
   bottomColor: BOTTOM_COLORS,
   shoes: SHOE_COLORS,
+  accessory: BASE_ACCESSORIES,
+};
+
+/** Every value a saved character may have (sewn clothes and dyed colors included). */
+export const ALL_APPEARANCE_OPTIONS: AppearanceOptions = {
+  ...APPEARANCE_OPTIONS,
+  outfit: OUTFITS,
   accessory: ACCESSORIES,
-} as const satisfies Record<Exclude<keyof Appearance, 'blush'>, readonly string[]>;
+  topColor: [...TOP_COLORS, ...DYE_COLORS],
+  bottomColor: [...BOTTOM_COLORS, ...DYE_COLORS],
+  shoes: [...SHOE_COLORS, ...DYE_COLORS],
+};
 
 export const NAME_MAX_LENGTH = 14;
 
@@ -79,7 +97,7 @@ export function isValidAppearance(value: unknown): value is Appearance {
   if (typeof value !== 'object' || value === null) return false;
   const a = value as Record<string, unknown>;
   if (typeof a.blush !== 'boolean') return false;
-  return (Object.keys(APPEARANCE_OPTIONS) as (keyof typeof APPEARANCE_OPTIONS)[]).every(key => (APPEARANCE_OPTIONS[key] as readonly unknown[]).includes(a[key]));
+  return (Object.keys(ALL_APPEARANCE_OPTIONS) as (keyof AppearanceOptions)[]).every(key => (ALL_APPEARANCE_OPTIONS[key] as readonly unknown[]).includes(a[key]));
 }
 
 /** "Sortear visual": a random look, keeping nothing from before. */
@@ -94,11 +112,11 @@ export function randomAppearance(random: () => number): Appearance {
     blush: random() < 0.6,
     hairStyle: pick(HAIR_STYLES),
     hairColor: pick(HAIR_COLORS),
-    outfit: pick(OUTFITS),
+    outfit: pick(BASE_OUTFITS),
     topColor: pick(TOP_COLORS),
     bottomColor: pick(BOTTOM_COLORS),
     shoes: pick(SHOE_COLORS),
-    accessory: pick(ACCESSORIES),
+    accessory: pick(BASE_ACCESSORIES),
   };
 }
 

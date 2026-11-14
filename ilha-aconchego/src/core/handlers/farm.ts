@@ -7,6 +7,8 @@ import { seasonOf } from '../clock';
 import { changed, gained, hasItem, hasRoom, near, playerOf, RESIDENTS, xp, type HandlersFor } from '../commandKit';
 import type { GameEvent } from '../commands';
 import { addItem, countItem, removeItem } from '../inventory';
+import { chance } from '../talents';
+import { bump } from '../progress';
 import { afterHarvest, cropGrowsIn, emptyPlot, energyCost, levelOf, plotOf, roll, rollQuality, tilesInArea } from '../rules';
 import type { GameState, PlayerState, PlotState } from '../types';
 
@@ -115,10 +117,15 @@ export const farmHandlers: HandlersFor<FarmCommands> = {
       const crop = plot.crop!;
       const item: ItemId = `crop.${crop}`;
       const q = rollQuality(state, player, plot);
-      const qty = 1 + (roll(state) < 0.03 * levelOf(player, 'farming') ? 1 : 0);
+      const qty = 1 + (roll(state) < 0.03 * levelOf(player, 'farming') + chance(player, 'extraCrop') ? 1 : 0);
       const added = addItem(player.inventory, item, qty, q);
       afterHarvest(plot);
-      return [{ type: 'farm.changed' }, gained(actor.id, item, added, q), ...changed(actor.id), ...xp(player, 'farming', FARM_CROP_DEFS[crop].xp)];
+      bump(player, 'harvested', added);
+      const events: GameEvent[] = [{ type: 'farm.changed' }, gained(actor.id, item, added, q)];
+      // Talent: sometimes the seed comes back.
+      const seed = `seed.${crop}` as ItemId;
+      if (isItemId(seed) && roll(state) < chance(player, 'seedBack')) events.push(gained(actor.id, seed, addItem(player.inventory, seed, 1)));
+      return [...events, ...changed(actor.id), ...xp(player, 'farming', FARM_CROP_DEFS[crop].xp)];
     },
   },
 

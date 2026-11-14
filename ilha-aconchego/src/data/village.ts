@@ -63,6 +63,14 @@ export const HOUSE_SPOTS: readonly HouseSpot[] = [
 export const HOUSE_SIZE = { w: 2.6, d: 2.1 } as const;
 export const houseDoor = (h: HouseSpot): XZ => [h.x, h.z + HOUSE_SIZE.d / 2 + 0.35];
 
+/** Stage 5: newcomers camp in tents on the south beach of the main island until they settle. */
+export const TENTS: readonly HouseSpot[] = [
+  { npc: 'mel', x: -9.4, z: 15.0 },
+  { npc: 'gaspar', x: -13.4, z: 14.7 },
+];
+export const TENT_SIZE = { w: 1.9, d: 1.8 } as const;
+export const tentDoor = (h: HouseSpot): XZ => [h.x, h.z + TENT_SIZE.d / 2 + 0.3];
+
 export const MUSEUM = { x: 38.0, z: -1.6, w: 6.0, d: 3.6 } as const;
 export const MUSEUM_DOOR: XZ = [38.0, 0.75];
 export const SEED_SHOP = { x: 30.4, z: 1.6, w: 3.0, d: 2.0 } as const;

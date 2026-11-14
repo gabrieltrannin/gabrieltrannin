@@ -1,5 +1,5 @@
 import type { XZ } from './map';
-import { HOUSE_SPOTS, houseDoor } from './village';
+import { HOUSE_SPOTS, houseDoor, TENTS, tentDoor } from './village';
 
 /**
  * Walking network for the villagers: points along the paths and the edges between them.
@@ -12,7 +12,7 @@ export const PATH_NODES: Record<string, XZ> = {
   upperW: [-6.8, -7.4], upperE: [9.6, -8.6], hives: [4.3, -8.8], behindStalls: [10.3, -3.3], behindStallsE: [14.9, -3.0], stallsGapE: [15.1, -0.6], bridgeW: [15.8, -2.8],
   mailbox: [-9.8, -0.4], pathE: [5.6, 7.5], plazaW: [6.8, 6.8], plazaC: [10.3, 4.6], plazaN: [10.3, 1.2], plazaNE: [13.4, 1.2],
   plazaNW: [7.2, 1.2], plazaS: [10.0, 8.6], pondW: [11.0, 10.4], stairsTop: [10.0, 12.6], stairsBottom: [10.0, 15.3],
-  pierEnd: [10.0, 21.0], beachW: [4.0, 15.6], beachFar: [-4.0, 15.9], lawn: [0.6, 9.8],
+  pierEnd: [10.0, 21.0], beachW: [4.0, 15.6], beachFar: [-4.0, 15.9], beachTents: [-8.2, 16.2], lawn: [0.6, 9.8],
   // Village.
   bridgeE: [25.8, -2.8], vStreetN: [26.6, -2.8], vPlaza: [29.2, -2.8], vEast: [33.5, -2.8], vMuseumPath: [33.5, 0.9], vMuseum: [38.0, 0.9],
   vRow1W: [26.6, -6.2], vRow1a: [28.6, -6.2], vRow1b: [32.6, -6.2], vRow1c: [34.5, -6.2], vRow1d: [36.6, -6.2], vRow1e: [40.6, -6.2],
@@ -28,7 +28,7 @@ export const PATH_EDGES: readonly (readonly [string, string])[] = [
   ['farmC', 'farmN'], ['farmN', 'northPath'], ['northPath', 'rampBottom'], ['rampBottom', 'rampTop'], ['rampTop', 'upperW'], ['rampTop', 'hives'],
   ['hives', 'upperE'], ['rampBottom', 'behindStalls'], ['behindStalls', 'behindStallsE'], ['behindStallsE', 'bridgeW'], ['behindStallsE', 'stallsGapE'], ['stallsGapE', 'plazaNE'], ['farmS', 'pathE'], ['farmS', 'lawn'], ['pathE', 'plazaW'],
   ['plazaW', 'plazaC'], ['plazaC', 'plazaN'], ['plazaN', 'plazaNW'], ['plazaN', 'plazaNE'], ['plazaC', 'plazaS'], ['plazaS', 'pondW'],
-  ['plazaS', 'stairsTop'], ['stairsTop', 'stairsBottom'], ['stairsBottom', 'pierEnd'], ['stairsBottom', 'beachW'], ['beachW', 'beachFar'],
+  ['plazaS', 'stairsTop'], ['stairsTop', 'stairsBottom'], ['stairsBottom', 'pierEnd'], ['stairsBottom', 'beachW'], ['beachW', 'beachFar'], ['beachFar', 'beachTents'],
   ['bridgeW', 'bridgeE'], ['bridgeE', 'vStreetN'], ['vStreetN', 'vPlaza'], ['vPlaza', 'vEast'], ['vEast', 'vMuseumPath'], ['vMuseumPath', 'vMuseum'],
   ['vStreetN', 'vRow1W'], ['vRow1W', 'vRow1a'], ['vRow1a', 'vRow1b'], ['vRow1b', 'vRow1c'], ['vRow1c', 'vRow1d'], ['vRow1d', 'vRow1e'],
   ['vStreetN', 'vMid'], ['vMid', 'vSeeds'], ['vMid', 'vRow2W'], ['vRow2W', 'vRow2a'], ['vRow2a', 'vRow2b'], ['vRow2b', 'vRow2c'], ['vRow2c', 'vRow2d'],
@@ -44,6 +44,13 @@ for (const h of HOUSE_SPOTS) {
     .filter(([key]) => key.startsWith('vRow'))
     .sort((a, b) => Math.hypot(a[1][0] - h.x, a[1][1] - houseDoor(h)[1]) - Math.hypot(b[1][0] - h.x, b[1][1] - houseDoor(h)[1]))[0]!;
   (PATH_EDGES as (readonly [string, string])[]).push([id, street[0]]);
+}
+
+/** Newcomers' tents connect to the beach path. */
+for (const h of TENTS) {
+  const id = `door.${h.npc}`;
+  PATH_NODES[id] = tentDoor(h);
+  (PATH_EDGES as (readonly [string, string])[]).push([id, 'beachTents']);
 }
 
 /** Edges that only exist once the old bridge is fixed. */

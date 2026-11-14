@@ -2,7 +2,7 @@ import type { BuffId, ItemId, Quality } from '../data/items';
 import { DAYS_PER_SEASON, SEASONS, TIME_STEP_MINUTES } from '../data/calendar';
 import type { FishSpot } from '../data/fish';
 import { fruitItem, HOTBAR_SIZE, INVENTORY_SIZE } from '../data/items';
-import { BED_REACH, HOUSE_DOOR, ORCHARD, orchardTreeId, TOUR_PLACES, TOUR_REWARD, TREE_REACH } from '../data/map';
+import { ORCHARD, orchardTreeId, TOUR_PLACES, TOUR_REWARD, TREE_REACH } from '../data/map';
 import type { ShopId } from '../data/shops';
 import type { SkillId } from '../data/skills';
 import type { ToolId } from '../data/tools';
@@ -20,6 +20,16 @@ import { addItem, moveSlot, spaceFor } from './inventory';
 import { nextInt } from './rng';
 import type { Actor, GameState, GameTime, GiftReaction } from './types';
 import { villageHandlers } from './handlers/village';
+import { canSleep, homeHandlers, insideFloor } from './handlers/home';
+import { craftHandlers } from './handlers/crafting';
+import { progressHandlers, stallHour } from './handlers/progress';
+import { checkProgress } from './progress';
+import { updateStars } from './rating';
+import type { Appearance } from '../data/appearance';
+import type { StationId } from '../data/decor';
+import type { EmoteId } from '../data/emotes';
+import type { FloorId } from '../data/house';
+import { STALL_HOURS } from '../data/rating';
 import { isWeatherId } from './weather';
 
 /**
@@ -70,8 +80,6 @@ export type Command =
   | { type: 'animal.collect'; animal: string }
   // Food, making things, buying and selling.
   | { type: 'item.eat'; slot: number }
-  | { type: 'cook'; recipe: string }
-  | { type: 'craft'; recipe: string }
   | { type: 'shop.buy'; shop: ShopId; item: ItemId; qty: number }
   | { type: 'ship.add'; slot: number; qty: number }
   | { type: 'ship.take'; index: number }
@@ -86,7 +94,33 @@ export type Command =
   | { type: 'project.contribute'; project: ProjectId; item: ItemId | 'coins'; qty: number }
   | { type: 'museum.donate'; slot: number }
   | { type: 'mail.read'; id: number }
-  | { type: 'mail.take'; id: number };
+  | { type: 'mail.take'; id: number }
+  // Stage 5: the house, decorating, crafting stations, the wardrobe, the stall, talents, the pet, emotes.
+  | { type: 'home.enter' }
+  | { type: 'home.exit' }
+  | { type: 'home.stairs'; to: FloorId }
+  | { type: 'home.upgrade' }
+  /** Put a decoration from the backpack on the grid where the player is (island or house floor). */
+  | { type: 'decor.place'; slot: number; x: number; z: number; rot: number }
+  | { type: 'decor.move'; id: number; x: number; z: number; rot: number }
+  | { type: 'decor.store'; id: number }
+  | { type: 'catalog.buy'; item: ItemId; qty: number }
+  | { type: 'craft'; station: StationId; recipe: string }
+  /** Try 1 to 3 items together at a station: a secret recipe with exactly these ingredients is learned. */
+  | { type: 'craft.experiment'; station: StationId; items: ItemId[] }
+  | { type: 'book.read'; slot: number }
+  | { type: 'wardrobe.store'; slot: number }
+  | { type: 'wardrobe.dye'; slot: number }
+  | { type: 'look.change'; via: 'mirror' | 'wardrobe' | 'salon'; appearance: Appearance }
+  | { type: 'stall.put'; slot: number; qty: number }
+  | { type: 'stall.take'; index: number }
+  | { type: 'talent.choose'; talent: string }
+  | { type: 'title.set'; title: string | null }
+  | { type: 'pet.dig'; id: number }
+  | { type: 'pet.dress'; slot: number }
+  | { type: 'pet.undress' }
+  | { type: 'emote'; emote: EmoteId; npc?: NpcId }
+  | { type: 'photo.taken' };
 
 export type CommandType = Command['type'];
 
@@ -125,7 +159,28 @@ export type GameEvent =
   | { type: 'board.changed' }
   | { type: 'project.done'; project: ProjectId }
   | { type: 'museum.donated'; playerId: string; item: ItemId; total: number }
-  | { type: 'mail.changed'; playerId: string };
+  | { type: 'mail.changed'; playerId: string }
+  // Stage 5.
+  /** The player went in or out of the house, took the stairs, or the house grew. */
+  | { type: 'home.changed'; playerId: string }
+  | { type: 'home.upgraded'; playerId: string; level: number }
+  /** Decorations changed outside ('island') or in a player's house (their id). */
+  | { type: 'decor.changed'; space: string }
+  | { type: 'recipe.learned'; playerId: string; recipe: string; how: 'experiment' | 'book' | 'letter' }
+  | { type: 'experiment.failed'; playerId: string; known: string | null }
+  | { type: 'player.look'; playerId: string }
+  | { type: 'wardrobe.changed'; playerId: string }
+  | { type: 'stall.changed'; playerId: string }
+  | { type: 'stall.sold'; playerId: string; item: ItemId; coins: number }
+  | { type: 'talent.chosen'; playerId: string; talent: string }
+  | { type: 'achievement'; playerId: string; id: string }
+  | { type: 'stars.up'; stars: number }
+  | { type: 'npc.arrived'; npc: NpcId }
+  | { type: 'pet.found'; playerId: string; item: ItemId; qty: number }
+  | { type: 'pet.changed'; playerId: string }
+  | { type: 'hidden.changed' }
+  | { type: 'emoted'; playerId: string; emote: EmoteId; npc?: NpcId; points: number }
+  | { type: 'photo.saved'; playerId: string };
 
 export type CommandError =
   | 'unknown_command' | 'forbidden' | 'invalid' | 'day_ended' | 'too_far' | 'inventory_full' | 'not_available'
@@ -146,9 +201,14 @@ const baseHandlers = {
       return null;
     },
     apply(state, cmd) {
+      const before = state.time.minuteOfDay;
       const r = advanceSteps(state.time, cmd.steps);
       state.time = r.time;
       const events: GameEvent[] = [{ type: 'time.changed', time: { ...state.time } }];
+      // The player's market stall sells a little every hour while the market is open.
+      for (let m = before + TIME_STEP_MINUTES; m <= state.time.minuteOfDay; m += TIME_STEP_MINUTES) {
+        if (m % 60 === 0 && m > STALL_HOURS.from && m <= STALL_HOURS.to) events.push(...stallHour(state));
+      }
       if (r.reachedDayEnd) events.push({ type: 'day.ended', time: { ...state.time } });
       return events;
     },
@@ -198,7 +258,7 @@ const baseHandlers = {
       if (actor.role === 'system') return null;
       const player = playerOf(state, actor);
       if (!player) return 'forbidden';
-      return distance(player, HOUSE_DOOR) <= BED_REACH ? null : 'too_far';
+      return canSleep(state, player) ? null : 'too_far';
     },
     apply(state) {
       return startNewDay(state);
@@ -208,8 +268,10 @@ const baseHandlers = {
   'player.move': {
     roles: PLAYERS,
     validate(state, cmd, actor) {
-      if (!playerOf(state, actor)) return 'forbidden';
+      const player = playerOf(state, actor);
+      if (!player) return 'forbidden';
       if (!isNum(cmd.x) || !isNum(cmd.z) || !isNum(cmd.facing)) return 'invalid';
+      if (player.inside) return insideFloor(player, cmd.x, cmd.z) ? null : 'invalid';
       return groundHeight(cmd.x, cmd.z) === null ? 'invalid' : null;
     },
     apply(state, cmd, actor) {
@@ -298,7 +360,10 @@ const baseHandlers = {
   },
 } satisfies Partial<HandlerMap>;
 
-const handlers: HandlerMap = { ...baseHandlers, ...farmHandlers, ...gatherHandlers, ...economyHandlers, ...villageHandlers };
+const handlers: HandlerMap = { ...baseHandlers, ...farmHandlers, ...gatherHandlers, ...economyHandlers, ...villageHandlers, ...homeHandlers, ...craftHandlers, ...progressHandlers };
+
+/** Commands too small and frequent to recount the island rating and achievements after. */
+const QUIET: ReadonlySet<string> = new Set(['player.move', 'inventory.select']);
 
 /**
  * The single entry point that validates and applies a command.
@@ -314,5 +379,12 @@ export function applyCommand(state: GameState, cmd: Command, actor: Actor): Comm
   if (!handler.roles.includes(actor.role)) return { ok: false, error: 'forbidden' };
   const error = handler.validate(state, cmd, actor);
   if (error) return { ok: false, error };
-  return { ok: true, events: handler.apply(state, cmd, actor) };
+  const events = handler.apply(state, cmd, actor);
+  if (!QUIET.has(type)) {
+    // Stage 5: the island rating, collections and achievements follow every change.
+    events.push(...updateStars(state));
+    const players = actor.role === 'system' ? Object.values(state.players) : [state.players[actor.id]].filter(p => !!p);
+    for (const p of players) events.push(...checkProgress(state, p!));
+  }
+  return { ok: true, events };
 }

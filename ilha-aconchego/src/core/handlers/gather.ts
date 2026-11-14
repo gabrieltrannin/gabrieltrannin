@@ -8,6 +8,11 @@ import { changed, gained, hasItem, hasRoom, isInt, near, playerOf, RESIDENTS, PL
 import { GRASS_DAYS, hiveReady, NODE_DAYS, STUMP_DAYS } from '../day';
 import { addItem } from '../inventory';
 import { energyCost, levelOf, ORE_ITEM, roll, rollFish } from '../rules';
+import { chance, talent } from '../talents';
+import { bump } from '../progress';
+import type { OreId } from '../types';
+
+const BETTER_ORE: Record<OreId, OreId> = { stone: 'copper', copper: 'silver', silver: 'gold', gold: 'crystal', crystal: 'crystal' };
 import type { GameState, PlayerState } from '../types';
 
 type GatherCommands = 'grass.cut' | 'node.mine' | 'stump.chop' | 'hive.collect' | 'bug.catch' | 'fishing.cast' | 'fishing.finish';
@@ -68,13 +73,16 @@ export const gatherHandlers: HandlersFor<GatherCommands> = {
       const stone = addItem(player.inventory, 'res.stone', ore === 'stone' ? 2 + (roll(state) < 0.5 ? 1 : 0) : 1);
       const out = [gained(actor.id, 'res.stone', stone)];
       if (ore !== 'stone') {
-        const extraChance = 0.05 * levelOf(player, 'mining') * (player.buff === 'mining' ? 2 : 1) + (player.toolLevels.pickaxe >= 4 ? 0.2 : 0);
-        const qty = addItem(player.inventory, ORE_ITEM[ore], 1 + (roll(state) < extraChance ? 1 : 0));
-        out.unshift(gained(actor.id, ORE_ITEM[ore], qty));
-      }
+        // Talent: the ore may come out one step better.
+        const better = roll(state) < chance(player, 'gem') ? BETTER_ORE[ore] : ore;
+        const extraChance = 0.05 * levelOf(player, 'mining') * (player.buff === 'mining' ? 2 : 1) + (player.toolLevels.pickaxe >= 4 ? 0.2 : 0) + chance(player, 'oreBonus');
+        const qty = addItem(player.inventory, ORE_ITEM[better], 1 + (roll(state) < extraChance ? 1 : 0));
+        out.unshift(gained(actor.id, ORE_ITEM[better], qty));
+        bump(player, 'ores', qty);
+      } else bump(player, 'ores', stone);
       // Now and then a fossil hides in the rock (more often in the wood).
       const index = MINE_NODES.findIndex((_, i) => `node-${i}` === cmd.node);
-      if (roll(state) < (index >= WOOD_NODE_START ? 0.12 : 0.05)) out.push(gained(actor.id, 'res.fossil', addItem(player.inventory, 'res.fossil', 1)));
+      if (roll(state) < (index >= WOOD_NODE_START ? 0.12 : 0.05) + chance(player, 'fossil')) out.push(gained(actor.id, 'res.fossil', addItem(player.inventory, 'res.fossil', 1)));
       player.energy -= energyCost(player, 'pickaxe');
       state.nodes[cmd.node] = { ore: null, back: absoluteDay(state.time) + NODE_DAYS };
       return [...events, ...out, ...xp(player, 'mining', ORE_XP[ore])];
@@ -96,7 +104,7 @@ export const gatherHandlers: HandlersFor<GatherCommands> = {
     },
     apply(state, cmd, actor) {
       const player = state.players[actor.id]!;
-      const qty = addItem(player.inventory, 'res.wood', 3 + Math.floor(roll(state) * 2) + (player.toolLevels.axe - 1));
+      const qty = addItem(player.inventory, 'res.wood', 3 + Math.floor(roll(state) * 2) + (player.toolLevels.axe - 1) + (roll(state) < chance(player, 'woodBonus') ? 2 : 0));
       player.energy -= energyCost(player, 'axe');
       state.stumps[cmd.stump] = absoluteDay(state.time) + STUMP_DAYS;
       return [{ type: 'world.changed' }, gained(actor.id, 'res.wood', qty), ...changed(actor.id), ...xp(player, 'crafting', XP.chop)];
@@ -139,6 +147,7 @@ export const gatherHandlers: HandlersFor<GatherCommands> = {
     apply(state, cmd, actor) {
       const player = state.players[actor.id]!;
       addItem(player.inventory, cmd.item, 1);
+      bump(player, 'bugs');
       player.energy -= energyCost(player, 'bugNet');
       return [gained(actor.id, cmd.item, 1), ...changed(actor.id), ...xp(player, 'charisma', XP.bug)];
     },
@@ -157,7 +166,7 @@ export const gatherHandlers: HandlersFor<GatherCommands> = {
     apply(state, cmd, actor) {
       const player = state.players[actor.id]!;
       player.energy -= energyCost(player, 'fishingRod');
-      const item = rollFish(state, cmd.spot, seasonOf(state.time), state.time.minuteOfDay, state.weather, player.buff === 'luck');
+      const item = rollFish(state, cmd.spot, seasonOf(state.time), state.time.minuteOfDay, state.weather, player.buff === 'luck', talent(player, 'fishRare'));
       player.fishing = item ? { item, spot: cmd.spot } : null;
       return [{ type: 'fishing.cast', playerId: actor.id, item }, ...changed(actor.id)];
     },
@@ -176,9 +185,11 @@ export const gatherHandlers: HandlersFor<GatherCommands> = {
       const { item } = player.fishing!;
       player.fishing = null;
       if (!cmd.caught) return [{ type: 'fishing.done', playerId: actor.id, item, caught: false }];
-      addItem(player.inventory, item, 1);
+      // Talent: now and then two fish on the same hook.
+      const qty = addItem(player.inventory, item, roll(state) < chance(player, 'fishDouble') ? 2 : 1);
+      bump(player, 'fished', qty);
       const difficulty = FISH.find(f => f.item === item)?.difficulty ?? 1;
-      return [{ type: 'fishing.done', playerId: actor.id, item, caught: true }, gained(actor.id, item, 1), ...changed(actor.id), ...xp(player, 'fishing', XP.fishCatch + difficulty * 6)];
+      return [{ type: 'fishing.done', playerId: actor.id, item, caught: true }, gained(actor.id, item, qty), ...changed(actor.id), ...xp(player, 'fishing', XP.fishCatch + difficulty * 6)];
     },
   },
 };

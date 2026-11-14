@@ -3,6 +3,8 @@
  * English and Spanish files will use the same keys (stage 8).
  * Placeholders use {name}.
  */
+import { ptBRHome } from './pt-BR.home';
+
 export const ptBR = {
   'app.title': 'Ilha Aconchego',
   'app.webglError': 'Seu navegador não conseguiu abrir a cena 3D. Tente atualizar o navegador ou usar outro.',
@@ -536,8 +538,9 @@ export const ptBR = {
   'npc.job.tico': 'Cachorro carteiro',
   'npc.job.juca': 'Sapo músico',
   'npc.job.lino': 'Tartaruga construtora',
-  'npc.job.perola': 'Gata pintora',
+  'npc.job.perola': 'Gata cabeleireira',
   'npc.job.nico': 'Esquilo aventureiro',
+  ...ptBRHome,
 } as const satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof ptBR;

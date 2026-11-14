@@ -32,7 +32,7 @@ export function giftPoints(reaction: Reaction, birthday: boolean): number {
   return birthday && base > 0 ? base * FRIEND_POINTS.birthdayBonus : base;
 }
 
-export const newFriend = (): FriendState => ({ points: 0, talkedDay: -1, giftDay: -1, known: {}, lastGift: null, scene: 0, mailedTier: 0 });
+export const newFriend = (): FriendState => ({ points: 0, talkedDay: -1, giftDay: -1, emoteDay: -1, known: {}, lastGift: null, scene: 0, mailedTier: 0 });
 
 /** The routine for today's weather. */
 export const routineFor = (def: VillagerDef, weather: WeatherId): Routine => (weather === 'rain' || weather === 'storm' ? def.rain ?? def.routine : def.routine);
@@ -53,9 +53,14 @@ export function placePoint(npc: NpcId, place: PlaceId, opened: { bridge: boolean
   return PLACES[place];
 }
 
+/** Lives on the island: everyone from the start, newcomers once they arrived (stage 5). */
+export const isPresent = (state: Readonly<GameState>, npc: NpcId): boolean => !villager(npc).arrives || (state.arrived ?? []).includes(npc);
+
 /** Where a villager should be right now (by the clock, the weather and what is open). */
 export function villagerSpot(state: Readonly<GameState>, npc: NpcId): { at: XZ; previous: XZ; place: PlaceId } {
   const def = villager(npc);
+  // Newcomers stay away (out of sight, "at home") until the island earns enough stars.
+  if (!isPresent(state, npc)) return { at: homeOf(npc), previous: homeOf(npc), place: 'home' };
   const s = scheduleAt(routineFor(def, state.weather), state.time.minuteOfDay);
   const opened = { bridge: state.projects.bridge?.done ?? false };
   return { at: placePoint(npc, s.place, opened), previous: placePoint(npc, s.previous, opened), place: s.place };
@@ -66,7 +71,7 @@ export function shopOpen(state: Readonly<GameState>, shop: NonNullable<VillagerD
   const def = VILLAGERS.find(v => v.shop === shop);
   if (!def) return true;
   const place = scheduleAt(routineFor(def, state.weather), state.time.minuteOfDay).place;
-  const counter: Record<string, PlaceId> = { bread: 'stall.bread', honey: 'stall.honey', flowers: 'stall.flowers', seeds: 'seeds', smithy: 'forge' };
+  const counter: Record<string, PlaceId> = { bread: 'stall.bread', honey: 'stall.honey', flowers: 'stall.flowers', seeds: 'seeds', smithy: 'forge', books: 'museum', salon: 'salon' };
   return place === counter[shop];
 }
 
@@ -99,7 +104,7 @@ export function refreshRequests(state: GameState): boolean {
   let tries = 0;
   while (state.requests.length < MAX_REQUESTS && tries++ < 12) {
     const npc = NPC_IDS[Math.floor(roll(state) * NPC_IDS.length)]!;
-    if (state.requests.some(r => r.npc === npc)) continue;
+    if (state.requests.some(r => r.npc === npc) || !isPresent(state, npc)) continue;
     const options = villager(npc).asks.filter(item => obtainable(state, item));
     const item = pickWeighted(state, options.map(i => [i, 1] as const));
     if (!item) continue;

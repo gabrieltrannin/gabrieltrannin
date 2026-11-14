@@ -197,9 +197,9 @@ describe('kitchen, workbench, shops and the shipping bin', () => {
     addItem(me(s).inventory, 'animal.egg', 1);
     addItem(me(s).inventory, 'animal.milk', 1);
     addItem(me(s).inventory, 'crop.wheat', 1);
-    expect(run(s, { type: 'cook', recipe: 'pancakes' })).toEqual({ ok: false, error: 'not_available' });
+    expect(run(s, { type: 'craft', station: 'kitchen', recipe: 'pancakes' })).toEqual({ ok: false, error: 'not_available' });
     me(s).skills.cooking = 100;
-    ok(s, { type: 'cook', recipe: 'pancakes' });
+    ok(s, { type: 'craft', station: 'kitchen', recipe: 'pancakes' });
     const slot = me(s).inventory.findIndex(x => x?.item === 'dish.pancakes');
     me(s).energy = 20;
     ok(s, { type: 'item.eat', slot });
@@ -213,9 +213,9 @@ describe('kitchen, workbench, shops and the shipping bin', () => {
     addItem(me(s).inventory, 'res.copper', 3);
     addItem(me(s).inventory, 'res.stone', 4);
     addItem(me(s).inventory, 'res.wood', 20);
-    ok(s, { type: 'craft', recipe: 'sprinkler' });
+    ok(s, { type: 'craft', station: 'carpentry', recipe: 'sprinkler' });
     me(s).skills.crafting = 100;
-    ok(s, { type: 'craft', recipe: 'keg' });
+    ok(s, { type: 'craft', station: 'carpentry', recipe: 'keg' });
     goTo(s, MACHINE_PADS[0]!);
     ok(s, { type: 'machine.place', pad: 0, slot: me(s).inventory.findIndex(x => x?.item === 'place.keg') });
     addItem(me(s).inventory, 'fruit.peach', 1);

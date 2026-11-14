@@ -8,7 +8,9 @@ import {
 import { groundHeight, insideRoundedRect } from './terrain';
 import {
   BRIDGE_SIGN, BRIDGES, HOUSE_SIZE, HOUSE_SPOTS, ISLETS, MUSEUM, NOTICE_BOARD, OLD_BRIDGE_GAP, SEED_SHOP, VILLAGE_LAMPS, VILLAGE_TREES, WELL, WOOD_TREES,
+  TENT_SIZE, TENTS,
 } from '../data/village';
+import { PLAYER_STALL } from '../data/rating';
 
 /**
  * Walking rules, as pure functions (no Three.js): where the ground can be walked on, what blocks the way,
@@ -115,8 +117,11 @@ function villageColliders(bridgeFixed: boolean): Collider[] {
   return list;
 }
 
-export function buildColliders(opts: { greenhouseFixed?: boolean; bridgeFixed?: boolean } = {}): Collider[] {
+export function buildColliders(opts: { greenhouseFixed?: boolean; bridgeFixed?: boolean; tents?: readonly string[] } = {}): Collider[] {
   const list: Collider[] = [...workColliders(opts.greenhouseFixed ?? false), ...villageColliders(opts.bridgeFixed ?? false)];
+  // Stage 5: the player's market stall, and the newcomers' tents once they arrived.
+  list.push(rect(PLAYER_STALL.x, PLAYER_STALL.z, PLAYER_STALL.w, PLAYER_STALL.d));
+  for (const t of TENTS) if (opts.tents?.includes(t.npc)) list.push(rect(t.x, t.z, TENT_SIZE.w, TENT_SIZE.d));
   for (const p of PROPS) {
     const c = footprintCollider(fp(p.asset), p.at[0], p.at[1], p.ry, p.scale);
     if (p.asset === 'boat') continue;

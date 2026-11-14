@@ -11,6 +11,11 @@ import { newIslandProgress, newIslandVillage, newPlayerProgress, newPlayerVillag
 import { NPC_IDS } from '../data/villagers';
 import { PROJECT_IDS } from '../data/community';
 import type { GameState, Inventory, ItemStack, PlayerState } from './types';
+import { newIslandHome, newPlayerHome, rollHidden } from './home';
+import { newFriend } from './villagers';
+import { isFloorId } from '../data/house';
+import { isDecorItem } from '../data/decor';
+import { ALL_APPEARANCE_OPTIONS } from '../data/appearance';
 
 /** What goes into storage: the state plus when it was saved and why. */
 export interface SaveFile {
@@ -54,11 +59,29 @@ function validPlayer(id: string, p: unknown): p is PlayerState {
   if (p.fishing !== null && !(isObj(p.fishing) && isItemId(p.fishing.item))) return false;
   if (!isObj(p.friends) || !NPC_IDS.every(id => validFriend((p.friends as Record<string, unknown>)[id]))) return false;
   if (!Array.isArray(p.mail) || !p.mail.every(validMail) || !isInt(p.mailSeq)) return false;
+  if (!validPlayerHome(p)) return false;
   return validInventory(p.inventory);
 }
 
+const validDecor = (d: unknown): boolean =>
+  isObj(d) && isInt(d.id) && isDecorItem(d.item) && isInt(d.x) && isInt(d.z) && isInt(d.rot) && d.rot >= 0 && d.rot <= 3 && (d.by === undefined || typeof d.by === 'string');
+const strings = (v: unknown, allowed?: readonly string[]): boolean => Array.isArray(v) && v.every(x => typeof x === 'string' && (!allowed || allowed.includes(x)));
+
+/** Stage 5 parts of a player: the house, recipes, wardrobe, talents, counters, collections, pet. */
+function validPlayerHome(p: Record<string, unknown>): boolean {
+  if (p.inside !== null && !isFloorId(p.inside)) return false;
+  const home = p.home;
+  if (!isObj(home) || !isInt(home.level) || home.level < 0 || home.level > 3 || !isInt(home.seq) || !isObj(home.floors)) return false;
+  if (!Object.entries(home.floors).every(([floor, list]) => isFloorId(floor) && Array.isArray(list) && list.every(validDecor))) return false;
+  const w = p.wardrobe;
+  if (!isObj(w) || !strings(w.outfits, ALL_APPEARANCE_OPTIONS.outfit) || !strings(w.accessories, ALL_APPEARANCE_OPTIONS.accessory) || !strings(w.colors, ALL_APPEARANCE_OPTIONS.topColor)) return false;
+  if (!strings(p.recipes) || !strings(p.talents) || !strings(p.achievements) || !(Array.isArray(p.discovered) && p.discovered.every(isItemId))) return false;
+  if (!allValues(p.stats, isNum) || (p.title !== null && typeof p.title !== 'string')) return false;
+  return isObj(p.pet) && (p.pet.accessory === null || isItemId(p.pet.accessory));
+}
+
 function validFriend(f: unknown): boolean {
-  return isObj(f) && isNum(f.points) && isInt(f.talkedDay) && isInt(f.giftDay) && isObj(f.known) && isInt(f.scene) && isInt(f.mailedTier)
+  return isObj(f) && isNum(f.points) && isInt(f.talkedDay) && isInt(f.giftDay) && isInt(f.emoteDay) && isObj(f.known) && isInt(f.scene) && isInt(f.mailedTier)
     && (f.lastGift === null || (isObj(f.lastGift) && isItemId(f.lastGift.item) && isInt(f.lastGift.day)));
 }
 
@@ -83,7 +106,12 @@ function validIsland(s: Record<string, unknown>): boolean {
   if (!allValues(s.shipping, list => Array.isArray(list) && list.every(validStack))) return false;
   if (!Array.isArray(s.requests) || !s.requests.every(r => isObj(r) && isInt(r.id) && typeof r.npc === 'string' && isItemId(r.item) && isInt(r.qty) && isInt(r.reward) && isInt(r.until) && isBool(r.done))) return false;
   if (!isInt(s.requestSeq) || !isObj(s.projects) || !PROJECT_IDS.every(id => { const p = (s.projects as Record<string, unknown>)[id]; return isObj(p) && isObj(p.given) && isInt(p.coins) && isBool(p.done); })) return false;
-  return Array.isArray(s.museum) && s.museum.every(isItemId);
+  if (!Array.isArray(s.museum) || !s.museum.every(isItemId)) return false;
+  // Stage 5.
+  if (!Array.isArray(s.decor) || !s.decor.every(validDecor) || !isInt(s.decorSeq) || !isInt(s.stars) || s.stars < 1 || s.stars > 5) return false;
+  if (!allValues(s.stalls, st => isObj(st) && Array.isArray(st.items) && st.items.every(validStack))) return false;
+  if (!Array.isArray(s.hidden) || !s.hidden.every(h => isObj(h) && isInt(h.id) && isNum(h.x) && isNum(h.z) && isItemId(h.item) && isInt(h.qty)) || !isInt(s.hiddenSeq)) return false;
+  return Array.isArray(s.arrived) && s.arrived.every(id => (NPC_IDS as readonly unknown[]).includes(id));
 }
 
 /** Checks every field of a loaded state. Anything unexpected means the save is not used. */
@@ -107,7 +135,7 @@ export function isValidState(s: unknown): s is GameState {
  */
 export function migrateSave(data: Record<string, unknown>): Record<string, unknown> | null {
   if (data.version === SAVE_VERSION) return data;
-  if ((data.version !== 2 && data.version !== 3) || !isObj(data.state)) return null;
+  if ((data.version !== 2 && data.version !== 3 && data.version !== 4) || !isObj(data.state)) return null;
   const state = data.state as Record<string, unknown>;
   if (!isObj(state.time) || !isInt(state.rng)) return null;
   const players = isObj(state.players) ? Object.values(state.players).filter(isObj) : [];
@@ -116,9 +144,24 @@ export function migrateSave(data: Record<string, unknown>): Record<string, unkno
     Object.assign(state, newIslandProgress(state.time as unknown as GameState['time'], state.rng));
     for (const p of players) Object.assign(p, newPlayerProgress());
   }
-  // Stage 4: villagers, the notice board, projects, museum and mail.
-  Object.assign(state, newIslandVillage());
-  for (const p of players) Object.assign(p, newPlayerVillage());
+  if (data.version === 2 || data.version === 3) {
+    // Stage 4: villagers, the notice board, projects, museum and mail.
+    Object.assign(state, newIslandVillage());
+    for (const p of players) Object.assign(p, newPlayerVillage());
+  }
+  // Stage 5: the house inside, decorations, wardrobe, talents, achievements, stall, the pet's finds and newcomers.
+  Object.assign(state, newIslandHome());
+  for (const p of players) {
+    const inv = Array.isArray(p.inventory) ? (p.inventory as PlayerState['inventory']) : [];
+    Object.assign(p, newPlayerHome(inv));
+    const friends = isObj(p.friends) ? (p.friends as Record<string, Record<string, unknown>>) : {};
+    for (const id of NPC_IDS) {
+      if (!isObj(friends[id])) friends[id] = newFriend() as unknown as Record<string, unknown>;
+      else friends[id].emoteDay ??= -1;
+    }
+    p.friends = friends;
+  }
+  if (isObj(state.projects)) rollHidden(state as unknown as GameState);
   state.version = SAVE_VERSION;
   data.version = SAVE_VERSION;
   return data;

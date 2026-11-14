@@ -2,7 +2,7 @@ import type { Appearance } from './appearance';
 import type { SeasonId } from './calendar';
 import type { ItemId, ItemKind } from './items';
 import { BENTO_SPOT, type XZ } from './map';
-import { HOUSE_SPOTS, houseDoor, MUSEUM_DOOR, NOTICE_BOARD, SEED_SHOP_COUNTER, WELL, BRIDGE_SIGN } from './village';
+import { HOUSE_SPOTS, houseDoor, MUSEUM_DOOR, NOTICE_BOARD, SEED_SHOP_COUNTER, WELL, BRIDGE_SIGN, TENTS, tentDoor } from './village';
 
 /**
  * The 12 villagers (docs/GAME_DESIGN.md, "Moradores"): animals with clothes, each with a house,
@@ -10,11 +10,11 @@ import { HOUSE_SPOTS, houseDoor, MUSEUM_DOOR, NOTICE_BOARD, SEED_SHOP_COUNTER, W
  * Lumi, Pipo, Celeste and Bento come from the design document; the other eight are new.
  */
 
-export const NPC_IDS = ['lumi', 'pipo', 'celeste', 'bento', 'flora', 'dudu', 'margo', 'tico', 'juca', 'lino', 'perola', 'nico'] as const;
+export const NPC_IDS = ['lumi', 'pipo', 'celeste', 'bento', 'flora', 'dudu', 'margo', 'tico', 'juca', 'lino', 'perola', 'nico', 'mel', 'gaspar'] as const;
 export type NpcId = (typeof NPC_IDS)[number];
 export const isNpcId = (v: unknown): v is NpcId => typeof v === 'string' && (NPC_IDS as readonly string[]).includes(v);
 
-export type Species = 'fox' | 'otter' | 'owl' | 'badger' | 'rabbit' | 'bear' | 'sheep' | 'dog' | 'frog' | 'turtle' | 'cat' | 'squirrel';
+export type Species = 'fox' | 'otter' | 'owl' | 'badger' | 'rabbit' | 'bear' | 'sheep' | 'dog' | 'frog' | 'turtle' | 'cat' | 'squirrel' | 'hedgehog' | 'raccoon';
 /** Personality groups share their everyday lines (see i18n dialogue). */
 export type Personality = 'cheerful' | 'sweet' | 'serious' | 'dreamy';
 export type Extra = 'apron' | 'mailbag' | 'glasses' | 'scarf' | 'beret' | 'hardhat' | 'bandana';
@@ -51,6 +51,8 @@ export const PLACES = {
   lookout: [43.0, 0.4],
   wood: [34.5, -23.0],
   woodGrove: [31.2, -22.0],
+  // Stage 5: Pérola's salon, in front of her house.
+  salon: [37.9, 12.1],
 } as const satisfies Record<string, XZ>;
 export type PlaceId = keyof typeof PLACES | 'home';
 
@@ -82,7 +84,11 @@ export interface VillagerDef {
   /** Routine on rainy and stormy days (missing = same as usual). */
   rain?: Routine;
   /** Shop they run: open while they stand at it. */
-  shop?: 'bread' | 'honey' | 'flowers' | 'seeds' | 'smithy';
+  shop?: 'bread' | 'honey' | 'flowers' | 'seeds' | 'smithy' | 'books' | 'salon';
+  /** Recipe they send in the 4-heart letter (stage 5). */
+  teaches?: string;
+  /** Island stars that bring them to live here (newcomers, stage 5). */
+  arrives?: number;
   gifts: GiftTastes;
   birthday: { season: SeasonId; day: number };
   /** Pitch of their babble (1 = middle). */
@@ -101,6 +107,7 @@ const look = (a: Partial<Appearance>): Appearance => ({
 export const VILLAGERS: readonly VillagerDef[] = [
   {
     id: 'lumi', gender: 'f', present: 'dish.bread', name: 'Lumi', species: 'fox', personality: 'cheerful', icon: '🦊', pitch: 1.25,
+    teaches: 'fruitPie',
     fur: '#E8833A', muzzle: '#FFF4E6', extra: 'apron',
     look: look({ skin: '#E8833A', hairColor: '#E8833A', eyes: 'sparkle', eyeColor: '#5A3B22', outfit: 'dress', topColor: '#F27BA5', bottomColor: '#F6EBD9', shoes: '#7A4E2C' }),
     routine: [[360, 'home'], [450, 'stall.bread'], [1020, 'tables'], [1140, 'villagePlaza'], [1260, 'home']],
@@ -111,6 +118,7 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'pipo', gender: 'm', present: 'fish.sardine', name: 'Pipo', species: 'otter', personality: 'dreamy', icon: '🦦', pitch: 0.9,
+    teaches: 'fishStew',
     fur: '#8A6142', muzzle: '#E8D6BE', extra: 'bandana',
     look: look({ skin: '#8A6142', hairColor: '#8A6142', eyes: 'sleepy', outfit: 'overalls', topColor: '#F2C14E', bottomColor: '#3E7A8A', accessory: 'beanie' }),
     routine: [[360, 'pier'], [720, 'pond'], [960, 'pier'], [1200, 'home']],
@@ -121,16 +129,19 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'celeste', gender: 'f', present: 'res.fossil', name: 'Celeste', species: 'owl', personality: 'serious', icon: '🦉', pitch: 1.1,
+    teaches: 'crystalPendant',
     fur: '#B8A27A', muzzle: '#F2E6CF', extra: 'glasses',
     look: look({ skin: '#B8A27A', hairColor: '#B8A27A', eyes: 'round', eyeColor: '#C98A1E', mouth: 'calm', outfit: 'hoodie', topColor: '#7C4DA6', bottomColor: '#4A3A5E', blush: false }),
     routine: [[360, 'home'], [480, 'museum'], [1080, 'well'], [1200, 'pondNorth'], [1380, 'home']],
     rain: [[360, 'home'], [480, 'museum'], [1260, 'home']],
+    shop: 'books',
     gifts: { love: ['res.fossil', 'res.crystal', 'bug.beetle'], like: ['bug', 'res.gold', 'dish.honeyCake', 'artisan.yarn'], dislike: ['res.hay', 'crop.corn'] },
     birthday: { season: 'autumn', day: 21 },
     asks: ['res.fossil', 'bug.butterfly', 'res.copper', 'bug.ladybug'],
   },
   {
     id: 'bento', gender: 'm', present: 'res.copper', name: 'Bento', species: 'badger', personality: 'serious', icon: '🦡', pitch: 0.7,
+    teaches: 'lantern',
     fur: '#7D7A80', muzzle: '#F4F1EA', extra: 'apron',
     look: look({ skin: '#7D7A80', hairColor: '#3B393E', eyes: 'dot', mouth: 'smile', outfit: 'tshirt', topColor: '#8A5A3C', bottomColor: '#3B393E', blush: false }),
     routine: [[360, 'home'], [420, 'forge'], [1080, 'tables2'], [1200, 'home']],
@@ -141,6 +152,7 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'flora', gender: 'f', present: 'seed.carrot', name: 'Flora', species: 'rabbit', personality: 'cheerful', icon: '🐰', pitch: 1.4,
+    teaches: 'flowerBed',
     fur: '#F4EEE6', muzzle: '#FFFFFF', extra: 'scarf',
     look: look({ skin: '#F4EEE6', hairColor: '#F4EEE6', eyes: 'happy', eyeColor: '#B0446A', outfit: 'overalls', topColor: '#FFD166', bottomColor: '#5E9C42', accessory: 'flowerCrown' }),
     routine: [[360, 'home'], [450, 'seeds'], [1020, 'farm'], [1110, 'villageLawn'], [1230, 'home']],
@@ -151,6 +163,7 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'dudu', gender: 'm', present: 'animal.honey', name: 'Dudu', species: 'bear', personality: 'sweet', icon: '🐻', pitch: 0.75,
+    teaches: 'speedPotion',
     fur: '#7B5236', muzzle: '#E3C49A', extra: 'scarf',
     look: look({ skin: '#7B5236', hairColor: '#7B5236', eyes: 'sleepy', outfit: 'tshirt', topColor: '#F2B33D', bottomColor: '#6B4F3F' }),
     routine: [[360, 'home'], [390, 'hives'], [540, 'stall.honey'], [1020, 'bench'], [1140, 'home']],
@@ -162,6 +175,7 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'margo', gender: 'f', present: 'flower.tulip', name: 'Margô', species: 'sheep', personality: 'sweet', icon: '🐑', pitch: 1.15,
+    teaches: 'apron',
     fur: '#F7F3EA', muzzle: '#4A4040', extra: 'beret',
     look: look({ skin: '#4A4040', hairColor: '#F7F3EA', hairStyle: 'bob', eyes: 'round', eyeColor: '#2A1E1E', outfit: 'dress', topColor: '#B892FF', bottomColor: '#F6EBD9' }),
     routine: [[360, 'home'], [480, 'stall.flowers'], [960, 'villagePlaza'], [1140, 'home']],
@@ -173,6 +187,7 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'tico', gender: 'm', present: 'dish.omelet', name: 'Tico', species: 'dog', personality: 'cheerful', icon: '🐶', pitch: 1.05,
+    teaches: 'petFlowerCrown',
     fur: '#D9A86C', muzzle: '#FFF4E6', extra: 'mailbag',
     look: look({ skin: '#D9A86C', hairColor: '#8A5A3C', eyes: 'sparkle', outfit: 'tshirt', topColor: '#5B8DD9', bottomColor: '#2E3A5A', accessory: 'beanie' }),
     routine: [[360, 'home'], [420, 'mailbox'], [480, 'villagePlaza'], [600, 'plaza'], [720, 'pier'], [840, 'farm'], [960, 'board'], [1080, 'tables'], [1200, 'home']],
@@ -182,6 +197,7 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'juca', gender: 'm', present: 'bug.firefly', name: 'Juca', species: 'frog', personality: 'dreamy', icon: '🐸', pitch: 0.85,
+    teaches: 'luckPotion',
     fur: '#7CB35A', muzzle: '#E6F2C8',
     look: look({ skin: '#7CB35A', hairColor: '#7CB35A', eyes: 'happy', mouth: 'laugh', outfit: 'tshirt', topColor: '#E5484D', bottomColor: '#3E5C8A', accessory: 'strawHat', blush: false }),
     routine: [[360, 'home'], [540, 'pond'], [780, 'lawn'], [1020, 'pondNorth'], [1320, 'home']],
@@ -192,6 +208,7 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'lino', gender: 'm', present: 'res.wood', name: 'Lino', species: 'turtle', personality: 'serious', icon: '🐢', pitch: 0.65,
+    teaches: 'fountain',
     fur: '#9BAA6A', muzzle: '#D9E2B0', extra: 'hardhat',
     look: look({ skin: '#9BAA6A', hairColor: '#9BAA6A', eyes: 'dot', mouth: 'calm', outfit: 'overalls', topColor: '#F6EBD9', bottomColor: '#B07A4A', blush: false }),
     routine: [[360, 'home'], [480, 'board'], [720, 'bridgeSign'], [1020, 'villagePlaza'], [1140, 'home']],
@@ -202,16 +219,19 @@ export const VILLAGERS: readonly VillagerDef[] = [
   },
   {
     id: 'perola', gender: 'f', present: 'flower.daisy', name: 'Pérola', species: 'cat', personality: 'sweet', icon: '🐱', pitch: 1.3,
+    teaches: 'beret',
     fur: '#A6A1B2', muzzle: '#F4F1EA', extra: 'beret',
     look: look({ skin: '#A6A1B2', hairColor: '#6E6A7A', eyes: 'sparkle', eyeColor: '#3E8A6A', outfit: 'dress', topColor: '#3E5C8A', bottomColor: '#F6EBD9', accessory: 'bow' }),
-    routine: [[360, 'home'], [540, 'lawn'], [720, 'orchard'], [960, 'beach'], [1140, 'villageLawn'], [1260, 'home']],
-    rain: [[360, 'home'], [600, 'museum'], [1080, 'home']],
+    routine: [[360, 'home'], [540, 'salon'], [1020, 'beach'], [1140, 'villageLawn'], [1260, 'home']],
+    rain: [[360, 'home'], [540, 'salon'], [1080, 'home']],
+    shop: 'salon',
     gifts: { love: ['bug.butterfly', 'flower.tulip', 'artisan.cheese'], like: ['flower', 'fruit', 'fish.sardine', 'animal.milk'], dislike: ['res.stone', 'res.hay'] },
     birthday: { season: 'autumn', day: 12 },
     asks: ['bug.butterfly', 'animal.milk', 'fish.sardine', 'fruit.orange'],
   },
   {
     id: 'nico', gender: 'm', present: 'fruit.cherry', name: 'Nico', species: 'squirrel', personality: 'cheerful', icon: '🐿️', pitch: 1.45,
+    teaches: 'jam',
     fur: '#C46A2E', muzzle: '#F6E3C4',
     look: look({ skin: '#C46A2E', hairColor: '#C46A2E', eyes: 'happy', mouth: 'cat', outfit: 'hoodie', topColor: '#5E9C42', bottomColor: '#6B4F3F', accessory: 'sprout' }),
     routine: [[360, 'orchard2'], [660, 'plaza'], [840, 'grass'], [1020, 'wood'], [1170, 'home']],
@@ -220,10 +240,35 @@ export const VILLAGERS: readonly VillagerDef[] = [
     birthday: { season: 'winter', day: 25 },
     asks: ['crop.corn', 'fruit.apple', 'res.wood', 'crop.wheat'],
   },
+  // Newcomers (stage 5): they camp on the beach once the island is pretty enough.
+  {
+    id: 'mel', gender: 'f', present: 'artisan.yarn', name: 'Mel', species: 'hedgehog', personality: 'sweet', icon: '🦔', pitch: 1.35,
+    teaches: 'birdbath', arrives: 3,
+    fur: '#8A6A55', muzzle: '#F1DCC2', extra: 'scarf',
+    look: look({ skin: '#D9B99B', hairColor: '#6B4F3F', eyes: 'round', outfit: 'dress', topColor: '#E8A0B4', bottomColor: '#F6EBD9' }),
+    routine: [[360, 'home'], [540, 'tables2'], [840, 'beach'], [1080, 'plaza'], [1200, 'home']],
+    rain: [[360, 'home'], [600, 'tables2'], [1020, 'home']],
+    gifts: { love: ['artisan.fabric', 'cloth.scarf', 'flower.rose'], like: ['artisan', 'flower', 'fruit'], dislike: ['res.stone', 'fish'] },
+    birthday: { season: 'summer', day: 17 },
+    asks: ['artisan.yarn', 'flower.tulip', 'fruit.apple', 'animal.wool'],
+  },
+  {
+    id: 'gaspar', gender: 'm', present: 'res.silver', name: 'Gaspar', species: 'raccoon', personality: 'cheerful', icon: '🦝', pitch: 1.0,
+    teaches: 'beachChair', arrives: 5,
+    fur: '#8E8E96', muzzle: '#EDEDED', extra: 'bandana',
+    look: look({ skin: '#8E8E96', hairColor: '#3A3A40', eyes: 'happy', outfit: 'overalls', topColor: '#F2C14E', bottomColor: '#3E5C8A' }),
+    routine: [[360, 'home'], [480, 'pier'], [720, 'plaza'], [960, 'lookout'], [1200, 'home']],
+    gifts: { love: ['res.crystal', 'jewel.silverRing', 'dish.pizza'], like: ['jewelry', 'resource', 'dish'], dislike: ['bug', 'flower'] },
+    birthday: { season: 'autumn', day: 8 },
+    asks: ['res.gold', 'res.fossil', 'res.silver', 'dish.pizza'],
+  },
 ];
 
 export const villager = (id: NpcId): VillagerDef => VILLAGERS.find(v => v.id === id)!;
-export const homeOf = (id: NpcId): XZ => houseDoor(HOUSE_SPOTS.find(h => h.npc === id)!);
+export const homeOf = (id: NpcId): XZ => {
+  const house = HOUSE_SPOTS.find(h => h.npc === id);
+  return house ? houseDoor(house) : tentDoor(TENTS.find(h => h.npc === id)!);
+};
 
 /** Friendship: 100 points per heart, 10 hearts. */
 export const HEART_POINTS = 100;

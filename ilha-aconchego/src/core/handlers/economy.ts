@@ -1,20 +1,21 @@
 import { ANIMAL_DEFS } from '../../data/animals';
 import { HOTBAR_SIZE, INVENTORY_SIZE, ITEMS, MAX_ENERGY, isItemId } from '../../data/items';
-import { BENTO_SPOT, KITCHEN, MACHINE_PADS, PEN, PEN_REACH, SHIPPING_BIN, STALLS, STATION_REACH, WORKBENCH, type XZ } from '../../data/map';
-import { COOKING, CRAFTING, MACHINES, machineOfItem, type Recipe } from '../../data/recipes';
+import { BENTO_SPOT, MACHINE_PADS, PEN, PEN_REACH, SHIPPING_BIN, STALLS, STATION_REACH, type XZ } from '../../data/map';
+import { MACHINES, machineOfItem } from '../../data/recipes';
 import { isShopId, shopEntries, type ShopId } from '../../data/shops';
 import { XP } from '../../data/skills';
 import { MAX_TOOL_LEVEL, TOOLS, toolItem, UPGRADE_COST, type ToolId } from '../../data/tools';
 import { seasonOf } from '../clock';
 import { changed, gained, has, hasItem, hasRoom, isInt, near, nowMinute, playerOf, PLAYERS, RESIDENTS, sellable, xp, type HandlersFor } from '../commandKit';
 import { addItem, countItem, removeItem, spaceFor, takeFromSlot } from '../inventory';
-import { animalYield, eatEnergy, feedAnimal, hasIngredients, levelOf, petAnimal, useIngredients } from '../rules';
+import { animalYield, eatEnergy, feedAnimal, levelOf, petAnimal } from '../rules';
 import { shopOpen } from '../villagers';
+import { talent } from '../talents';
 import { SEED_SHOP_COUNTER } from '../../data/village';
 import type { GameState, PlayerState } from '../types';
 
 type EconomyCommands =
-  | 'item.eat' | 'cook' | 'craft' | 'shop.buy' | 'ship.add' | 'ship.take' | 'tool.upgrade'
+  | 'item.eat' | 'shop.buy' | 'ship.add' | 'ship.take' | 'tool.upgrade'
   | 'machine.place' | 'machine.load' | 'machine.collect' | 'animal.feed' | 'animal.pet' | 'animal.collect';
 
 const STALL_SHOP: Record<string, ShopId> = { 'stall.bread': 'bread', 'stall.honey': 'honey', 'stall.flowers': 'flowers' };
@@ -26,17 +27,9 @@ export function shopSpot(shop: ShopId): XZ {
   return [stall.at[0], stall.at[1] + 1.2];
 }
 const SHOP_REACH = 3;
+/** Price after the player's "shop discount" talent. */
+export const shopPrice = (player: PlayerState, price: number): number => Math.max(1, Math.round(price * (1 - talent(player, 'shopDiscount') / 100)));
 const PEN_CENTER: XZ = [(PEN.x0 + PEN.x1) / 2, (PEN.z0 + PEN.z1) / 2];
-
-function recipeCheck(state: Readonly<GameState>, player: PlayerState, list: readonly Recipe[], id: unknown, skill: 'cooking' | 'crafting', spot: XZ) {
-  const recipe = list.find(r => r.id === id);
-  if (!recipe) return 'invalid' as const;
-  if (!near(player, spot, STATION_REACH + 0.5)) return 'too_far' as const;
-  if (recipe.level > levelOf(player, skill)) return 'not_available' as const;
-  if (!hasIngredients(player.inventory, recipe)) return 'missing' as const;
-  return spaceFor(player.inventory, recipe.result) >= recipe.qty ? null : ('inventory_full' as const);
-  void state;
-}
 
 const animalOf = (state: Readonly<GameState>, id: unknown) => state.animals.find(a => a.id === id);
 const padOk = (pad: unknown): pad is number => isInt(pad) && pad >= 0 && pad < MACHINE_PADS.length;
@@ -65,36 +58,6 @@ export const economyHandlers: HandlersFor<EconomyCommands> = {
     },
   },
 
-  cook: {
-    roles: RESIDENTS,
-    validate(state, cmd, actor) {
-      const player = playerOf(state, actor);
-      return player ? recipeCheck(state, player, COOKING, cmd.recipe, 'cooking', KITCHEN) : 'forbidden';
-    },
-    apply(state, cmd, actor) {
-      const player = state.players[actor.id]!;
-      const recipe = COOKING.find(r => r.id === cmd.recipe)!;
-      useIngredients(player.inventory, recipe);
-      addItem(player.inventory, recipe.result, recipe.qty);
-      return [{ type: 'made', playerId: actor.id, item: recipe.result, qty: recipe.qty }, gained(actor.id, recipe.result, recipe.qty), ...changed(actor.id), ...xp(player, 'cooking', XP.cook)];
-    },
-  },
-
-  craft: {
-    roles: RESIDENTS,
-    validate(state, cmd, actor) {
-      const player = playerOf(state, actor);
-      return player ? recipeCheck(state, player, CRAFTING, cmd.recipe, 'crafting', WORKBENCH) : 'forbidden';
-    },
-    apply(state, cmd, actor) {
-      const player = state.players[actor.id]!;
-      const recipe = CRAFTING.find(r => r.id === cmd.recipe)!;
-      useIngredients(player.inventory, recipe);
-      addItem(player.inventory, recipe.result, recipe.qty);
-      return [{ type: 'made', playerId: actor.id, item: recipe.result, qty: recipe.qty }, gained(actor.id, recipe.result, recipe.qty), ...changed(actor.id), ...xp(player, 'crafting', XP.craft)];
-    },
-  },
-
   'shop.buy': {
     roles: PLAYERS,
     validate(state, cmd, actor) {
@@ -105,13 +68,13 @@ export const economyHandlers: HandlersFor<EconomyCommands> = {
       if (!entry) return 'not_available';
       if (!near(player, shopSpot(cmd.shop), SHOP_REACH)) return 'too_far';
       if (!shopOpen(state, cmd.shop)) return 'closed';
-      if (player.coins < entry.price * cmd.qty) return 'no_money';
+      if (player.coins < shopPrice(player, entry.price) * cmd.qty) return 'no_money';
       return spaceFor(player.inventory, cmd.item) >= cmd.qty ? null : 'inventory_full';
     },
     apply(state, cmd, actor) {
       const player = state.players[actor.id]!;
       const entry = shopEntries(cmd.shop, seasonOf(state.time), state.projects.seeds.done).find(e => e.item === cmd.item)!;
-      player.coins -= entry.price * cmd.qty;
+      player.coins -= shopPrice(player, entry.price) * cmd.qty;
       addItem(player.inventory, cmd.item, cmd.qty);
       return [gained(actor.id, cmd.item, cmd.qty), ...changed(actor.id)];
     },
@@ -227,7 +190,7 @@ export const economyHandlers: HandlersFor<EconomyCommands> = {
       const def = MACHINES[machine.kind];
       takeFromSlot(player.inventory, cmd.slot, 1);
       machine.output = def.output;
-      const minutes = Math.round((def.minutes * (1 - 0.04 * levelOf(player, 'crafting'))) / 10) * 10;
+      const minutes = Math.round((def.minutes * (1 - 0.04 * levelOf(player, 'crafting')) * (1 - talent(player, 'machineFast') / 100)) / 10) * 10;
       machine.readyAt = nowMinute(state) + minutes;
       return [{ type: 'world.changed' }, ...changed(actor.id), ...xp(player, 'crafting', XP.machine)];
     },
@@ -269,7 +232,7 @@ export const economyHandlers: HandlersFor<EconomyCommands> = {
     apply(state, cmd, actor) {
       const player = state.players[actor.id]!;
       removeItem(player.inventory, 'res.hay', 1);
-      feedAnimal(animalOf(state, cmd.animal)!, levelOf(player, 'charisma'));
+      feedAnimal(animalOf(state, cmd.animal)!, levelOf(player, 'charisma'), talent(player, 'animalLove'));
       return [{ type: 'animals.changed' }, ...changed(actor.id), ...xp(player, 'farming', XP.feed)];
     },
   },
@@ -286,7 +249,7 @@ export const economyHandlers: HandlersFor<EconomyCommands> = {
     },
     apply(state, cmd, actor) {
       const player = state.players[actor.id]!;
-      petAnimal(animalOf(state, cmd.animal)!, levelOf(player, 'charisma'));
+      petAnimal(animalOf(state, cmd.animal)!, levelOf(player, 'charisma'), talent(player, 'animalLove'));
       return [{ type: 'animals.changed' }, { type: 'player.changed', playerId: actor.id }, ...xp(player, 'charisma', XP.pet)];
     },
   },

@@ -10,6 +10,7 @@ import { TOOL_AREA, toolEnergy, type ToolId } from '../data/tools';
 import type { WeatherId } from '../data/weather';
 import { countItem, countKind, removeItem, removeKind } from './inventory';
 import { nextRandom } from './rng';
+import { priceFactor, talent } from './talents';
 import type { AnimalState, GameState, Inventory, ItemStack, OreId, PlayerState, PlotState } from './types';
 
 /**
@@ -53,7 +54,10 @@ export function addXp(player: PlayerState, skill: SkillId, xp: number): number |
 
 /** Energy a tool use costs this player (tool level, and today's "Dedo verde" bonus for farm tools). */
 export function energyCost(player: PlayerState, tool: ToolId): number {
-  const base = toolEnergy(tool, player.toolLevels[tool]);
+  let base = toolEnergy(tool, player.toolLevels[tool]);
+  // Talents take whole points off (never below 1).
+  const saved = tool === 'hoe' || tool === 'wateringCan' ? talent(player, 'farmEnergy') : tool === 'pickaxe' || tool === 'axe' ? talent(player, 'mineEnergy') : tool === 'fishingRod' ? talent(player, 'castEnergy') : 0;
+  if (base > 0) base = Math.max(1, base - saved);
   if (player.buff === 'farming' && (tool === 'hoe' || tool === 'wateringCan')) return Math.ceil(base / 2);
   return base;
 }
@@ -62,7 +66,7 @@ export function energyCost(player: PlayerState, tool: ToolId): number {
 export function eatEnergy(player: PlayerState, item: ItemId): number {
   const def = ITEMS[item] as { energy?: number; kind: string };
   if (!def.energy) return 0;
-  const bonus = def.kind === 'dish' ? 1 + 0.04 * levelOf(player, 'cooking') : 1;
+  const bonus = def.kind === 'dish' ? 1 + 0.04 * levelOf(player, 'cooking') + talent(player, 'dishEnergy') / 100 : 1;
   return Math.round(def.energy * bonus);
 }
 
@@ -99,8 +103,9 @@ export function rollQuality(state: GameState, player: PlayerState, plot: PlotSta
   const level = levelOf(player, 'farming');
   const fert = plot.fertilizer === 'fertilizer' ? 1 : 0;
   const luck = player.buff === 'luck' ? 1 : 0;
-  const gold = 0.015 * level + 0.08 * fert + 0.08 * luck;
-  const silver = gold + 0.05 * level + 0.2 * fert + 0.1 * luck;
+  const extra = talent(player, 'quality') / 100;
+  const gold = 0.015 * level + 0.08 * fert + 0.08 * luck + extra / 2;
+  const silver = gold + 0.05 * level + 0.2 * fert + 0.1 * luck + extra;
   const r = roll(state);
   return r < gold ? 2 : r < silver ? 1 : 0;
 }
@@ -126,14 +131,14 @@ export function sprinklerTiles(center: FarmTile): FarmTile[] {
 
 // ---------- Animals ----------
 
-export function feedAnimal(animal: AnimalState, charisma: number): void {
+export function feedAnimal(animal: AnimalState, charisma: number, love = 0): void {
   animal.fedToday = true;
-  animal.friendship = Math.min(MAX_FRIENDSHIP, animal.friendship + Math.round(FRIENDSHIP.feed * (1 + 0.05 * charisma)));
+  animal.friendship = Math.min(MAX_FRIENDSHIP, animal.friendship + Math.round(FRIENDSHIP.feed * (1 + 0.05 * charisma + love / 100)));
 }
 
-export function petAnimal(animal: AnimalState, charisma: number): void {
+export function petAnimal(animal: AnimalState, charisma: number, love = 0): void {
   animal.pettedToday = true;
-  animal.friendship = Math.min(MAX_FRIENDSHIP, animal.friendship + Math.round(FRIENDSHIP.pet * (1 + 0.05 * charisma)));
+  animal.friendship = Math.min(MAX_FRIENDSHIP, animal.friendship + Math.round(FRIENDSHIP.pet * (1 + 0.05 * charisma + love / 100)));
 }
 
 /** Morning step for one animal: fed and petted yesterday means a product today (sheep every other day). */
@@ -173,9 +178,9 @@ export function fishAvailable(spot: FishSpot, season: SeasonId, minute: number, 
 }
 
 /** Picks the fish on the line ("Dia de sorte" makes rare fish more likely). */
-export function rollFish(state: GameState, spot: FishSpot, season: SeasonId, minute: number, weather: WeatherId, lucky: boolean): ItemId | null {
+export function rollFish(state: GameState, spot: FishSpot, season: SeasonId, minute: number, weather: WeatherId, lucky: boolean, rareBonus = 0): ItemId | null {
   const list = fishAvailable(spot, season, minute, weather);
-  return pickWeighted(state, list.map(f => [f.item, f.weight * (lucky && f.difficulty >= 4 ? 2 : 1)] as const));
+  return pickWeighted(state, list.map(f => [f.item, f.weight * (f.difficulty >= 4 ? (lucky ? 2 : 1) * (1 + rareBonus / 100) : 1)] as const));
 }
 
 // ---------- Recipes and money ----------
@@ -191,8 +196,11 @@ export function useIngredients(inv: Inventory, recipe: Recipe): void {
   }
 }
 
-/** Price paid at the shipping bin for a stack (quality and charisma raise it). */
-export function sellPrice(stack: ItemStack, charisma: number): number {
+/** Price paid at the shipping bin for a stack (quality, charisma and talents raise it). */
+export function sellPrice(stack: ItemStack, charisma: number, factor = 1): number {
   const base = ITEMS[stack.item].sell;
-  return Math.round(base * (QUALITY_PRICE[stack.q ?? 0] ?? 1) * (1 + 0.01 * charisma)) * stack.qty;
+  return Math.round(base * (QUALITY_PRICE[stack.q ?? 0] ?? 1) * (1 + 0.01 * charisma) * factor) * stack.qty;
 }
+
+/** What the shipping bin pays this player for a stack. */
+export const playerSellPrice = (player: PlayerState, stack: ItemStack): number => sellPrice(stack, levelOf(player, 'charisma'), priceFactor(player, stack.item));

@@ -3,7 +3,11 @@ import { MAX_ENERGY } from '../data/items';
 import { FARM_TILES, farmTile, MINE_NODES, WOOD_NODE_START } from '../data/map';
 import { absoluteDay, seasonOf, startNextDay } from './clock';
 import type { GameEvent } from './commands';
-import { animalMorning, cropGrowsIn, growPlot, levelOf, rollOre, sellPrice, sprinklerTiles } from './rules';
+import { animalMorning, cropGrowsIn, growPlot, playerSellPrice, roll, rollOre, sprinklerTiles } from './rules';
+import { islandTalent } from './talents';
+import { rollHidden } from './home';
+import { updateStars } from './rating';
+import { recipeById } from '../data/recipes';
 import type { GameState, MailItem } from './types';
 import { VILLAGERS, hearts } from '../data/villagers';
 import { isBirthday, refreshRequests } from './villagers';
@@ -26,9 +30,9 @@ export function startNewDay(state: GameState): GameEvent[] {
   for (const [playerId, stacks] of Object.entries(state.shipping)) {
     const player = state.players[playerId];
     if (!player || stacks.length === 0) continue;
-    const charisma = levelOf(player, 'charisma');
-    const coins = stacks.reduce((sum, s) => sum + sellPrice(s, charisma), 0);
+    const coins = stacks.reduce((sum, s) => sum + playerSellPrice(player, s), 0);
     player.coins += coins;
+    player.stats.earned = (player.stats.earned ?? 0) + coins;
     events.push({ type: 'shipping.paid', playerId, coins });
   }
   state.shipping = {};
@@ -46,10 +50,17 @@ export function startNewDay(state: GameState): GameEvent[] {
 
   // 3. Farm: yesterday's watering makes crops grow; out-of-season crops wither outdoors.
   let withered = false;
+  const growFast = islandTalent(state, 'growFast') / 100;
   for (const tile of FARM_TILES) {
     const plot = state.plots[tile.id];
     if (!plot) continue;
+    // Talent: a watered crop sometimes grows two days in one night.
+    const extra = plot.watered && plot.crop && !plot.ripe && roll(state) < growFast;
     growPlot(plot);
+    if (extra && !plot.ripe) {
+      plot.watered = true;
+      growPlot(plot);
+    }
     plot.watered = false;
     if (plot.crop && !cropGrowsIn(plot.crop, season, tile.greenhouse)) {
       plot.crop = null;
@@ -100,12 +111,23 @@ export function startNewDay(state: GameState): GameEvent[] {
         friend.mailedTier = tier;
         send({ from: v.id, key: 'mail.friend', params: { hearts: tier }, item: v.present, qty: tier >= 8 ? 3 : tier >= 6 ? 2 : 1 });
       }
+      // Stage 5: good friends teach a secret recipe (from 4 hearts on).
+      const recipe = v.teaches ? recipeById(v.teaches) : undefined;
+      if (recipe && tier >= 4 && !player.recipes.includes(recipe.id)) {
+        player.recipes.push(recipe.id);
+        send({ from: v.id, key: 'mail.recipe', params: { item: recipe.result } });
+        events.push({ type: 'recipe.learned', playerId: player.id, recipe: recipe.id, how: 'letter' });
+      }
     }
     for (const v of birthdays) send({ from: 'island', key: 'mail.birthday', params: { name: v.name } });
     if (player.mail.length > 30) player.mail.splice(0, player.mail.length - 30);
   }
 
-  // 7. Everyone wakes up rested; yesterday's meal bonus is over.
+  // 7. Stage 5: the pet's finds for today, and the island rating recounted.
+  rollHidden(state);
+  const stars = updateStars(state, true);
+
+  // 8. Everyone wakes up rested; yesterday's meal bonus is over.
   for (const player of Object.values(state.players)) {
     player.energy = MAX_ENERGY;
     player.buff = null;
@@ -117,6 +139,7 @@ export function startNewDay(state: GameState): GameEvent[] {
     { type: 'farm.changed' },
     { type: 'world.changed' },
   );
+  events.push({ type: 'hidden.changed' }, ...stars);
   if (withered) events.push({ type: 'farm.withered' });
   if (boardChanged) events.push({ type: 'board.changed' });
   for (const id of Object.keys(state.players)) events.push({ type: 'mail.changed', playerId: id });

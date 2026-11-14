@@ -119,7 +119,7 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
       const sub = locked ? t('panel.locked', { level: recipe.level, skill: t(`skill.${skill}`) }) : `${ingredientsText(recipe)}${def.energy ? ` · ${t('panel.energy', { energy: def.energy })}` : ''}`;
       const canMake = !locked && recipe.ingredients.every(ing => ('item' in ing ? countItem(me().inventory, ing.item) : countKind(me().inventory, ing.kind)) >= ing.qty);
       const name = recipe.qty > 1 ? `${t(`item.${recipe.result}`)} ×${recipe.qty}` : t(`item.${recipe.result}`);
-      body.append(row(ITEMS[recipe.result].icon, name, sub, button(t('panel.make'), () => dispatch({ type: command, recipe: recipe.id }, t(command === 'cook' ? 'msg.cooked' : 'msg.crafted', { item: t(`item.${recipe.result}`) })), !canMake, true)));
+      body.append(row(ITEMS[recipe.result].icon, name, sub, button(t('panel.make'), () => dispatch({ type: 'craft', station: recipe.station, recipe: recipe.id }, t(command === 'cook' ? 'msg.cooked' : 'msg.crafted', { item: t(`item.${recipe.result}`) })), !canMake, true)));
     }
   };
 

@@ -85,7 +85,7 @@ export function createConversations(ctx: ConversationContext): void {
   /** The menu after talking. */
   const choicesFor = (def: VillagerDef) => (): DialogueChoice[] => {
     const list: DialogueChoice[] = [];
-    const counterShop = def.shop && shopOpen(game.state, def.shop) ? def.shop : null;
+    const counterShop = def.shop && def.shop !== 'salon' && shopOpen(game.state, def.shop) ? def.shop : null;
     if (counterShop === 'smithy') list.push({ label: t('dialogue.upgrade'), run: () => { dialogue.close(); ctx.panels.openSmithy(); } });
     else if (counterShop) list.push({ label: t('dialogue.shop'), run: () => { dialogue.close(); ctx.panels.openShop(counterShop); } });
     if (def.id === 'celeste' && game.state.projects.museum.done) list.push({ label: t('dialogue.museum'), run: () => { dialogue.close(); ctx.panels.openMuseum(); } });

@@ -29,8 +29,11 @@ export const has = (obj: object, key: unknown): boolean => typeof key === 'strin
 
 export const playerOf = (state: Readonly<GameState>, actor: Actor): PlayerState | undefined =>
   has(state.players, actor.id) ? state.players[actor.id] : undefined;
-export const distance = (p: PlayerState, [x, z]: XZ) => Math.hypot(p.position.x - x, p.position.z - z);
+/** Distance to a spot outside on the island (infinitely far while the player is inside the house). */
+export const distance = (p: PlayerState, [x, z]: XZ) => (p.inside ? Infinity : Math.hypot(p.position.x - x, p.position.z - z));
 export const near = (p: PlayerState, at: XZ, reach: number) => distance(p, at) <= reach;
+/** Distance to a spot inside the house, on the floor the player is on. */
+export const homeDistance = (p: PlayerState, [x, z]: XZ) => (p.inside ? Math.hypot(p.position.x - x, p.position.z - z) : Infinity);
 
 /** Room for one more of `item` whatever quality it turns out to be. */
 export function hasRoom(inv: Inventory, item: ItemId, qty = 1): boolean {
