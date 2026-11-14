@@ -228,11 +228,12 @@ describe('kitchen, workbench, shops and the shipping bin', () => {
 
   it('buys seeds in season, ships goods and gets paid in the morning', () => {
     const s = setup();
-    goTo(s, shopSpot('flowers'));
+    s.time.minuteOfDay = 600;
+    goTo(s, shopSpot('seeds'));
     const coins = me(s).coins;
-    ok(s, { type: 'shop.buy', shop: 'flowers', item: 'seed.carrot', qty: 2 });
+    ok(s, { type: 'shop.buy', shop: 'seeds', item: 'seed.carrot', qty: 2 });
     expect(me(s).coins).toBe(coins - 50);
-    expect(run(s, { type: 'shop.buy', shop: 'flowers', item: 'seed.pumpkin', qty: 1 })).toEqual({ ok: false, error: 'not_available' });
+    expect(run(s, { type: 'shop.buy', shop: 'seeds', item: 'seed.pumpkin', qty: 1 })).toEqual({ ok: false, error: 'not_available' });
     goTo(s, SHIPPING_BIN);
     addItem(me(s).inventory, 'crop.pumpkin', 2, 2);
     ok(s, { type: 'ship.add', slot: me(s).inventory.findIndex(x => x?.item === 'crop.pumpkin'), qty: 2 });
@@ -244,6 +245,7 @@ describe('kitchen, workbench, shops and the shipping bin', () => {
 
   it('Bento upgrades a tool for coins and ore', () => {
     const s = setup();
+    s.time.minuteOfDay = 600;
     goTo(s, BENTO_SPOT);
     expect(run(s, { type: 'tool.upgrade', tool: 'hoe' })).toEqual({ ok: false, error: 'no_money' });
     me(s).coins = 1000;

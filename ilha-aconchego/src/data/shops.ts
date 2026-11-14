@@ -10,7 +10,8 @@ export interface ShopEntry {
 }
 
 export const SHOPS = {
-  flowers: [
+  // Flora's seed shop in the village.
+  seeds: [
     { item: 'seed.strawberry', price: 40, seasons: ['spring'] },
     { item: 'seed.lettuce', price: 20, seasons: ['spring'] },
     { item: 'seed.carrot', price: 25, seasons: ['spring'] },
@@ -22,7 +23,14 @@ export const SHOPS = {
     { item: 'seed.kale', price: 40, seasons: ['winter'] },
     { item: 'res.hay', price: 12 },
     { item: 'supply.fertilizer', price: 25 },
-    { item: 'place.sprinkler', price: 300 },
+    { item: 'supply.growth', price: 60 },
+  ],
+  // Margô's flower stall.
+  flowers: [
+    { item: 'flower.tulip', price: 60, seasons: ['spring', 'summer', 'autumn'] },
+    { item: 'flower.sunflower', price: 70, seasons: ['summer', 'autumn'] },
+    { item: 'flower.rose', price: 100 },
+    { item: 'flower.daisy', price: 50, seasons: ['spring', 'summer'] },
   ],
   bread: [
     { item: 'dish.bread', price: 60 },
@@ -35,12 +43,17 @@ export const SHOPS = {
     { item: 'animal.milk', price: 120 },
     { item: 'dish.honeyCake', price: 380 },
   ],
+  // Bento's tool shop at the smithy.
   smithy: [
     { item: 'res.copper', price: 75 },
     { item: 'res.silver', price: 180 },
     { item: 'res.gold', price: 450 },
     { item: 'res.stone', price: 10 },
     { item: 'res.wood', price: 12 },
+    { item: 'place.sprinkler', price: 300 },
+    { item: 'place.keg', price: 900 },
+    { item: 'place.press', price: 1500 },
+    { item: 'place.wheel', price: 1800 },
   ],
 } as const satisfies Record<string, readonly ShopEntry[]>;
 export type ShopId = keyof typeof SHOPS;
@@ -49,5 +62,6 @@ export function isShopId(v: unknown): v is ShopId {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(SHOPS, v);
 }
 
-export const shopEntries = (shop: ShopId, season: SeasonId): readonly ShopEntry[] =>
-  (SHOPS[shop] as readonly ShopEntry[]).filter(e => !e.seasons || e.seasons.includes(season));
+/** What a shop sells today. Once Flora's shop grows (community project), seeds of every season are sold. */
+export const shopEntries = (shop: ShopId, season: SeasonId, allSeasons = false): readonly ShopEntry[] =>
+  (SHOPS[shop] as readonly ShopEntry[]).filter(e => !e.seasons || e.seasons.includes(season) || (allSeasons && shop === 'seeds'));

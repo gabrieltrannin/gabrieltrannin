@@ -1,6 +1,6 @@
 import { BUGS, FISH, inHours, isRainy, type FishSpot } from '../../data/fish';
 import { isItemId } from '../../data/items';
-import { CREEK, CREEK_BEACH, GRASS_PATCHES, grassPatchCenter, HIVES, HONEY_DAYS, MINE_NODES, PIER, POND, STUMPS, WORK_REACH } from '../../data/map';
+import { CREEK, CREEK_BEACH, GRASS_PATCHES, grassPatchCenter, HIVES, HONEY_DAYS, MINE_NODES, PIER, POND, STUMPS, WOOD_NODE_START, WORK_REACH } from '../../data/map';
 import { XP } from '../../data/skills';
 import { groundHeight } from '../../world/terrain';
 import { absoluteDay, seasonOf } from '../clock';
@@ -72,6 +72,9 @@ export const gatherHandlers: HandlersFor<GatherCommands> = {
         const qty = addItem(player.inventory, ORE_ITEM[ore], 1 + (roll(state) < extraChance ? 1 : 0));
         out.unshift(gained(actor.id, ORE_ITEM[ore], qty));
       }
+      // Now and then a fossil hides in the rock (more often in the wood).
+      const index = MINE_NODES.findIndex((_, i) => `node-${i}` === cmd.node);
+      if (roll(state) < (index >= WOOD_NODE_START ? 0.12 : 0.05)) out.push(gained(actor.id, 'res.fossil', addItem(player.inventory, 'res.fossil', 1)));
       player.energy -= energyCost(player, 'pickaxe');
       state.nodes[cmd.node] = { ore: null, back: absoluteDay(state.time) + NODE_DAYS };
       return [...events, ...out, ...xp(player, 'mining', ORE_XP[ore])];

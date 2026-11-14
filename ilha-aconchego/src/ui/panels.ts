@@ -133,7 +133,7 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
     openShop(shop) {
       open(t(`panel.shop.${shop}` as MessageKey), () => {
         body.replaceChildren();
-        for (const entry of shopEntries(shop, seasonOf(game.state.time))) {
+        for (const entry of shopEntries(shop, seasonOf(game.state.time), game.state.projects.seeds.done)) {
           const name = t(`item.${entry.item}`);
           const have = countItem(me().inventory, entry.item);
           const buy = (qty: number) => dispatch({ type: 'shop.buy', shop, item: entry.item, qty }, t('msg.bought', { item: qty > 1 ? `${qty} ${name}` : name }));

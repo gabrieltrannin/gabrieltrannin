@@ -7,7 +7,9 @@ import { HOTBAR_SIZE, INVENTORY_SIZE, isItemId, ITEMS, MAX_ENERGY } from '../dat
 import { isWeatherId } from './weather';
 import { SKILLS } from '../data/skills';
 import { MAX_TOOL_LEVEL, TOOLS } from '../data/tools';
-import { newIslandProgress, newPlayerProgress, SAVE_VERSION } from './state';
+import { newIslandProgress, newIslandVillage, newPlayerProgress, newPlayerVillage, SAVE_VERSION } from './state';
+import { NPC_IDS } from '../data/villagers';
+import { PROJECT_IDS } from '../data/community';
 import type { GameState, Inventory, ItemStack, PlayerState } from './types';
 
 /** What goes into storage: the state plus when it was saved and why. */
@@ -50,7 +52,19 @@ function validPlayer(id: string, p: unknown): p is PlayerState {
   if (!isObj(p.skills) || !SKILLS.every(k => isNum((p.skills as Record<string, unknown>)[k]) && ((p.skills as Record<string, number>)[k]! >= 0))) return false;
   if (p.buff !== null && typeof p.buff !== 'string') return false;
   if (p.fishing !== null && !(isObj(p.fishing) && isItemId(p.fishing.item))) return false;
+  if (!isObj(p.friends) || !NPC_IDS.every(id => validFriend((p.friends as Record<string, unknown>)[id]))) return false;
+  if (!Array.isArray(p.mail) || !p.mail.every(validMail) || !isInt(p.mailSeq)) return false;
   return validInventory(p.inventory);
+}
+
+function validFriend(f: unknown): boolean {
+  return isObj(f) && isNum(f.points) && isInt(f.talkedDay) && isInt(f.giftDay) && isObj(f.known) && isInt(f.scene) && isInt(f.mailedTier)
+    && (f.lastGift === null || (isObj(f.lastGift) && isItemId(f.lastGift.item) && isInt(f.lastGift.day)));
+}
+
+function validMail(m: unknown): boolean {
+  return isObj(m) && isInt(m.id) && typeof m.from === 'string' && typeof m.key === 'string' && isObj(m.params) && isBool(m.taken) && isBool(m.read) && isInt(m.day)
+    && (m.item === undefined || (isItemId(m.item) && isInt(m.qty)));
 }
 
 function validPlot(v: unknown): boolean {
@@ -66,7 +80,10 @@ function validIsland(s: Record<string, unknown>): boolean {
   if (!allValues(s.machines, m => isObj(m) && typeof m.kind === 'string' && (m.output === null || isItemId(m.output)) && isNum(m.readyAt))) return false;
   if (!allValues(s.nodes, n => isObj(n) && (n.ore === null || typeof n.ore === 'string') && isInt(n.back))) return false;
   if (!allValues(s.stumps, isInt) || !allValues(s.grass, isInt) || !allValues(s.hives, isInt)) return false;
-  return allValues(s.shipping, list => Array.isArray(list) && list.every(validStack));
+  if (!allValues(s.shipping, list => Array.isArray(list) && list.every(validStack))) return false;
+  if (!Array.isArray(s.requests) || !s.requests.every(r => isObj(r) && isInt(r.id) && typeof r.npc === 'string' && isItemId(r.item) && isInt(r.qty) && isInt(r.reward) && isInt(r.until) && isBool(r.done))) return false;
+  if (!isInt(s.requestSeq) || !isObj(s.projects) || !PROJECT_IDS.every(id => { const p = (s.projects as Record<string, unknown>)[id]; return isObj(p) && isObj(p.given) && isInt(p.coins) && isBool(p.done); })) return false;
+  return Array.isArray(s.museum) && s.museum.every(isItemId);
 }
 
 /** Checks every field of a loaded state. Anything unexpected means the save is not used. */
@@ -90,15 +107,18 @@ export function isValidState(s: unknown): s is GameState {
  */
 export function migrateSave(data: Record<string, unknown>): Record<string, unknown> | null {
   if (data.version === SAVE_VERSION) return data;
-  if (data.version !== 2 || !isObj(data.state)) return null;
+  if ((data.version !== 2 && data.version !== 3) || !isObj(data.state)) return null;
   const state = data.state as Record<string, unknown>;
   if (!isObj(state.time) || !isInt(state.rng)) return null;
-  Object.assign(state, newIslandProgress(state.time as unknown as GameState['time'], state.rng));
-  if (isObj(state.players)) {
-    for (const p of Object.values(state.players)) {
-      if (isObj(p)) Object.assign(p, newPlayerProgress());
-    }
+  const players = isObj(state.players) ? Object.values(state.players).filter(isObj) : [];
+  if (data.version === 2) {
+    // Stage 3: farm, animals, skills and tool levels.
+    Object.assign(state, newIslandProgress(state.time as unknown as GameState['time'], state.rng));
+    for (const p of players) Object.assign(p, newPlayerProgress());
   }
+  // Stage 4: villagers, the notice board, projects, museum and mail.
+  Object.assign(state, newIslandVillage());
+  for (const p of players) Object.assign(p, newPlayerVillage());
   state.version = SAVE_VERSION;
   data.version = SAVE_VERSION;
   return data;

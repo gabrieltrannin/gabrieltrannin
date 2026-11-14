@@ -9,6 +9,9 @@ import { FIRST_DAY_WEATHER } from '../data/weather';
 import { createTime, seasonOf, startNextDay } from './clock';
 import { createInventory } from './inventory';
 import { emptyPlot } from './rules';
+import { firstRequest, newFriend } from './villagers';
+import { PROJECT_IDS } from '../data/community';
+import { NPC_IDS } from '../data/villagers';
 import type { AnimalState, GameState, OreId, PlayerState } from './types';
 
 /** What the rocks hold on the first day: mostly stone and copper, one silver. */
@@ -16,7 +19,7 @@ const STARTING_ORES: readonly OreId[] = ['copper', 'stone', 'copper', 'stone', '
 import { rollWeather } from './weather';
 
 /** Bumped whenever the shape of GameState changes; older saves are not loaded. */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface NewIslandOptions {
   seed?: number;
@@ -38,6 +41,26 @@ export function createPlayer(id: string, name: string, appearance: Appearance = 
     inventory: createInventory(STARTING_INVENTORY),
     activeSlot: 0,
     ...newPlayerProgress(),
+    ...newPlayerVillage(),
+  };
+}
+
+/** Friendships and the mailbox (stage 4); also used to bring older saves up to date. */
+export function newPlayerVillage(): Pick<PlayerState, 'friends' | 'mail' | 'mailSeq'> {
+  return {
+    friends: Object.fromEntries(NPC_IDS.map(id => [id, newFriend()])) as PlayerState['friends'],
+    mail: [{ id: 1, from: 'island', key: 'mail.welcome', params: {}, taken: false, read: false, day: 0 }],
+    mailSeq: 1,
+  };
+}
+
+/** The notice board with Lumi's first request, the community projects and the empty museum. */
+export function newIslandVillage(): Pick<GameState, 'requests' | 'requestSeq' | 'projects' | 'museum'> {
+  return {
+    requests: [firstRequest()],
+    requestSeq: 1,
+    projects: Object.fromEntries(PROJECT_IDS.map(id => [id, { given: {}, coins: 0, done: false }])) as GameState['projects'],
+    museum: [],
   };
 }
 
@@ -90,5 +113,6 @@ export function createInitialState(opts: NewIslandOptions = {}): GameState {
     quests: [{ id: 'tour', visited: [], done: false }],
     trees: {},
     ...newIslandProgress(time, seed),
+    ...newIslandVillage(),
   };
 }

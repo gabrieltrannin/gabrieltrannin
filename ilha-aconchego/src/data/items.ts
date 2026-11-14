@@ -4,7 +4,7 @@ import type { FruitId } from './defaults';
  * Everything that fits in the backpack. Names come from i18n (`item.<id>`); icons are emoji drawn by
  * the browser until there is item art. `sell` is the base price at the shipping bin (0 = cannot be sold).
  */
-export type ItemKind = 'tool' | 'seed' | 'crop' | 'fruit' | 'animal' | 'fish' | 'bug' | 'resource' | 'supply' | 'dish' | 'artisan' | 'placeable';
+export type ItemKind = 'tool' | 'seed' | 'crop' | 'fruit' | 'animal' | 'fish' | 'bug' | 'resource' | 'supply' | 'dish' | 'artisan' | 'placeable' | 'flower';
 
 export type BuffId = 'speed' | 'fishing' | 'mining' | 'farming' | 'luck';
 
@@ -96,6 +96,12 @@ export const ITEMS = {
   'res.gold': res('🥇', 150),
   'res.crystal': res('💎', 350),
   'res.hay': res('🍂', 4),
+  'res.fossil': res('🦴', 180),
+
+  'flower.tulip': { icon: '🌷', kind: 'flower', maxStack: 99, sell: 30 },
+  'flower.sunflower': { icon: '🌻', kind: 'flower', maxStack: 99, sell: 35 },
+  'flower.rose': { icon: '🌹', kind: 'flower', maxStack: 99, sell: 50 },
+  'flower.daisy': { icon: '🌼', kind: 'flower', maxStack: 99, sell: 25 },
 
   'supply.fertilizer': { icon: '🪣', kind: 'supply', maxStack: 99, sell: 10 },
   'supply.growth': { icon: '🧪', kind: 'supply', maxStack: 99, sell: 20 },

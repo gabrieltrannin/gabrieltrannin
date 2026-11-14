@@ -158,10 +158,11 @@ export function animalYield(state: GameState, animal: AnimalState): number {
 // ---------- Mining ----------
 
 const ORE_WEIGHTS: readonly (readonly [OreId, number])[] = [['stone', 42], ['copper', 30], ['silver', 17], ['gold', 9], ['crystal', 2]];
+const RICH_ORE_WEIGHTS: readonly (readonly [OreId, number])[] = [['stone', 15], ['copper', 25], ['silver', 30], ['gold', 22], ['crystal', 8]];
 export const ORE_ITEM: Record<OreId, ItemId> = { stone: 'res.stone', copper: 'res.copper', silver: 'res.silver', gold: 'res.gold', crystal: 'res.crystal' };
 
-export function rollOre(state: GameState): OreId {
-  return pickWeighted(state, ORE_WEIGHTS) ?? 'stone';
+export function rollOre(state: GameState, rich = false): OreId {
+  return pickWeighted(state, rich ? RICH_ORE_WEIGHTS : ORE_WEIGHTS) ?? 'stone';
 }
 
 // ---------- Fishing ----------

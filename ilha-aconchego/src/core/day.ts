@@ -1,10 +1,12 @@
 import { HONEY_DAYS } from '../data/map';
 import { MAX_ENERGY } from '../data/items';
-import { FARM_TILES, farmTile, MINE_NODES } from '../data/map';
+import { FARM_TILES, farmTile, MINE_NODES, WOOD_NODE_START } from '../data/map';
 import { absoluteDay, seasonOf, startNextDay } from './clock';
 import type { GameEvent } from './commands';
 import { animalMorning, cropGrowsIn, growPlot, levelOf, rollOre, sellPrice, sprinklerTiles } from './rules';
-import type { GameState } from './types';
+import type { GameState, MailItem } from './types';
+import { VILLAGERS, hearts } from '../data/villagers';
+import { isBirthday, refreshRequests } from './villagers';
 import { rollWeather } from './weather';
 
 /** Days a broken rock, a chopped stump and cut grass take to come back. */
@@ -77,12 +79,33 @@ export function startNewDay(state: GameState): GameEvent[] {
   MINE_NODES.forEach((_, i) => {
     const id = `node-${i}`;
     const node = state.nodes[id];
-    if (!node || (node.ore === null && today >= node.back)) state.nodes[id] = { ore: rollOre(state), back: 0 };
+    if (!node || (node.ore === null && today >= node.back)) state.nodes[id] = { ore: rollOre(state, i >= WOOD_NODE_START), back: 0 };
   });
   for (const [id, day] of Object.entries(state.stumps)) if (today >= day) delete state.stumps[id];
   for (const [id, day] of Object.entries(state.grass)) if (today >= day) delete state.grass[id];
 
-  // 6. Everyone wakes up rested; yesterday's meal bonus is over.
+  // 6. Village: the notice board, letters with presents from good friends, birthday reminders.
+  const boardChanged = refreshRequests(state);
+  const tomorrowTime = startNextDay(state.time).time;
+  const birthdays = VILLAGERS.filter(v => isBirthday(v, tomorrowTime));
+  for (const player of Object.values(state.players)) {
+    const send = (mail: Omit<MailItem, 'id' | 'taken' | 'read' | 'day'>) => {
+      player.mailSeq += 1;
+      player.mail.push({ ...mail, id: player.mailSeq, taken: false, read: false, day: today });
+    };
+    for (const v of VILLAGERS) {
+      const friend = player.friends[v.id];
+      const tier = [8, 6, 4].find(h => hearts(friend.points) >= h) ?? 0;
+      if (tier > friend.mailedTier) {
+        friend.mailedTier = tier;
+        send({ from: v.id, key: 'mail.friend', params: { hearts: tier }, item: v.present, qty: tier >= 8 ? 3 : tier >= 6 ? 2 : 1 });
+      }
+    }
+    for (const v of birthdays) send({ from: 'island', key: 'mail.birthday', params: { name: v.name } });
+    if (player.mail.length > 30) player.mail.splice(0, player.mail.length - 30);
+  }
+
+  // 7. Everyone wakes up rested; yesterday's meal bonus is over.
   for (const player of Object.values(state.players)) {
     player.energy = MAX_ENERGY;
     player.buff = null;
@@ -95,6 +118,8 @@ export function startNewDay(state: GameState): GameEvent[] {
     { type: 'world.changed' },
   );
   if (withered) events.push({ type: 'farm.withered' });
+  if (boardChanged) events.push({ type: 'board.changed' });
+  for (const id of Object.keys(state.players)) events.push({ type: 'mail.changed', playerId: id });
   if (wet) events.push({ type: 'farm.rained' });
   return events;
 }

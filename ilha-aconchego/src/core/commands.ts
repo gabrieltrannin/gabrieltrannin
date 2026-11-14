@@ -6,6 +6,8 @@ import { BED_REACH, HOUSE_DOOR, ORCHARD, orchardTreeId, TOUR_PLACES, TOUR_REWARD
 import type { ShopId } from '../data/shops';
 import type { SkillId } from '../data/skills';
 import type { ToolId } from '../data/tools';
+import type { ProjectId } from '../data/community';
+import type { NpcId } from '../data/villagers';
 import type { WeatherId } from '../data/weather';
 import { groundHeight } from '../world/terrain';
 import { STEPS_PER_DAY, absoluteDay, advanceSteps, seasonOf } from './clock';
@@ -16,7 +18,8 @@ import { farmHandlers } from './handlers/farm';
 import { gatherHandlers } from './handlers/gather';
 import { addItem, moveSlot, spaceFor } from './inventory';
 import { nextInt } from './rng';
-import type { Actor, GameState, GameTime } from './types';
+import type { Actor, GameState, GameTime, GiftReaction } from './types';
+import { villageHandlers } from './handlers/village';
 import { isWeatherId } from './weather';
 
 /**
@@ -75,7 +78,15 @@ export type Command =
   | { type: 'tool.upgrade'; tool: ToolId }
   | { type: 'machine.place'; pad: number; slot: number }
   | { type: 'machine.load'; pad: number; slot: number }
-  | { type: 'machine.collect'; pad: number };
+  | { type: 'machine.collect'; pad: number }
+  // Village (stage 4).
+  | { type: 'npc.talk'; npc: NpcId }
+  | { type: 'npc.gift'; npc: NpcId; slot: number }
+  | { type: 'request.deliver'; request: number }
+  | { type: 'project.contribute'; project: ProjectId; item: ItemId | 'coins'; qty: number }
+  | { type: 'museum.donate'; slot: number }
+  | { type: 'mail.read'; id: number }
+  | { type: 'mail.take'; id: number };
 
 export type CommandType = Command['type'];
 
@@ -106,11 +117,19 @@ export type GameEvent =
   | { type: 'fishing.done'; playerId: string; item: ItemId; caught: boolean }
   | { type: 'ate'; playerId: string; item: ItemId; energy: number; buff: BuffId | null }
   | { type: 'made'; playerId: string; item: ItemId; qty: number }
-  | { type: 'tool.upgraded'; playerId: string; tool: ToolId; level: number };
+  | { type: 'tool.upgraded'; playerId: string; tool: ToolId; level: number }
+  | { type: 'npc.talked'; playerId: string; npc: NpcId; first: boolean; scene: number }
+  | { type: 'npc.gifted'; playerId: string; npc: NpcId; item: ItemId; reaction: GiftReaction; birthday: boolean }
+  | { type: 'npc.heart'; playerId: string; npc: NpcId; hearts: number }
+  | { type: 'request.done'; playerId: string; request: number; npc: NpcId; reward: number }
+  | { type: 'board.changed' }
+  | { type: 'project.done'; project: ProjectId }
+  | { type: 'museum.donated'; playerId: string; item: ItemId; total: number }
+  | { type: 'mail.changed'; playerId: string };
 
 export type CommandError =
   | 'unknown_command' | 'forbidden' | 'invalid' | 'day_ended' | 'too_far' | 'inventory_full' | 'not_available'
-  | 'tired' | 'no_tool' | 'no_money' | 'missing' | 'not_tilled' | 'occupied' | 'wrong_season' | 'not_ready';
+  | 'tired' | 'no_tool' | 'no_money' | 'missing' | 'not_tilled' | 'occupied' | 'wrong_season' | 'not_ready' | 'already' | 'closed';
 
 export type CommandResult = { ok: true; events: GameEvent[] } | { ok: false; error: CommandError };
 
@@ -279,7 +298,7 @@ const baseHandlers = {
   },
 } satisfies Partial<HandlerMap>;
 
-const handlers: HandlerMap = { ...baseHandlers, ...farmHandlers, ...gatherHandlers, ...economyHandlers };
+const handlers: HandlerMap = { ...baseHandlers, ...farmHandlers, ...gatherHandlers, ...economyHandlers, ...villageHandlers };
 
 /**
  * The single entry point that validates and applies a command.

@@ -9,6 +9,8 @@ import { seasonOf } from '../clock';
 import { changed, gained, has, hasItem, hasRoom, isInt, near, nowMinute, playerOf, PLAYERS, RESIDENTS, sellable, xp, type HandlersFor } from '../commandKit';
 import { addItem, countItem, removeItem, spaceFor, takeFromSlot } from '../inventory';
 import { animalYield, eatEnergy, feedAnimal, hasIngredients, levelOf, petAnimal, useIngredients } from '../rules';
+import { shopOpen } from '../villagers';
+import { SEED_SHOP_COUNTER } from '../../data/village';
 import type { GameState, PlayerState } from '../types';
 
 type EconomyCommands =
@@ -19,6 +21,7 @@ const STALL_SHOP: Record<string, ShopId> = { 'stall.bread': 'bread', 'stall.hone
 /** Where each shop is: in front of its market stall, or Bento's spot at the smithy. */
 export function shopSpot(shop: ShopId): XZ {
   if (shop === 'smithy') return BENTO_SPOT;
+  if (shop === 'seeds') return SEED_SHOP_COUNTER;
   const stall = STALLS.find(s => STALL_SHOP[s.asset] === shop)!;
   return [stall.at[0], stall.at[1] + 1.2];
 }
@@ -98,15 +101,16 @@ export const economyHandlers: HandlersFor<EconomyCommands> = {
       const player = playerOf(state, actor);
       if (!player) return 'forbidden';
       if (!isShopId(cmd.shop) || !isItemId(cmd.item) || !isInt(cmd.qty) || cmd.qty < 1 || cmd.qty > 99) return 'invalid';
-      const entry = shopEntries(cmd.shop, seasonOf(state.time)).find(e => e.item === cmd.item);
+      const entry = shopEntries(cmd.shop, seasonOf(state.time), state.projects.seeds.done).find(e => e.item === cmd.item);
       if (!entry) return 'not_available';
       if (!near(player, shopSpot(cmd.shop), SHOP_REACH)) return 'too_far';
+      if (!shopOpen(state, cmd.shop)) return 'closed';
       if (player.coins < entry.price * cmd.qty) return 'no_money';
       return spaceFor(player.inventory, cmd.item) >= cmd.qty ? null : 'inventory_full';
     },
     apply(state, cmd, actor) {
       const player = state.players[actor.id]!;
-      const entry = shopEntries(cmd.shop, seasonOf(state.time)).find(e => e.item === cmd.item)!;
+      const entry = shopEntries(cmd.shop, seasonOf(state.time), state.projects.seeds.done).find(e => e.item === cmd.item)!;
       player.coins -= entry.price * cmd.qty;
       addItem(player.inventory, cmd.item, cmd.qty);
       return [gained(actor.id, cmd.item, cmd.qty), ...changed(actor.id)];
@@ -164,6 +168,7 @@ export const economyHandlers: HandlersFor<EconomyCommands> = {
       const tool = cmd.tool as ToolId;
       if (!hasItem(player.inventory, toolItem(tool))) return 'no_tool';
       if (!near(player, BENTO_SPOT, SHOP_REACH)) return 'too_far';
+      if (!shopOpen(state, 'smithy')) return 'closed';
       const level = player.toolLevels[tool];
       if (level >= MAX_TOOL_LEVEL) return 'not_available';
       const cost = UPGRADE_COST[level + 1]!;

@@ -1,3 +1,4 @@
+import { ptBRDialogue } from './locales/pt-BR.dialogue';
 import { ptBR, type MessageKey } from './locales/pt-BR';
 
 export type { MessageKey };
@@ -24,5 +25,18 @@ export function getLocale(): Locale {
 export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const text = dictionaries[current]?.[key] ?? ptBR[key];
   if (!params) return text;
+  return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
+}
+
+
+const dialogues: Partial<Record<Locale, Record<string, readonly string[]>>> = { 'pt-BR': ptBRDialogue };
+
+/** All the lines of a dialogue group (villager speech). Empty when the group does not exist. */
+export function lines(key: string): readonly string[] {
+  return dialogues[current]?.[key] ?? ptBRDialogue[key] ?? [];
+}
+
+/** Fills {placeholders} in a line. */
+export function fill(text: string, params: Record<string, string | number>): string {
   return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
 }

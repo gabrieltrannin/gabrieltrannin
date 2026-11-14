@@ -8,6 +8,8 @@ import type { MachineKind } from '../data/recipes';
 import type { SkillId } from '../data/skills';
 import type { ToolId } from '../data/tools';
 import type { WeatherId } from '../data/weather';
+import type { ProjectId } from '../data/community';
+import type { NpcId } from '../data/villagers';
 
 /** Position in the calendar plus the time of day. Plain data, safe to save and send over the network. */
 export interface GameTime {
@@ -71,6 +73,59 @@ export interface PlayerState {
   buff: BuffId | null;
   /** A fish on the line, rolled when the line is cast. */
   fishing: { item: ItemId; spot: FishSpot } | null;
+  /** Friendship with each villager (every player has their own). */
+  friends: Record<NpcId, FriendState>;
+  /** Letters in the mailbox, newest last. */
+  mail: MailItem[];
+  mailSeq: number;
+}
+
+export type GiftReaction = 'love' | 'like' | 'neutral' | 'dislike';
+
+export interface FriendState {
+  /** 100 points per heart, 0 to 1000. */
+  points: number;
+  /** absoluteDay of the last chat and the last gift (once a day each). */
+  talkedDay: number;
+  giftDay: number;
+  /** Gifts already given and what they thought of them (shown in the friendship screen). */
+  known: Partial<Record<ItemId, GiftReaction>>;
+  lastGift: { item: ItemId; day: number } | null;
+  /** Highest special scene seen (2, 4, 6, 8, 10 hearts). */
+  scene: number;
+  /** Highest heart level that already brought a letter with a present. */
+  mailedTier: number;
+}
+
+export interface MailItem {
+  id: number;
+  from: NpcId | 'island';
+  /** i18n key of the letter text, with its placeholders. */
+  key: string;
+  params: Record<string, string | number>;
+  item?: ItemId;
+  qty?: number;
+  taken: boolean;
+  read: boolean;
+  day: number;
+}
+
+/** A request pinned on the village notice board. */
+export interface RequestState {
+  id: number;
+  npc: NpcId;
+  item: ItemId;
+  qty: number;
+  reward: number;
+  /** Last day it can be delivered (-1 = no limit). */
+  until: number;
+  done: boolean;
+}
+
+export interface ProjectState {
+  given: Partial<Record<ItemId, number>>;
+  coins: number;
+  done: boolean;
 }
 
 /** One planting spot of the farm. */
@@ -153,4 +208,11 @@ export interface GameState {
   /** What each player put in the shipping bin today (paid when the next day starts). */
   shipping: Record<string, ItemStack[]>;
   greenhouse: boolean;
+  /** Notice board requests (stage 4). */
+  requests: RequestState[];
+  requestSeq: number;
+  /** Community projects and what was given so far. */
+  projects: Record<ProjectId, ProjectState>;
+  /** Fish, bugs and fossils donated to the museum. */
+  museum: ItemId[];
 }

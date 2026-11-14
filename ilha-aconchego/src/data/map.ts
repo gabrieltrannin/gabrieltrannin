@@ -6,6 +6,8 @@
  * Pure data: the world builder reads it, and stage 2 will use the same numbers for collision.
  */
 
+import { WOOD_NODES, WOOD_STUMPS } from './village';
+
 export type XZ = readonly [x: number, z: number];
 
 export interface RoundedRect {
@@ -196,7 +198,7 @@ export const BUSHES: readonly XZ[] = [
 ];
 /** Beach rocks: [x, z, size]. */
 export const ROCKS: readonly (readonly [number, number, number])[] = [
-  [-12, 16.2, 0.55], [-11.3, 16.6, 0.4], [5, 16.4, 0.5], [15.3, 16.3, 0.6], [18.6, 8, 0.7], [-18.8, 4, 0.6], [-18.7, -6, 0.7], [18.8, -3, 0.65], [7.2, 16.5, 0.35],
+  [-12, 16.2, 0.55], [-11.3, 16.6, 0.4], [5, 16.4, 0.5], [15.3, 16.3, 0.6], [18.6, 8, 0.7], [-18.8, 4, 0.6], [-18.7, -6, 0.7], [18.9, -7.2, 0.65], [7.2, 16.5, 0.35],
 ];
 
 /** Flower patches: [x, z, count, radius, colors?]. */
@@ -310,11 +312,18 @@ export const STATION_REACH = 1.9;
 /** Rocks that can be broken with the pickaxe; they come back a few days later. */
 export const MINE_NODES: readonly XZ[] = [
   [12.3, -11.9], [13.6, -11.8], [15.2, -11.5], [-8.7, -11.6], [-1.1, -11.6], [-18.3, 1.5], [-18.4, -1.8], [-18.1, 7.6],
+  // In the wood (across the old bridge): richer rocks.
+  ...WOOD_NODES,
 ];
+/** Index of the first rock in the wood. */
+export const WOOD_NODE_START = 8;
 /** Old stumps that give wood to the axe; the wood grows back. */
-export const STUMPS: readonly XZ[] = [[-15.1, 2.7], [-14.9, 5.9], [-1.4, 12.4], [2.3, -8.3]];
+export const STUMPS: readonly XZ[] = [[-15.1, 2.7], [-14.9, 5.9], [-1.4, 12.4], [2.3, -8.3], ...WOOD_STUMPS];
 export const WORK_REACH = 1.7;
 
 /** Beehives give honey every few days (the two beehive props). */
+/** The player's mailbox, next to the house. */
+export const MAILBOX: XZ = [-9.6, -1.3];
+
 export const HIVES: readonly XZ[] = PROPS.filter(p => p.asset === 'beehive').map(p => p.at);
 export const HONEY_DAYS = 3;
