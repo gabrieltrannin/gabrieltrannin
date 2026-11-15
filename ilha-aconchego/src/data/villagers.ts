@@ -26,7 +26,7 @@ export const PLACES = {
   'stall.flowers': [13.4, -1.5],
   forge: BENTO_SPOT,
   seeds: [SEED_SHOP_COUNTER[0], SEED_SHOP_COUNTER[1] - 0.8],
-  pier: [10.0, 21.0],
+  pier: [10.2, 21.9],
   pond: [11.0, 10.6],
   pondNorth: [12.4, 9.1],
   bench: [1.5, 10.5],

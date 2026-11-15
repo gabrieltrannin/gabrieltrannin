@@ -2112,3 +2112,173 @@ body {
     max-height: 45vh;
   }
 }
+
+/* ---------- Stage 6: loading screen and festival games ---------- */
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #bfe9f7, #8fd3f4);
+  pointer-events: auto;
+  transition: opacity 0.25s ease;
+}
+
+.loading--out {
+  opacity: 0;
+}
+
+.loading__card {
+  display: grid;
+  justify-items: center;
+  gap: 0.3em;
+  padding: 1.2em 1.8em;
+  color: var(--ui-ink);
+  background: var(--ui-paper);
+  border: 4px solid var(--ui-line);
+  border-radius: 1.4em;
+  box-shadow: 0 0.35em 0 var(--ui-shadow);
+}
+
+.loading__icon {
+  font-size: 2.6em;
+  animation: loading-bob 1.2s ease-in-out infinite;
+}
+
+.loading__waves {
+  color: #5fb7d6;
+  letter-spacing: 0.1em;
+  animation: loading-waves 1.4s linear infinite;
+}
+
+.loading__text {
+  font: 600 1.1em var(--font-display);
+}
+
+@keyframes loading-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-0.25em) rotate(4deg); }
+}
+
+@keyframes loading-waves {
+  from { transform: translateX(-0.3em); }
+  to { transform: translateX(0.3em); }
+}
+
+.game {
+  width: min(32em, calc(100vw - 1.5em));
+}
+
+.game__status {
+  font: 600 1em var(--font-display);
+  text-align: center;
+  min-height: 1.4em;
+}
+
+.game__stage {
+  display: grid;
+  justify-items: center;
+  gap: 0.6em;
+  padding: 0.6em 0;
+}
+
+.game__done {
+  font: 600 1.2em var(--font-display);
+  margin: 0;
+}
+
+.game-memory {
+  display: grid;
+  grid-template-columns: repeat(4, 4em);
+  gap: 0.45em;
+}
+
+.game-card {
+  height: 4em;
+  font-size: 1.6em;
+  font-size: min(1.6em, 7vw);
+  background: var(--ui-accent);
+  border: 3px solid var(--ui-line);
+  border-radius: 0.8em;
+  cursor: pointer;
+}
+
+.game-card--up {
+  background: var(--ui-white);
+}
+
+.game-card--done {
+  background: #e4f6dc;
+  border-color: #9ad08a;
+}
+
+.game-lanterns {
+  display: flex;
+  gap: 0.8em;
+}
+
+.game-lantern {
+  width: 4.2em;
+  height: 5.2em;
+  font: 600 1em var(--font-display);
+  color: var(--ui-white);
+  background: color-mix(in srgb, var(--lantern) 55%, #3a2f2a);
+  border: 3px solid var(--ui-line);
+  border-radius: 1.4em 1.4em 1em 1em;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.game-lantern--on {
+  background: var(--lantern);
+  transform: scale(1.12);
+  box-shadow: 0 0 1.2em var(--lantern);
+}
+
+.game-holes {
+  display: grid;
+  grid-template-columns: repeat(3, 4.6em);
+  gap: 0.5em;
+}
+
+.game-hole {
+  height: 4.2em;
+  font-size: 1.7em;
+  background: radial-gradient(circle at 50% 70%, #5a4030 45%, #8a6a45 46%);
+  border: 3px solid var(--ui-line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.game-hole--up {
+  background: radial-gradient(circle at 50% 70%, #7a5a40 45%, #a8845a 46%);
+}
+
+.game-lane {
+  position: relative;
+  width: min(26em, 80vw);
+  height: 4em;
+  background: linear-gradient(180deg, #eef6ff, #dce9f7);
+  border: 3px solid var(--ui-line);
+  border-radius: 1em;
+  overflow: hidden;
+}
+
+.game-target {
+  position: absolute;
+  left: 41%;
+  width: 18%;
+  top: 0;
+  bottom: 0;
+  background: rgba(217, 83, 125, 0.18);
+  border-left: 2px dashed var(--ui-accent);
+  border-right: 2px dashed var(--ui-accent);
+}
+
+.game-snowman {
+  position: absolute;
+  top: 50%;
+  font-size: 2.2em;
+  transform: translate(-50%, -50%);
+}

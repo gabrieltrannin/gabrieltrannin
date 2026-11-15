@@ -4,7 +4,7 @@ import { playerSellPrice } from '../core/rules';
 import type { Actor, ItemStack, PlayerState } from '../core/types';
 import { absoluteDay, seasonOf } from '../core/clock';
 import { DAYS_PER_SEASON, FESTIVALS, SEASONS, WEEKDAYS } from '../data/calendar';
-import { MUSEUM_EXTRA, PROJECTS } from '../data/community';
+import { MUSEUM_EXTRA, MUSEUM_GROWTH, MUSEUM_KINDS, PROJECTS } from '../data/community';
 import { hearts, villager, VILLAGERS } from '../data/villagers';
 import { ITEM_IDS, ITEMS, type ItemId } from '../data/items';
 import { shopEntries, type ShopId } from '../data/shops';
@@ -12,6 +12,7 @@ import { MAX_TOOL_LEVEL, TOOLS, toolItem, UPGRADE_COST } from '../data/tools';
 import { t, type MessageKey } from '../i18n';
 import { itemName } from './itemText';
 import { createHomePanels, type HomePanels } from './homePanels';
+import { createExplorePanels, type ExplorePanels } from './explorePanels';
 import { isItemId } from '../data/items';
 import { shopPrice } from '../core/handlers/economy';
 import { isPresent } from '../core/villagers';
@@ -44,7 +45,7 @@ function row(icon: string, name: string, sub: string, ...actions: HTMLElement[])
   return r;
 }
 
-export interface PanelHost extends HomePanels {
+export interface PanelHost extends HomePanels, ExplorePanels {
   readonly isOpen: boolean;
   close(): void;
   /** Re-draws the open panel (after the game state changed). */
@@ -228,25 +229,32 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
     openMuseum() {
       open(t('panel.museum.title'), () => {
         body.replaceChildren();
-        const kinds = [...ITEM_IDS.filter(id => ITEMS[id].kind === 'fish'), ...ITEM_IDS.filter(id => ITEMS[id].kind === 'bug'), ...MUSEUM_EXTRA];
-        body.append(el('p', 'bag__hint', t('panel.museum.hint', { count: game.state.museum.length, total: kinds.length })));
+        // Fish, bugs, fossils (the plain fossil too) and shells, one of each.
+        const groups = MUSEUM_KINDS.map(kind => ({ kind, items: [...ITEM_IDS.filter(id => ITEMS[id].kind === kind), ...(kind === 'fossil' ? MUSEUM_EXTRA : [])] }));
+        const all = groups.flatMap(g => g.items);
+        body.append(el('p', 'bag__hint', t('panel.museum.hint', { count: game.state.museum.length, total: all.length })));
+        const next = MUSEUM_GROWTH.find(n => n > game.state.museum.length);
+        body.append(el('p', 'panel__note', next ? t('panel.museum.growth', { next }) : t('panel.museum.full')));
         section(t('panel.museum.donate'));
         let any = false;
         me().inventory.forEach((stack, slot) => {
-          if (!stack || !kinds.includes(stack.item) || game.state.museum.includes(stack.item)) return;
+          if (!stack || !all.includes(stack.item) || game.state.museum.includes(stack.item)) return;
           any = true;
           body.append(row(ITEMS[stack.item].icon, itemName(stack), t(`kind.${ITEMS[stack.item].kind}` as MessageKey), button(t('panel.museum.give'), () => dispatch({ type: 'museum.donate', slot }, t('msg.donated', { item: t(`item.${stack.item}`) })), false, true)));
         });
         if (!any) body.append(el('p', 'panel__empty', t('panel.museum.nothing')));
-        section(t('panel.museum.collection'));
-        const grid = el('div', 'museum-grid');
-        for (const id of kinds) {
-          const has = game.state.museum.includes(id);
-          const cell = el('span', `museum-cell${has ? ' museum-cell--on' : ''}`, has ? ITEMS[id].icon : '?');
-          cell.title = has ? t(`item.${id}`) : '?';
-          grid.append(cell);
+        for (const g of groups) {
+          const have = g.items.filter(id => game.state.museum.includes(id)).length;
+          section(`${t(`panel.museum.section.${g.kind}` as MessageKey)} · ${have}/${g.items.length}`);
+          const grid = el('div', 'museum-grid');
+          for (const id of g.items) {
+            const has = game.state.museum.includes(id);
+            const cell = el('span', `museum-cell${has ? ' museum-cell--on' : ''}`, has ? ITEMS[id].icon : '?');
+            cell.title = has ? t(`item.${id}`) : '?';
+            grid.append(cell);
+          }
+          body.append(grid);
         }
-        body.append(grid);
       });
     },
 
@@ -326,9 +334,8 @@ export function createPanels(root: HTMLElement, game: Game, actor: Actor, toast:
     },
 
   } as PanelHost;
-  Object.assign(api, createHomePanels({
-    game, actor, body, me, open, section: text => section(text), row, button, el, dispatch, refresh: () => api.refresh(),
-  }));
+  const kit = { game, actor, body, me, open, section: (text: string) => section(text), row, button, el, dispatch, refresh: () => api.refresh() };
+  Object.assign(api, createHomePanels(kit), createExplorePanels(kit));
   game.on(event => {
     if (event.type !== 'time.changed' && event.type !== 'player.moved') api.refresh();
   });

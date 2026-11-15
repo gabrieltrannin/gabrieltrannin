@@ -106,6 +106,7 @@ export const ptBRExplore = {
   'msg.festivalPrize': 'Prêmio especial: {item}!',
   'msg.festivalToday': 'Hoje é dia de {festival}! Venha para a praça.',
   'msg.newRegion': 'Primeira visita: {region}!',
+  'msg.decorAway': 'Dá para decorar só em casa e na sua ilha.',
 
   // The mine elevator.
   'panel.elevator.title': 'Elevador da mina',

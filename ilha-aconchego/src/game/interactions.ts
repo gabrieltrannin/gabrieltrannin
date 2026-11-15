@@ -31,6 +31,11 @@ export class Interactions {
     this.items.delete(id);
   }
 
+  /** Forgets every target (when a new place is built). */
+  clear(): void {
+    this.items.clear();
+  }
+
   /**
    * The best target for a player at (x, z) facing `facing` (0 = toward +z): within reach, in front,
    * and preferring what is closest and most straight ahead.

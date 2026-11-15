@@ -43,6 +43,9 @@ import { buildColliders } from './world/collision';
 import { heightAt } from './world/terrain';
 import { buildWorld } from './world/world';
 import { createHomeLife } from './game/homeLife';
+import { createExplore } from './game/explore';
+import { Music } from './audio/music';
+import { LoadingScreen } from './ui/loading';
 import { outdoorTileFree, placementError } from './core/decor';
 import { PhotoMode } from './ui/photoMode';
 import { EmoteWheel } from './ui/emoteWheel';
@@ -237,6 +240,7 @@ async function start(): Promise<void> {
       { label: `📖 ${t('bag.catalog')}`, run: () => (bag.close(), panels.openCatalog()) },
       { label: `⭐ ${t('bag.rating')}`, run: () => (bag.close(), panels.openRating()) },
       { label: `🛋️ ${t('bag.decorate')}`, run: () => (bag.close(), openDecor()) },
+      { label: `⚙️ ${t('bag.options')}`, run: () => (bag.close(), panels.openOptions({ get enabled() { return music.enabled; }, set: on => music.setEnabled(on) })) },
     ],
     uses: slot => {
       const item = me().inventory[slot]?.item;
@@ -415,6 +419,8 @@ async function start(): Promise<void> {
     game, actor: localActor, player, agents: world.villagers, dialogue, panels, interactions,
     toast: text => hud.toast(text), errorText, commitMove, hearts: npc => showHearts(npc),
     openSalon: () => void home.openLook('salon'),
+    playFestival: () => explore.playFestival(),
+    openBoat: () => explore.openBoat(),
   });
 
   // Stage 5: the house, decorating, emotes and the photo mode.
@@ -423,9 +429,17 @@ async function start(): Promise<void> {
     setInputEnabled: on => (input.enabled = on), setPrompt: text => hud.setPrompt(text), toast: text => hud.toast(text), errorText, commitMove, sleep,
   });
   const openDecor = (slot?: number) => {
+    if (me().away) return hud.toast(t('msg.decorAway'));
     setMap(false);
     home.decorMode.open(slot);
   };
+  // Stage 6: music, the loading screen, the regions, the mines and the festivals.
+  const music = new Music();
+  const loading = new LoadingScreen(uiRoot);
+  const explore = createExplore({
+    game, actor: localActor, assets, player, pet, avatar, rig, world, home, interactions, panels, bubbles, loading, music, uiRoot,
+    toast: text => hud.toast(text), errorText, commitMove, setInputEnabled: on => (input.enabled = on),
+  });
   const emotes = new EmoteWheel(uiRoot, id => home.emote(id));
   const photo = new PhotoMode({
     uiRoot, canvas,
@@ -547,7 +561,8 @@ async function start(): Promise<void> {
       if (frame.slotStep !== 0) game.dispatch({ type: 'inventory.select', slot: (me().activeSlot + frame.slotStep + HOTBAR_SIZE) % HOTBAR_SIZE }, localActor);
       rig.yaw += frame.turn * CAMERA_TURN_SPEED * dt;
     }
-    const playing = !bag.isOpen && !panels.isOpen && !fishing.active && !dialogue.isOpen && !photo.active && !emotes.isOpen;
+    const playing = !bag.isOpen && !panels.isOpen && !fishing.active && !dialogue.isOpen && !photo.active && !emotes.isOpen && !explore.gliding && !explore.festivalGame.isOpen;
+    const onIsland = !home.inside && !explore.isAway;
     player.speedFactor = me().buff === 'speed' ? 1.2 : 1;
     player.update(dt, playing ? frame : null, rig.yaw, season);
     if (player.takeDirty()) moveDirty = true;
@@ -559,7 +574,7 @@ async function start(): Promise<void> {
     else if (home.decorMode.active) {
       // Decoration mode writes its own prompt.
     } else {
-      const action = playing ? (home.inside ? home.resolveIndoor() : actions.resolve()) : null;
+      const action = playing ? (explore.isAway ? explore.resolve() : home.inside ? home.resolveIndoor() : actions.resolve()) : null;
       hud.setPrompt(action ? action.label : null);
       if (action && frame.action && playing) {
         // Panels (board, museum, shops) check distance with the position in the game state.
@@ -567,8 +582,9 @@ async function start(): Promise<void> {
         action.run();
       }
     }
-    if (!home.inside) bugs.update(dt, elapsed, season, game.state.time.minuteOfDay, game.state.weather);
+    if (onIsland) bugs.update(dt, elapsed, season, game.state.time.minuteOfDay, game.state.weather);
     home.update(dt, elapsed);
+    explore.update(dt, elapsed, atmosphere.night);
 
     moveTimer += dt;
     if (moveTimer >= MOVE_COMMIT_S) {
@@ -587,8 +603,8 @@ async function start(): Promise<void> {
     }
 
     world.update(dt, elapsed, reducedMotion);
-    if (!home.inside) weatherFx.update(dt, elapsed, { camera: rig.camera, night: atmosphere.night, cameraYaw: rig.yaw, cloudColor: atmosphere.cloudColor, particles: true, reducedMotion, center: currentArea });
-    else home.interior.setNight(atmosphere.night);
+    if (onIsland) weatherFx.update(dt, elapsed, { camera: rig.camera, night: atmosphere.night, cameraYaw: rig.yaw, cloudColor: atmosphere.cloudColor, particles: true, reducedMotion, center: currentArea });
+    else if (home.inside) home.interior.setNight(atmosphere.night);
     atmosphere.update(dt, weatherFx.flash);
     world.sea.setTint(atmosphere.waterTint);
     rig.update(dt);
@@ -597,15 +613,15 @@ async function start(): Promise<void> {
     mapTimer += dt;
     if (mapTimer >= 0.1) {
       mapTimer = 0;
-      const area = home.inside ? currentArea : areaAt(player.x, player.z);
+      const area = !onIsland ? currentArea : areaAt(player.x, player.z);
       if (area !== currentArea) {
         currentArea = area;
         rig.setOverview({ x: area.x, y: LEVELS.main.top, z: area.z, width: area.width, depth: area.depth });
         atmosphere.setFocus(area.x, area.z);
       }
       const villagersOut = VILLAGERS.map(v => world.villagers.positionOf(v.id)).filter((p): p is THREE.Vector3 => !!p).map(p => ({ x: p.x, z: p.z }));
-      hud.setInside(home.floorName());
-      if (!home.inside) hud.drawMinimap({ season, night: atmosphere.night > 0.5, player: { x: player.x, z: player.z, facing: player.facing }, pet: { x: pet.object.position.x, z: pet.object.position.z }, area, villagers: villagersOut });
+      hud.setInside(explore.label() ?? home.floorName());
+      if (onIsland) hud.drawMinimap({ season, night: atmosphere.night > 0.5, player: { x: player.x, z: player.z, facing: player.facing }, pet: { x: pet.object.position.x, z: pet.object.position.z }, area, villagers: villagersOut });
       mailFlag.visible = me().mail.some(m => !m.read || (m.item && !m.taken));
       mailFlag.position.y = heightAt(MAILBOX[0], MAILBOX[1]) + 1.75 + Math.sin(elapsed * 3) * 0.06;
     }
@@ -614,7 +630,7 @@ async function start(): Promise<void> {
     dev?.frame(dtMs);
   });
 
-  if (import.meta.env.DEV) Object.assign(window, { __decorRules: { placementError, outdoorTileFree }, __home: home, __photo: photo, __emotes: emotes, __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow, __world: world, __fishing: fishing });
+  if (import.meta.env.DEV) Object.assign(window, { __explore: explore, __music: music, __decorRules: { placementError, outdoorTileFree }, __home: home, __photo: photo, __emotes: emotes, __game: game, __assets: assets, __rig: rig, __scene: scene, __renderer: renderer, __player: player, __pet: pet, __save: saveNow, __world: world, __fishing: fishing });
 }
 
 void start().catch(error => {

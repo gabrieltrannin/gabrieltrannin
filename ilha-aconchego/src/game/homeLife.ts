@@ -4,7 +4,7 @@ import { absoluteDay } from '../core/clock';
 import { decorColliders, decorList } from '../core/decor';
 import type { Game } from '../core/game';
 import { eatEnergy } from '../core/rules';
-import type { Actor, PlayerState } from '../core/types';
+import type { Actor, AwayPlace, PlayerState } from '../core/types';
 import { isPresent } from '../core/villagers';
 import { APPEARANCE_OPTIONS, BASE_ACCESSORIES, BASE_OUTFITS, BOTTOM_COLORS, SHOE_COLORS, TOP_COLORS, type Appearance } from '../data/appearance';
 import { SALON_PRICE } from '../data/clothing';
@@ -94,18 +94,30 @@ export function createHomeLife(ctx: HomeLifeContext) {
   const floorDecor = () => (me().inside ? me().home.floors[me().inside!] ?? [] : []);
 
   function rebuildColliders(): void {
-    if (me().inside) player.setGround(interior.ground, decorColliders(floorDecor()));
+    if (me().away && away) player.setGround(away.ground, away.colliders());
+    else if (me().inside) player.setGround(interior.ground, decorColliders(floorDecor()));
     else player.setGround(walkableHeight, outdoorColliders());
   }
+
+  /** Stage 6: a region or a mine floor is its own scene, built by the explore module. */
+  let away: AwaySpace | null = null;
+  let awayHandler: ((place: AwayPlace) => AwaySpace) | null = null;
 
   /** Moves the character (and the pet) between the island and the floors of the house. */
   function syncSpace(force = false): void {
     const p = me();
-    const key = p.inside ? `${p.inside}|${p.home.level}` : 'island';
+    const key = p.away ? `away|${p.away.kind}|${p.away.kind === 'region' ? p.away.id : p.away.floor}` : p.inside ? `${p.inside}|${p.home.level}` : 'island';
     if (key === current && !force) return;
     current = key;
     decorMode.close();
-    if (p.inside) {
+    away = null;
+    if (p.away && awayHandler) {
+      away = awayHandler(p.away);
+      away.scene.add(ctx.avatar, pet.object);
+      ctx.post.setScene(away.scene);
+      pet.ground = away.ground;
+      rig.followScale = away.zoom;
+    } else if (p.inside) {
       interior.build(p.home.level, p.inside);
       interior.syncDecor(floorDecor());
       interior.scene.add(ctx.avatar, pet.object);
@@ -314,7 +326,7 @@ export function createHomeLife(ctx: HomeLifeContext) {
         break;
       case 'world.changed':
       case 'npc.arrived':
-        if (!me().inside) rebuildColliders();
+        if (!me().inside && !me().away) rebuildColliders();
         break;
       case 'inventory.changed':
         decorMode.refreshPicker();
@@ -367,8 +379,13 @@ export function createHomeLife(ctx: HomeLifeContext) {
       const f: FloorId | null = me().inside;
       return f ? t(`floor.${f}`) : null;
     },
+    /** The explore module builds the scenes of regions and mine floors. */
+    setAwayHandler(handler: (place: AwayPlace) => AwaySpace): void {
+      awayHandler = handler;
+      if (me().away) syncSpace(true);
+    },
     update(dt: number, elapsed: number): void {
-      if (me().inside) {
+      if (me().inside || me().away) {
         pet.sniff = null;
         return;
       }
@@ -394,4 +411,12 @@ export function createHomeLife(ctx: HomeLifeContext) {
 }
 
 export type HomeLife = ReturnType<typeof createHomeLife>;
+
+/** A place away from the home island, as the explore module builds it. */
+export interface AwaySpace {
+  scene: THREE.Scene;
+  ground: (x: number, z: number) => number | null;
+  colliders(): import('../world/collision').Collider[];
+  zoom: number;
+}
 export { decorList };
