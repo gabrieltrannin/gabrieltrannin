@@ -508,7 +508,7 @@ export const ptBR = {
   'project.seeds': 'Ampliar a loja da Flora',
   'project.seeds.text': 'Sementes de todas as estações, para plantar na estufa o ano todo.',
   'panel.museum.title': 'Museu da ilha',
-  'panel.museum.hint': 'A coleção tem {count} de {total} peças. Doe um de cada peixe, inseto e fóssil.',
+  'panel.museum.hint': 'A coleção tem {count} de {total} peças. Doe um de cada peixe, inseto, fóssil e concha.',
   'panel.museum.donate': 'Para doar',
   'panel.museum.give': 'Doar',
   'panel.museum.nothing': 'Nada novo na mochila para doar.',

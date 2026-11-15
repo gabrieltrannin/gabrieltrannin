@@ -110,7 +110,7 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       { at: [19, 18], loot: [['shell.conch', 1, 4], ['shell.starfish', 1, 4]] },
       { at: [25, 20], loot: [['shell.scallop', 1, 4], ['shell.nautilus', 1, 1]] },
       { at: [6, 6], loot: [['fruit.coconut', 2, 5]] },
-      { at: [28, 4], loot: [['shell.pearl', 1, 2], ['shell.nautilus', 1, 3], ['shell.conch', 1, 4]] },
+      { at: [24.4, 3.6], loot: [['shell.pearl', 1, 2], ['shell.nautilus', 1, 3], ['shell.conch', 1, 4]] },
     ],
     nodes: [],
     grass: [[9, 7], [10.5, 16.5], [24, 16], [27, 13]],
@@ -143,7 +143,7 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       { at: [14, 8], loot: [['fruit.blackberry', 3, 6]] }, { at: [24.5, 7], loot: [['fruit.blackberry', 2, 6]] },
       { at: [7, 15], loot: [['fruit.blackberry', 3, 6]] }, { at: [26, 16.5], loot: [['fruit.blackberry', 2, 6]] },
       { at: [11.5, 10.8], loot: [['crop.mushroom', 2, 6], ['res.moss', 1, 2]] }, { at: [18, 12.5], loot: [['crop.mushroom', 1, 6]] },
-      { at: [21, 19], loot: [['crop.mushroom', 2, 5], ['res.wood', 5, 3]] }, { at: [5, 4], loot: [['fossil.fern', 1, 3], ['crop.mushroom', 3, 3]] },
+      { at: [21, 19], loot: [['crop.mushroom', 2, 5], ['res.wood', 5, 3]] }, { at: [6.9, 5.5], loot: [['fossil.fern', 1, 3], ['crop.mushroom', 3, 3]] },
     ],
     nodes: [],
     grass: [[18, 15], [22, 17.5], [25.5, 12.5], [6, 11.5], [10, 19], [20, 8.5]],
@@ -175,7 +175,7 @@ export const REGIONS: Record<RegionId, RegionDef> = {
     forage: [
       { at: [5, 13], loot: [['fossil.ammonite', 1, 3], ['fossil.trilobite', 1, 2], ['res.obsidian', 1, 4]] },
       { at: [24, 19.5], loot: [['fossil.tooth', 1, 2], ['fossil.feather', 1, 2], ['res.obsidian', 1, 4]] },
-      { at: [27, 3.5], loot: [['fossil.egg', 1, 2], ['res.fireCrystal', 1, 3]] },
+      { at: [24.2, 4.6], loot: [['fossil.egg', 1, 2], ['res.fireCrystal', 1, 3]] },
     ],
     nodes: [
       { at: [6, 7], loot: [['res.obsidian', 2, 5], ['res.stone', 3, 3]] }, { at: [6, 18.5], loot: [['res.gold', 1, 4], ['res.silver', 2, 3]] },
@@ -208,7 +208,7 @@ export const REGIONS: Record<RegionId, RegionDef> = {
       { asset: 'region.sign', at: [14.4, 9.6], r: 0.3 },
     ],
     forage: [
-      { at: [6, 9.4], loot: [['res.stardust', 1, 5], ['res.cloudCotton', 2, 3]] }, { at: [26, 13], loot: [['res.stardust', 1, 5]] },
+      { at: [7.2, 9.0], loot: [['res.stardust', 1, 5], ['res.cloudCotton', 2, 3]] }, { at: [26, 13], loot: [['res.stardust', 1, 5]] },
       { at: [17.2, 10.6], loot: [['res.stardust', 1, 4], ['res.crystal', 1, 1]] }, { at: [13.6, 20.6], loot: [['res.cloudCotton', 2, 6]] },
       { at: [18.6, 21], loot: [['res.cloudCotton', 2, 6]] }, { at: [4.4, 12.4], loot: [['res.cloudCotton', 3, 5]] },
     ],

@@ -271,6 +271,14 @@ describe('stage 6 places', () => {
       if (def.puzzle.kind === 'switches') def.puzzle.switches.forEach((p, i) => spots.push([`switch ${i}`, p]));
       if (def.puzzle.kind === 'bells') def.puzzle.bells.forEach((p, i) => spots.push([`bell ${i}`, p]));
       if (def.puzzle.kind === 'push') [...def.puzzle.blocks, ...def.puzzle.plates].forEach((p, i) => spots.push([`cell ${i}`, [p[0] + 0.5, p[1] + 0.5]]));
+      // Two things to act on never sit on top of each other, or one would hide the other's E.
+      const acts = spots.filter(([n]) => !/^(arrive|creature|wind)/.test(n));
+      for (const [i, [na, a]] of acts.entries()) {
+        for (const [nb, b] of acts.slice(i + 1)) {
+          if (na.startsWith('cell') && nb.startsWith('cell')) continue;
+          expect(Math.hypot(a[0] - b[0], a[1] - b[1]), `${def.id} ${na} too close to ${nb}`).toBeGreaterThan(1.4);
+        }
+      }
       for (const [name, [x, z]] of spots) {
         expect(regionGround(def.id, x, z), `${def.id} ${name}`).not.toBeNull();
         for (const w of def.walls) expect(x > w.x0 && x < w.x1 && z > w.z0 && z < w.z1, `${def.id} ${name} in a wall`).toBe(false);
