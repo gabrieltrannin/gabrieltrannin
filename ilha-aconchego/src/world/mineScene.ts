@@ -20,9 +20,9 @@ export interface MineView {
 
 /** Floors get darker and cooler as you go down. */
 function floorColors(floor: number): { ground: number; fog: number } {
-  if (floor < 10) return { ground: 0x7a6455, fog: 0x2b211c };
-  if (floor < 20) return { ground: 0x5f6170, fog: 0x1f2130 };
-  return { ground: 0x5a4f6e, fog: 0x1e1828 };
+  if (floor < 10) return { ground: 0x9a8070, fog: 0x2b211c };
+  if (floor < 20) return { ground: 0x7b7d8e, fog: 0x1f2130 };
+  return { ground: 0x75698c, fog: 0x1e1828 };
 }
 
 /**
@@ -36,15 +36,15 @@ export function buildMineFloor(assets: AssetRegistry, seed: number, floor: numbe
   scene.name = `mine.${floor}`;
   scene.background = new THREE.Color(colors.fog);
   scene.fog = new THREE.Fog(colors.fog, 14, 40);
-  scene.add(new THREE.HemisphereLight(0xffe2c4, 0x2a2018, 0.9));
-  const key = new THREE.DirectionalLight(0xffd9b0, 0.7);
+  scene.add(new THREE.HemisphereLight(0xffe8d0, 0x3a2e24, 1.35));
+  const key = new THREE.DirectionalLight(0xffd9b0, 0.95);
   key.position.set(4, 14, 14);
   key.target.position.set(MINE_W / 2, 0, MINE_D / 2);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
   scene.add(key, key.target);
-  const lantern = new THREE.PointLight(0xffc98a, 1.6, 7, 1.4);
+  const lantern = new THREE.PointLight(0xffc98a, 2.2, 8, 1.3);
   scene.add(lantern);
 
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(MINE_W, MINE_D).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: colors.ground }));
@@ -52,9 +52,11 @@ export function buildMineFloor(assets: AssetRegistry, seed: number, floor: numbe
   ground.receiveShadow = true;
   scene.add(ground);
 
+  // The wall nearest the camera is drawn low (like the front of a doll house), so it hides nothing.
   const walls: { x: number; y: number; z: number; ry: number }[] = [];
-  for (let z = 0; z < MINE_D; z++) for (let x = 0; x < MINE_W; x++) if (f.walls[z * MINE_W + x]) walls.push({ x: x + 0.5, y: 0, z: z + 0.5, ry: ((x * 7 + z * 3) % 4) * (Math.PI / 2) });
-  scene.add(instantiate(assets.create('mine.wall'), walls));
+  const front: { x: number; y: number; z: number; ry: number }[] = [];
+  for (let z = 0; z < MINE_D; z++) for (let x = 0; x < MINE_W; x++) if (f.walls[z * MINE_W + x]) (z === MINE_D - 1 ? front : walls).push({ x: x + 0.5, y: 0, z: z + 0.5, ry: ((x * 7 + z * 3) % 4) * (Math.PI / 2) });
+  scene.add(instantiate(assets.create('mine.wall'), walls), instantiate(assets.create('mine.wallLow'), front));
 
   const place = (asset: string, x: number, z: number, ry = 0) => {
     const o = assets.create(asset);

@@ -270,8 +270,16 @@ export function createExplore(ctx: ExploreContext) {
       const near = away.nearest(player.x, player.z, player.facing);
       // The bubble wand works on a creature close by.
       const layer = creaturesHere();
-      const c = layer && me().inventory.some(s => s?.item === 'gear.wand') ? layer.nearest(player.x, player.z, 1.9) : null;
-      if (c && !game.state.options.peaceful) return { label: t('act.calm'), run: () => blowBubbles(c.id, c.at) };
+      const c = layer && me().inventory.some(s => s?.item === 'gear.wand') && !game.state.options.peaceful ? layer.nearest(player.x, player.z, 1.9) : null;
+      if (c) {
+        // Only when the creature is in front and closer than the rock, chest or forage spot you face,
+        // so a creature wandering by does not steal the E from what you came to do.
+        const dx = c.at.x - player.x, dz = c.at.z - player.z, d = Math.hypot(dx, dz);
+        const ahead = d < 0.9 || (dx * Math.sin(player.facing) + dz * Math.cos(player.facing)) / d > Math.cos(1.3);
+        const target = near?.at();
+        const closer = !target || d + 0.2 < Math.hypot(target.x - player.x, target.z - player.z);
+        if (ahead && closer) return { label: t('act.calm'), run: () => blowBubbles(c.id, c.at) };
+      }
       if (near) return { label: near.label(), run: () => near.act() };
       const slot = me().activeSlot;
       const item = me().inventory[slot]?.item;

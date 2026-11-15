@@ -98,7 +98,9 @@ export function buildWorld(assets: AssetRegistry, opts: WorldOptions): World {
   // Stage 6: the mine's cave in the west cliff, and the festival decorations of the square.
   const cave = assets.create('mine.cave');
   cave.position.set(MINE_CAVE[0], heightAt(MINE_DOOR[0], MINE_DOOR[1]), MINE_CAVE[1]);
-  cave.rotation.y = -Math.PI / 2;
+  // The mouth faces south-west: toward the beach and toward the camera.
+  cave.rotation.y = -Math.PI / 3;
+  cave.scale.setScalar(1.15);
   root.add(cave);
   const FESTIVAL_SPOTS: readonly [number, number, number][] = [[6.2, 2.6, 0.6], [14.4, 2.6, -0.6], [6.8, 7.4, 0.3], [11.9, 7.4, -0.3]];
   const festivalDecor = new Map<FestivalId, THREE.Group>();

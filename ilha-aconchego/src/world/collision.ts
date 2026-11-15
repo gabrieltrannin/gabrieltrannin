@@ -125,7 +125,7 @@ export function buildColliders(opts: { greenhouseFixed?: boolean; bridgeFixed?: 
   list.push(rect(PLAYER_STALL.x, PLAYER_STALL.z, PLAYER_STALL.w, PLAYER_STALL.d));
   for (const t of TENTS) if (opts.tents?.includes(t.npc)) list.push(rect(t.x, t.z, TENT_SIZE.w, TENT_SIZE.d));
   // Stage 6: the mine's cave in the west cliff.
-  list.push({ kind: 'circle', x: MINE_CAVE[0], z: MINE_CAVE[1], r: 0.9 });
+  list.push({ kind: 'circle', x: MINE_CAVE[0], z: MINE_CAVE[1], r: 1.0 });
   // The house's side room and cellar door, once built.
   const level = opts.homeLevel ?? 0;
   for (const g of HOUSE_GROWTH) {
