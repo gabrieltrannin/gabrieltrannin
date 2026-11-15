@@ -56,7 +56,6 @@ export const ptBRExplore = {
   'region.sign.clouds': 'Toque os dois sinos dos ventos para acordar a corrente que leva ao topo.',
   'unlock.hearts': '{hearts} corações com {name}',
   'unlock.tool': '{tool} {level}',
-  'unlock.ok': '✓',
 
   // Window of the boat.
   'panel.boat.title': 'Barco do píer',

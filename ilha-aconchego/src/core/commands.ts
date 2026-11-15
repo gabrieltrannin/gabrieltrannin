@@ -209,7 +209,8 @@ export type GameEvent =
   /** Went to a region by boat (`region`) or back home (null). */
   | { type: 'travel'; playerId: string; region: RegionId | null; first: boolean }
   /** Arrived on a mine floor (0 = back outside). */
-  | { type: 'mine.floor'; playerId: string; floor: number }
+  /** `first`: the first time this player reaches the floor (a new elevator stop every 5 floors). */
+  | { type: 'mine.floor'; playerId: string; floor: number; first?: boolean }
   | { type: 'mine.broken'; playerId: string; floor: number; rock: number; ladder: boolean }
   | { type: 'explore.changed' }
   | { type: 'grass.searched'; playerId: string; item: ItemId; caught: boolean }

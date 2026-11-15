@@ -244,7 +244,9 @@ export function createExplore(ctx: ExploreContext) {
       }
     }
     if (event.type === 'mine.broken' && event.ladder) ctx.toast(t('msg.ladder'));
-    if (event.type === 'mine.floor' && event.floor > 0 && event.floor % 5 === 0) ctx.toast(t('msg.mineElevator', { floor: event.floor }));
+    if (event.type === 'mine.floor' && event.first && event.floor % 5 === 0) ctx.toast(t('msg.mineElevator', { floor: event.floor }));
+    // The bubble wand found at the mine's entrance: say what it is for.
+    if (event.type === 'item.gained' && event.item === 'gear.wand') window.setTimeout(() => ctx.toast(t('msg.wand')), 1200);
   });
   ctx.world.setFestival(festivalToday(game.state)?.id ?? null);
 

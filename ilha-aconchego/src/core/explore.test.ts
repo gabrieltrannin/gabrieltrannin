@@ -114,7 +114,7 @@ describe('the mines', () => {
     goTo(s, [ladder.x + 0.5, ladder.z + 1.2]);
     const broke = ok(s, { type: 'mine.break', rock: f.ladder });
     expect(broke.find(e => e.type === 'mine.broken')).toMatchObject({ ladder: true });
-    ok(s, { type: 'mine.down' });
+    expect(ok(s, { type: 'mine.down' })).toContainEqual({ type: 'mine.floor', playerId: 'local', floor: 2, first: true });
     expect(me(s).away).toEqual({ kind: 'mine', floor: 2 });
     expect(me(s).explore.deepest).toBe(2);
     // The elevator: only stops already reached.

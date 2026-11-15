@@ -154,8 +154,9 @@ export const exploreHandlers: HandlersFor<ExploreCommands> = {
       const floor = floorOf(p)! + 1;
       p.away = { kind: 'mine', floor };
       p.position = { x: MINE_START[0], z: MINE_START[1], facing: 0 };
+      const first = floor > p.explore.deepest;
       p.explore.deepest = Math.max(p.explore.deepest, floor);
-      return [{ type: 'mine.floor', playerId: actor.id, floor }, { type: 'player.moved', playerId: actor.id }];
+      return [{ type: 'mine.floor', playerId: actor.id, floor, first }, { type: 'player.moved', playerId: actor.id }];
     },
   },
 
