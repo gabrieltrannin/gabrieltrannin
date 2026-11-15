@@ -118,7 +118,7 @@ Verificado no navegador:
   - os cogumelos cantores apertados na ordem certa resolveram o quebra-cabeça, e o baú deu um livro;
   - o modo pacífico ligado pelas Opções.
 - **Recarregar a página**: voltou na floresta, com o festival jogado, o baú aberto e o modo pacífico.
-- **Celular** (390×844): em teste.
+- **Celular** (390×844): a janela do barco, os quatro minijogos, o elevador (pelo botão Ação) e as Opções, sem rolagem lateral.
 - **Sem erros no console** em todos os testes.
 
 Não verificado:
