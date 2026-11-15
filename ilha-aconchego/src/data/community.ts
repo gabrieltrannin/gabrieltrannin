@@ -31,5 +31,5 @@ export const REQUEST_DAYS = 4;
 /** What the museum keeps: one of each fish, bug, fossil and shell (stage 6 added fossils and shells). */
 export const MUSEUM_KINDS = ['fish', 'bug', 'fossil', 'shell'] as const;
 /** The museum building grows as the collection does: pieces needed for each addition. */
-export const MUSEUM_GROWTH: readonly number[] = [5, 15, 30, 45];
+export const MUSEUM_GROWTH: readonly number[] = [5, 15, 25, 35];
 export const MUSEUM_EXTRA: readonly ItemId[] = ['res.fossil'];

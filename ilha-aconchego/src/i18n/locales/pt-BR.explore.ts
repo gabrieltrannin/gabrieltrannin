@@ -158,6 +158,8 @@ export const ptBRExplore = {
   'panel.options.musicHint': 'Cada região tem sua própria música, feita na hora pelo navegador.',
   'panel.options.on': 'Ligado',
   'panel.options.off': 'Desligado',
+  'panel.options.turnOn': 'Ligar',
+  'panel.options.turnOff': 'Desligar',
 
   // Achievements and titles.
   'ach.regions1': 'Primeira viagem de barco',

@@ -56,10 +56,10 @@ export function createExplorePanels(k: PanelKit): ExplorePanels {
         const peaceful = k.game.state.options.peaceful;
         section(t('panel.options.peaceful'));
         k.body.append(row('🫧', peaceful ? t('panel.options.on') : t('panel.options.off'), t('panel.options.peacefulHint'),
-          button(peaceful ? t('panel.options.off') : t('panel.options.on'), () => dispatch({ type: 'options.set', peaceful: !peaceful }, t(peaceful ? 'msg.peacefulOff' : 'msg.peacefulOn')), k.actor.role !== 'host', true)));
+          button(peaceful ? t('panel.options.turnOff') : t('panel.options.turnOn'), () => dispatch({ type: 'options.set', peaceful: !peaceful }, t(peaceful ? 'msg.peacefulOff' : 'msg.peacefulOn')), k.actor.role !== 'host', true)));
         section(t('panel.options.music'));
         k.body.append(row('🎵', music.enabled ? t('panel.options.on') : t('panel.options.off'), t('panel.options.musicHint'),
-          button(music.enabled ? t('panel.options.off') : t('panel.options.on'), () => {
+          button(music.enabled ? t('panel.options.turnOff') : t('panel.options.turnOn'), () => {
             music.set(!music.enabled);
             k.refresh();
           }, false, true)));

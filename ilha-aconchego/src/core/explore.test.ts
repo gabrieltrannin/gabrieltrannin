@@ -3,6 +3,8 @@ import { MINE_DOOR, MINE_D, MINE_START, MINE_W } from '../data/mine';
 import { HOME_BOAT, REGIONS } from '../data/regions';
 import { FESTIVAL_CENTER } from '../data/festivals';
 import { MUSEUM_DOOR } from '../data/village';
+import { MUSEUM_EXTRA, MUSEUM_GROWTH, MUSEUM_KINDS } from '../data/community';
+import { ITEM_IDS, ITEMS } from '../data/items';
 import { applyCommand, type Command } from './commands';
 import { mineFloor, mineWall, regionUnlocked } from './explore';
 import { addItem, countItem } from './inventory';
@@ -232,6 +234,12 @@ describe('festivals and the museum', () => {
     ok(s, { type: 'museum.donate', slot: slotOf(s, 'shell.nautilus') });
     ok(s, { type: 'museum.donate', slot: slotOf(s, 'fossil.ammonite') });
     expect(s.museum).toEqual(['shell.nautilus', 'fossil.ammonite']);
+  });
+
+  it('every addition to the building can be reached with the pieces there are', () => {
+    const pieces = ITEM_IDS.filter(id => (MUSEUM_KINDS as readonly string[]).includes(ITEMS[id].kind)).length + MUSEUM_EXTRA.length;
+    expect(MUSEUM_GROWTH.at(-1)!).toBeLessThanOrEqual(pieces);
+    expect([...MUSEUM_GROWTH].sort((x, y) => x - y)).toEqual([...MUSEUM_GROWTH]);
   });
 });
 
