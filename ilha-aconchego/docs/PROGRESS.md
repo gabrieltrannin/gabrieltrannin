@@ -21,10 +21,136 @@ npm run build      # checagem de tipos + versão de produção em dist/
 - [x] **Etapa 3**: fazenda e atividades
 - [x] **Etapa 4**: vila e moradores
 - [x] **Etapa 5**: casa, decoração, ofícios e progressão
-- [ ] **Etapa 6**: exploração e eventos
+- [x] **Etapa 6**: exploração e eventos
 - [ ] **Etapa 7**: multijogador
 - [ ] **Etapa 8**: opções, som, acessibilidade e publicação
 - [ ] **Etapa 9**: expansão
+
+---
+
+## Etapa 6: exploração e eventos (concluída)
+
+### O que foi feito
+
+- **Quatro regiões** (`src/data/regions.ts`, `src/world/regionScene.ts`). Cada uma é uma cena própria, com chão, céu, luz, música e recursos dela:
+  - **Praia das Conchas**: abre com 2 corações com o Pipo. Tem conchas, cocos, poças de maré e corais.
+  - **Floresta Sussurrante**: abre com o machado de nível 2 e 2 corações com a Flora. Tem árvores enormes, amoras, cogumelos e vaga-lumes azuis.
+  - **Vulcão Brasa**: abre com a picareta de nível 3 e 4 corações com o Bento. Tem lava morna, obsidiana, cristais de fogo e fósseis.
+  - **Ilha nas Nuvens**: abre com a rede de nível 2 e 4 corações com o Juca. São nuvens ligadas por correntes de vento, com pó de estrela e algodão de nuvem.
+- **Viagem de barco**: o barco fica no píer de casa (tecla E perto dele, ou "Pegar o barco" na conversa com o Pipo).
+  - A janela do barco mostra as quatro regiões e o que falta para abrir cada uma.
+  - A viagem passa por uma tela de carregamento. Para voltar, pegue o barco no cais da região.
+  - A primeira visita a cada região aparece num aviso e conta para as conquistas.
+- **Minas** (`src/data/mine.ts`, `src/world/mineScene.ts`):
+  - a entrada é uma caverna no paredão da praia oeste; na primeira vez você ganha a varinha de bolhas;
+  - são 30 andares, gerados a partir da semente da ilha, do número do andar e do dia (o mapa muda todo dia);
+  - em cada andar há pedras para quebrar com a picareta: pedra, cobre, prata, ouro, cristais e fósseis, mais ricas quanto mais fundo;
+  - as pedras de cristal brilham e dão mais;
+  - a escada para descer fica escondida debaixo de uma das pedras;
+  - o elevador para no andar 1 e a cada 5 andares que você já alcançou; ele também leva de volta à superfície;
+  - no andar 30 há um tesouro.
+- **Capim alto** em todas as regiões. "Mexer no capim alto" pode soltar um bichinho (pego se a rede estiver na mochila) ou revelar um item escondido. Cada moita pode ser mexida uma vez por dia.
+- **Quebra-cabeças** (um por região, cada um com um baú de prêmio):
+  - na praia e no vulcão, **blocos para empurrar** até as placas. Para empurrar, fique do lado oposto. Uma alavanca recomeça o quebra-cabeça;
+  - na floresta, **interruptores**: três cogumelos cantores para apertar do menor ao maior; a ordem errada recomeça;
+  - nas nuvens, **correntes de vento** levam de uma nuvem a outra, e dois sinos acordam a corrente que sobe até o baú.
+- **Combate leve**: criaturinhas fofas (bolhinha, musgo, brasinha, nuvenzinha e poeirinha da mina) andam pelas regiões e pela mina.
+  - Se encostam em você, gastam um pouco de energia. Sem energia, você acorda em casa com tudo o que achou.
+  - Três sopros da **varinha de bolhas** (E perto delas) acalmam uma criaturinha, que vai brincar e deixa um presente.
+  - O **modo pacífico** (mochila → Opções) faz todas sumirem.
+- **Coleções e museu**:
+  - novas coleções de **conchas** (6) e **fósseis** (6), além de peixes e insetos (que ganharam três novos);
+  - a janela do museu mostra as quatro categorias;
+  - o museu da Celeste **cresce** com as doações: bandeirolas com 5 peças, uma ala nova com 15, uma cúpula com 25 e uma estátua com 35 (de 36 peças no total).
+- **Festivais** (`src/data/festivals.ts`, `src/ui/festivalGames.ts`), um por estação, com a praça decorada, os moradores reunidos em roda e um minijogo com o anfitrião:
+  - **Flores** (primavera, dia 13), com a Margô: jogo da memória das flores;
+  - **Lanternas** (verão, dia 20, à noite), com o Juca: sequência das lanternas;
+  - **Colheita** (outono, dia 22), com o Lino: colheita relâmpago;
+  - **Neve** (inverno, dia 24), com o Tico: bolas de neve no alvo.
+
+  Cada jogadora joga uma vez por festival. Os pontos viram moedas, e uma boa pontuação dá um enfeite exclusivo: arco de flores, lanterna de papel, abóbora iluminada ou globo de neve.
+- **Música**: cada lugar tem uma música própria, feita na hora pelo navegador (`src/audio/music.ts`): casa, noite, dentro de casa, as quatro regiões, a mina e o festival. Ela começa no primeiro clique ou tecla e pode ser desligada nas Opções.
+- **Conquistas novas**: viagens, regiões, andares 10 e 30 da mina, criaturinhas acalmadas, baús dos quebra-cabeças, festivais e 30 peças no museu. Algumas dão títulos novos.
+- **Salvamento**: versão 6 do arquivo. Jogos da etapa 5 (e anteriores) são convertidos sozinhos.
+
+### Como testar
+
+1. `npm test`: 137 testes passam. Os novos (`src/core/explore.test.ts`) cobrem:
+   - regiões trancadas e abertas e a viagem de barco;
+   - coleta e capim alto;
+   - andares da mina, descida e elevador;
+   - criaturinhas e modo pacífico;
+   - os três tipos de quebra-cabeça;
+   - festival e museu (e que toda parte nova do museu pode ser alcançada);
+   - conversão do save da etapa 5;
+   - que nada nas regiões fica em cima de outra coisa (o E de um não esconde o do outro).
+2. `npm run dev`, crie a personagem e use o painel de testes para pular etapas:
+   - **barco**: com 2 corações com o Pipo, vá até a ponta do píer ao sul de casa e aperte E (ou converse com o Pipo e escolha "Pegar o barco");
+   - **mina**: a caverna fica no paredão da praia oeste, ao lado do celeiro;
+   - **festival**: no painel de testes, mude a data para o dia 13 da primavera (ou 20 do verão à noite, 22 do outono, 24 do inverno) e vá até a barraca da praça;
+   - **opções**: Tab → Opções, para o modo pacífico e a música.
+
+Verificado no navegador:
+- **Barco e regiões**:
+  - "Pegar o barco" no píer;
+  - a janela com as quatro regiões e a tela de carregamento;
+  - chegada a cada uma das quatro regiões;
+  - pegar conchas, mexer no capim alto (saíram sementes);
+  - a corrente de vento das nuvens levando de uma nuvem a outra;
+  - voltar para casa de barco;
+  - conquistas "Primeira viagem de barco" e "Visitar as quatro regiões".
+- **Mina**:
+  - "Entrar na mina" na caverna e a varinha de bolhas de presente;
+  - quebrar a pedra que esconde a escada ("Achou a escada para o próximo andar!") e descer ao andar 2;
+  - subir pela corda;
+  - o elevador levando ao andar 10, com outra cor de pedra;
+  - voltar à superfície pelo elevador.
+- **Museu**:
+  - doar duas conchas e dois fósseis pela porta do museu;
+  - o painel com peixes, insetos, fósseis e conchas;
+  - a 35ª doação fazendo aparecer bandeirolas, ala nova, cúpula e estátua na mesma hora.
+- **Festivais**:
+  - no dia 13 da primavera, a praça com arcos de flores e os moradores em roda, com a Margô no centro;
+  - "Jogar: Memória das flores": os 6 pares deram 250 moedas e o Arco de flores, e jogar de novo é recusado;
+  - as decorações de Lanternas (à noite), Colheita e Neve nos dias delas.
+- **Combate leve e quebra-cabeças**:
+  - três sopros de bolhas acalmaram uma criaturinha da floresta, que deixou musgo macio;
+  - os cogumelos cantores apertados na ordem certa resolveram o quebra-cabeça, e o baú deu um livro;
+  - o modo pacífico ligado pelas Opções.
+- **Recarregar a página**: voltou na floresta, com o festival jogado, o baú aberto e o modo pacífico.
+- **Celular** (390×844): em teste.
+- **Sem erros no console** em todos os testes.
+
+Não verificado:
+- aparelhos reais, qps e o som (o navegador de teste não toca áudio);
+- os outros três minijogos jogados até o fim no computador (no celular, só abertos);
+- os quebra-cabeças de empurrar blocos e dos sinos, testados só pela regra;
+- o fundo da mina (andar 30 e o tesouro), testado só pela regra.
+
+### Decisões técnicas
+
+- **Cada região e cada andar da mina são cenas separadas**, trocadas por trás da tela de carregamento. O estado da personagem diz onde ela está (`away`: região ou andar da mina). A posição é contada naquele lugar, e os comandos da ilha ficam "longe demais" enquanto ela está fora.
+- **Tudo que é diário é sorteado a partir da semente da ilha e do dia**: o mapa de cada andar, os achados do capim e os presentes das criaturinhas. Assim, todas as jogadoras da mesma ilha veem o mesmo mapa, o que já deixa pronto o multijogador da etapa 7. O que foi pego, quebrado e acalmado volta de manhã; os quebra-cabeças resolvidos ficam resolvidos.
+- **Os andares da mina sempre têm caminho**: as colunas de pedra seguem um padrão xadrez, então todo chão livre é alcançável a partir da corda.
+- **Criaturinhas**: o movimento delas é só visual. A regra checa a distância até o ponto de origem de cada uma, para que o servidor da etapa 7 consiga validar.
+- **Festivais**: nos dias de festival, o horário dos moradores é trocado por um lugar na roda da praça. O minijogo é uma janela da interface, e só a pontuação final vira comando.
+- **A tecla E longe de casa** escolhe o que está na frente e mais perto. A varinha só ganha quando a criaturinha está na sua frente e mais perto que a pedra, o baú ou o achado; assim, uma criaturinha passando não atrapalha.
+- **Mudanças em coisas que já existiam**:
+  - o lugar do Pipo no píer foi para a lateral, para não tapar o barco;
+  - a vila agora se redesenha na hora em que algo é doado ao museu;
+  - as datas dos festivais no calendário foram ajustadas: Lanternas no dia 20 do verão, Colheita no dia 22 do outono e Neve no dia 24 do inverno.
+
+### Pendências e notas
+
+- **Peixes e insetos novos** das regiões: os peixes ainda são os da ilha; só os insetos ganharam três espécies novas. Peixes próprios de cada região podem vir na expansão.
+- **Criaturinhas** não seguem você entre cenas e não ficam salvas no meio do dia.
+- **A música** é simples, feita por síntese; arquivos de música de verdade podem substituí-la depois sem mexer no resto (etapa 8, som).
+- **Minijogos** no controle de videogame: funcionam por teclado, mouse e toque, mas ainda não pelo controle.
+- **Ícones** continuam sendo emoji.
+
+### Próximo passo
+
+Etapa 7: multijogador.
 
 ---
 
